@@ -44,10 +44,10 @@ mpl.rcParams['figure.figsize']=[16.0,12.0]
 #channel_3=np.fromfile("wave3.dat", dtype="int16")
 
 
-channel_0=np.fromfile("080519/t1/A-thorium-4kv.dat", dtype="int16")
-channel_1=np.fromfile("080519/t1/B-thorium-4kv.dat", dtype="int16")
-channel_2=np.fromfile("080519/t1/C-thorium-4kv.dat", dtype="int16")
-channel_3=np.fromfile("080519/t1/D-thorium-4kv.dat", dtype="int16")
+channel_0=np.fromfile("../../080519/t5_25us/A-thorium-4kv.dat", dtype="int16")
+channel_1=np.fromfile("../../080519/t5_25us/B-thorium-4kv.dat", dtype="int16")
+channel_2=np.fromfile("../../080519/t5_25us/C-thorium-4kv.dat", dtype="int16")
+channel_3=np.fromfile("../../080519/t5_25us/D-thorium-4kv.dat", dtype="int16")
 
 #channel_0=np.fromfile("A-thorium-3kv.dat", dtype="int16")
 #channel_1=np.fromfile("B-thorium-3kv.dat", dtype="int16")
@@ -67,7 +67,7 @@ channel_3=np.fromfile("080519/t1/D-thorium-4kv.dat", dtype="int16")
 
 
 vscale=(2000.0/16384.0)
-wsize=50000
+wsize=12500
 V=vscale*channel_0
 # Ensure we have an integer number of events
 V=V[:int(len(V)/wsize)*wsize]
@@ -137,8 +137,8 @@ for i in range(0, v_matrix.shape[0]):
         
 	# Look for events with S1 and S2 from summed channel
     s1_window = int(0.5/tscale)
-    s2_window = int(1.5/tscale)
-    s1_thresh = 500
+    s2_window = int(1.2/tscale)
+    s1_thresh = 400
     s1_range_thresh = 10
     s2_thresh = 1e4
     s1_max=s1_thresh
@@ -158,14 +158,14 @@ for i in range(0, v_matrix.shape[0]):
     s1_found=False
     s2_found=False
 
-    sum_baseline=np.mean(v4_matrix[i,int(50./tscale):int(60./tscale)]) #avg ~10 us, later in acquisition since there may be odd noise earlier?
+    sum_baseline=np.mean(v4_matrix[i,int(15./tscale):int(20./tscale)]) #avg ~10 us, later in acquisition since there may be odd noise earlier?
     sum_data=v4_matrix[i,:]-sum_baseline
     
     # Do a moving average (sum) of the waveform with different time windows for s1, s2
 	# Look for where this value is maximized
 	# Look for the s2 using a moving average (sum) of the waveform over a wide window
-    t_min_search=int(16./tscale)
-    t_max_search=int(25./tscale)
+    t_min_search=int(1./tscale)
+    t_max_search=int(10./tscale)
     t_offset=int(0.1/tscale)
     s2_max_ind, s2_max=pulse_finder_area(sum_data,t_min_search,t_max_search,s2_window)
     s2_found=s2_max>s2_thresh
@@ -182,28 +182,31 @@ for i in range(0, v_matrix.shape[0]):
         #s2_found_array.append(s2_found)
         #print("s2 start: ",s2_start_pos*tscale," s2 end: ",s2_end_pos*tscale)
 		
-        # Now look for a prior s1
+        # Now look for a prior s1                                                   
         s1_max_ind, s1_max=pulse_finder_area(sum_data,t_min_search,s2_start_pos-s1_window-t_offset,s1_window)
-        #print("s1 area: ",s1_max)
+       # print("s1 area: ",s1_max)
         if s1_max>s1_thresh:
-            # print("s1 window time: ",s1_max_ind*tscale,"s1 area max: ",s1_max)
+            # print("s1 window time: ",s1_max_ind*tscale,"s1 area max: ",s1_max)    
             s1_start_pos, s1_end_pos = pulse_bounds(sum_data,s1_max_ind-t_offset,s1_window,0.1,0.1)
-            # Check that we didn't accidentally find noise (related to poor baseline subtraction)
-            s1_height_range=np.max(sum_data[s1_start_pos:s1_end_pos])-np.min(sum_data[s1_start_pos:s1_end_pos]) 
-            s1_found = s1_height_range>s1_range_thresh
-            # print("s1 start: ",s1_start_pos*tscale," s1 end: ",s1_end_pos*tscale)
-            if 0.60<t_drift<0.70:
-                print("s1_max_ind: ",s1_max_ind*tscale," s1_start_pos: ",s1_start_pos*tscale," tdrift: ",t_drift)
-                print("s1 range: ",s1_height_range)
-                print("baseline: ",sum_baseline)
-            if not s1_found:
-                print("under range, s1 range: ",s1_height_range)
-            else:    
-                t_drift=(s2_start_pos-s1_start_pos)*tscale
-                s1_area=np.sum(sum_data[s1_start_pos:s1_end_pos])
-     	        #s1_found_array.append(s1_found)       
-	        #s1_area_array.append(s1_area)
-	        #t_drift_array.append(t_drift)
+            if s1_start_pos > -1 and s1_end_pos > s1_start_pos:
+               # print(s1_start_pos)
+               # print(s1_end_pos)
+                # Check that we didn't accidentally find noise (related to poor baseline subtraction)
+                s1_height_range=np.max(sum_data[s1_start_pos:s1_end_pos])-np.min(sum_data[s1_start_pos:s1_end_pos]) 
+                s1_found = s1_height_range>s1_range_thresh
+                # print("s1 start: ",s1_start_pos*tscale," s1 end: ",s1_end_pos*tscale)
+                if 0.60<t_drift<0.70:
+                    print("s1_max_ind: ",s1_max_ind*tscale," s1_start_pos: ",s1_start_pos*tscale," tdrift: ",t_drift)
+                    print("s1 range: ",s1_height_range)
+                    print("baseline: ",sum_baseline)
+                if not s1_found:
+                    print("under range, s1 range: ",s1_height_range)
+                else:    
+                    t_drift=(s2_start_pos-s1_start_pos)*tscale
+                    s1_area=np.sum(sum_data[s1_start_pos:s1_end_pos])
+         	        #s1_found_array.append(s1_found)       
+	            #s1_area_array.append(s1_area)
+	            #t_drift_array.append(t_drift)
 	
 
 
@@ -220,7 +223,7 @@ for i in range(0, v_matrix.shape[0]):
     #if s1_max_ind>-1 and not s1_height_range>s1_range_thresh:
     #if 0.60<t_drift<0.70:
     #if t_drift>3:
-    if False:
+    if True:
         pl.figure(1,figsize=(20, 20))
         pl.clf()
         pl.rc('xtick', labelsize=25)
@@ -228,7 +231,7 @@ for i in range(0, v_matrix.shape[0]):
         
         pl.subplot(2,3,1)
         pl.plot(t_matrix[i,:],v_matrix[i,:],'y')
-        pl.xlim([17, 100])
+        pl.xlim([0, 10])
         pl.ylim([0, 1500])
         pl.xlabel('Time (us)')
         pl.ylabel('Millivolts')
@@ -238,7 +241,7 @@ for i in range(0, v_matrix.shape[0]):
         
         pl.subplot(2,3,2)
         pl.plot(t_matrix[i,:],v1_matrix[i,:],'cyan')
-        pl.xlim([17, 100])
+        pl.xlim([0, 10])
         pl.ylim([0, 1500])
         pl.xlabel('Time (us)')
         pl.ylabel('Millivolts')
@@ -248,7 +251,7 @@ for i in range(0, v_matrix.shape[0]):
         
         pl.subplot(2,3,3)
         pl.plot(t_matrix[i,:],v2_matrix[i,:],'magenta')
-        pl.xlim([17, 100])
+        pl.xlim([0, 10])
         pl.ylim([0, 1500])
         pl.xlabel('Time (us)')
         pl.ylabel('Millivolts')
@@ -258,7 +261,7 @@ for i in range(0, v_matrix.shape[0]):
         
         pl.subplot(2,3,4)
         pl.plot(t_matrix[i,:],v3_matrix[i,:],'blue')
-        pl.xlim([17, 100])
+        pl.xlim([0, 10])
         pl.ylim([0, 1500])
         pl.xlabel('Time (us)')
         pl.ylabel('Millivolts')
@@ -268,7 +271,7 @@ for i in range(0, v_matrix.shape[0]):
         
         ax=pl.subplot(2,3,5)
         pl.plot(t_matrix[i,:],v4_matrix[i,:],'blue')
-        pl.xlim([17, 100])
+        pl.xlim([0, 10])
         pl.ylim([0, 2500])
         pl.xlabel('Time (us)')
         pl.ylabel('Millivolts')
