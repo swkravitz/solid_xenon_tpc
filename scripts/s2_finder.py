@@ -44,10 +44,10 @@ mpl.rcParams['figure.figsize']=[16.0,12.0]
 #channel_3=np.fromfile("wave3.dat", dtype="int16")
 
 
-channel_0=np.fromfile("../../080619/t8_0.71bar/A-3.9kv.dat", dtype="int16")
-channel_1=np.fromfile("../../080619/t8_0.71bar/B-3.9kv.dat", dtype="int16")
-channel_2=np.fromfile("../../080619/t8_0.71bar/C-3.9kv.dat", dtype="int16")
-channel_3=np.fromfile("../../080619/t8_0.71bar/D-3.9kv.dat", dtype="int16")
+channel_0=np.fromfile("../../080719/t5_0.76bar/A-3.9kv.dat", dtype="int16")
+channel_1=np.fromfile("../../080719/t5_0.76bar/B-3.9kv.dat", dtype="int16")
+channel_2=np.fromfile("../../080719/t5_0.76bar/C-3.9kv.dat", dtype="int16")
+channel_3=np.fromfile("../../080719/t5_0.76bar/D-3.9kv.dat", dtype="int16")
 
 #channel_0=np.fromfile("A-thorium-3kv.dat", dtype="int16")
 #channel_1=np.fromfile("B-thorium-3kv.dat", dtype="int16")
@@ -288,7 +288,12 @@ for i in range(0, v_matrix.shape[0]):
         pl.show(0)
         inn = raw_input("Press enter to continue")
 
-print(s2_area_array[s2_found_array*s1_found_array].size)
+print("Events w/ S1+S2: ",s2_area_array[s2_found_array*s1_found_array].size)
+print("S2 Area mean: ", np.mean(s2_area_array[s2_found_array*s1_found_array]))
+print("S2 width mean: ", np.mean(s2_width_array[s2_found_array*s1_found_array]))
+print("S2 height mean: ", np.mean(s2_height_array[s2_found_array*s1_found_array]))
+print("Drift time mean: ", np.mean(t_drift_array[s2_found_array*s1_found_array]))
+print("S1 Area mean: ", np.mean(s1_area_array[s2_found_array*s1_found_array]))
 
 pl.figure(figsize=(20, 20))
 pl.clf()     
@@ -297,6 +302,7 @@ for j in range(0, n_channels):
     pl.hist(max_ind_array[:,j],bins=100)
     pl.yscale('log')
     pl.xlabel("Time of max value")
+    pl.title('Ch '+str(j))
 pl.figure(figsize=(20, 20))
 pl.clf()
 for j in range(0, n_channels):    
@@ -304,6 +310,7 @@ for j in range(0, n_channels):
     pl.hist(max_val_array[:,j],bins=100)
     pl.xlabel("Max value")
     pl.yscale('log')
+    pl.title('Ch '+str(j))
 pl.figure(figsize=(20, 20))
 pl.clf()
 for j in range(0, n_channels):    
@@ -314,28 +321,37 @@ for j in range(0, n_channels):
     pl.title('Ch '+str(j))
 pl.figure()
 pl.clf()
-pl.hist(s2_area_array[s2_found_array*s1_found_array],bins=200,range=(0,50000))
+pl.hist(s2_area_array[s2_found_array*s1_found_array],bins=100)
+pl.axvline(x=np.mean(s2_area_array[s2_found_array*s1_found_array]),ls='--',color='r')
 pl.xlabel("S2 area")
 pl.figure()
 pl.clf()
-pl.hist(s1_area_array[s1_found_array],bins=100)
+pl.hist(s1_area_array[s2_found_array*s1_found_array],bins=100)
+pl.axvline(x=np.mean(s1_area_array[s2_found_array*s1_found_array]),ls='--',color='r')
 pl.xlabel("S1 area")
 pl.figure()
 pl.clf()
 pl.hist(s2_width_array[s2_found_array*s1_found_array],bins=100)
+pl.axvline(x=np.mean(s2_width_array[s2_found_array*s1_found_array]),ls='--',color='r')
 pl.xlabel("S2 width (us)")
 pl.figure()
 pl.clf()
 pl.hist(s2_height_array[s2_found_array*s1_found_array],bins=100)
+pl.axvline(x=np.mean(s2_height_array[s2_found_array*s1_found_array]),ls='--',color='r')
 pl.xlabel("S2 height (mV)")
-pl.figure()
-pl.clf()
-pl.hist(t_drift_array[s2_found_array*s1_found_array],bins=100)
-pl.xlabel("drift time (us)")
-pl.figure()
-pl.clf()
+   
+#for i in range(0,3):
+#    pl.figure()
+#    pl.clf()
+#    pl.hist(t_drift_array[s2_found_array*s1_found_array][300*i:300+300*i],bins=100)
+#    pl.xlabel("drift time (us)")
+#    pl.title(i)
+
 t_drift_plot=t_drift_array[s2_found_array*s1_found_array]
+s2_width_plot=s2_width_array[s2_found_array*s1_found_array]
 s2_area_plot=s2_area_array[s2_found_array*s1_found_array]
+pl.figure()
+pl.clf()
 pl.scatter(t_drift_plot,s2_area_plot)
 pl.xlabel("drift time (us)")
 pl.ylabel("S2 area")
@@ -351,5 +367,11 @@ for i_bin in range(len(drift_bins)):
     s2_means[i_bin]=np.median(s2_area_i_bin)
     s2_std_err[i_bin]=np.std(s2_area_i_bin)/np.sqrt(len(s2_area_i_bin))
 pl.errorbar(drift_bins, s2_means, yerr=s2_std_err, linewidth=3, elinewidth=3, capsize=5, capthick=4, color='red')
+
+pl.figure()
+pl.clf()
+pl.scatter(s2_area_plot,s2_width_plot)
+pl.xlabel("S2 area")
+pl.ylabel("S2 width (us)")
 
 pl.show()
