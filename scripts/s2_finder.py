@@ -44,10 +44,10 @@ mpl.rcParams['figure.figsize']=[16.0,12.0]
 #channel_3=np.fromfile("wave3.dat", dtype="int16")
 
 
-channel_0=np.fromfile("../../080519/t5_25us/A-thorium-4kv.dat", dtype="int16")
-channel_1=np.fromfile("../../080519/t5_25us/B-thorium-4kv.dat", dtype="int16")
-channel_2=np.fromfile("../../080519/t5_25us/C-thorium-4kv.dat", dtype="int16")
-channel_3=np.fromfile("../../080519/t5_25us/D-thorium-4kv.dat", dtype="int16")
+channel_0=np.fromfile("../../080619/t8_0.71bar/A-3.9kv.dat", dtype="int16")
+channel_1=np.fromfile("../../080619/t8_0.71bar/B-3.9kv.dat", dtype="int16")
+channel_2=np.fromfile("../../080619/t8_0.71bar/C-3.9kv.dat", dtype="int16")
+channel_3=np.fromfile("../../080619/t8_0.71bar/D-3.9kv.dat", dtype="int16")
 
 #channel_0=np.fromfile("A-thorium-3kv.dat", dtype="int16")
 #channel_1=np.fromfile("B-thorium-3kv.dat", dtype="int16")
@@ -140,7 +140,7 @@ for i in range(0, v_matrix.shape[0]):
     s2_window = int(1.2/tscale)
     s1_thresh = 400
     s1_range_thresh = 10
-    s2_thresh = 1e4
+    s2_thresh = 1e3
     s1_max=s1_thresh
     s1_max_ind=-1
     s1_area=-1
@@ -200,7 +200,8 @@ for i in range(0, v_matrix.shape[0]):
                     print("s1 range: ",s1_height_range)
                     print("baseline: ",sum_baseline)
                 if not s1_found:
-                    print("under range, s1 range: ",s1_height_range)
+                    pass
+                   # print("under range, s1 range: ",s1_height_range)
                 else:    
                     t_drift=(s2_start_pos-s1_start_pos)*tscale
                     s1_area=np.sum(sum_data[s1_start_pos:s1_end_pos])
@@ -223,7 +224,7 @@ for i in range(0, v_matrix.shape[0]):
     #if s1_max_ind>-1 and not s1_height_range>s1_range_thresh:
     #if 0.60<t_drift<0.70:
     #if t_drift>3:
-    if True:
+    if False:
         pl.figure(1,figsize=(20, 20))
         pl.clf()
         pl.rc('xtick', labelsize=25)
@@ -287,6 +288,8 @@ for i in range(0, v_matrix.shape[0]):
         pl.show(0)
         inn = raw_input("Press enter to continue")
 
+print(s2_area_array[s2_found_array*s1_found_array].size)
+
 pl.figure(figsize=(20, 20))
 pl.clf()     
 for j in range(0, n_channels):   
@@ -311,7 +314,7 @@ for j in range(0, n_channels):
     pl.title('Ch '+str(j))
 pl.figure()
 pl.clf()
-pl.hist(s2_area_array[s2_found_array*s1_found_array],bins=100)
+pl.hist(s2_area_array[s2_found_array*s1_found_array],bins=200,range=(0,50000))
 pl.xlabel("S2 area")
 pl.figure()
 pl.clf()
