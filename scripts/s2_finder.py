@@ -22,12 +22,12 @@ def pulse_bounds(data,t_min,window,start_frac,end_frac):
     peak_pos=np.argmax(data[t_min:t_min+window])
     #start_frac: pulse starts at this fraction of peak height above baseline
     for i_start in range(t_min,t_min+window):
-        if data[i_start]>peak_val*start_frac:
+        if data[i_start]>max(peak_val*start_frac,3):
             start_pos=i_start
             break
     #end_frac: pulse ends at this fraction of peak height above baseline
     for i_start in range(t_min+window,t_min,-1):
-        if data[i_start]>peak_val*end_frac:
+        if data[i_start]>max(peak_val*end_frac,3):
             end_pos=i_start
             break
     return (start_pos, end_pos)
@@ -44,10 +44,10 @@ mpl.rcParams['figure.figsize']=[16.0,12.0]
 #channel_3=np.fromfile("wave3.dat", dtype="int16")
 
 
-channel_0=np.fromfile("../../080719/t5_0.76bar/A-3.9kv.dat", dtype="int16")
-channel_1=np.fromfile("../../080719/t5_0.76bar/B-3.9kv.dat", dtype="int16")
-channel_2=np.fromfile("../../080719/t5_0.76bar/C-3.9kv.dat", dtype="int16")
-channel_3=np.fromfile("../../080719/t5_0.76bar/D-3.9kv.dat", dtype="int16")
+channel_0=np.fromfile("../../080719/t6/A-3.9kv.dat", dtype="int16")
+channel_1=np.fromfile("../../080719/t6/B-3.9kv.dat", dtype="int16")
+channel_2=np.fromfile("../../080719/t6/C-3.9kv.dat", dtype="int16")
+channel_3=np.fromfile("../../080719/t6/D-3.9kv.dat", dtype="int16")
 
 #channel_0=np.fromfile("A-thorium-3kv.dat", dtype="int16")
 #channel_1=np.fromfile("B-thorium-3kv.dat", dtype="int16")
@@ -166,7 +166,7 @@ for i in range(0, v_matrix.shape[0]):
 	# Look for the s2 using a moving average (sum) of the waveform over a wide window
     t_min_search=int(1./tscale)
     t_max_search=int(10./tscale)
-    t_offset=int(0.1/tscale)
+    t_offset=int(0.05/tscale)
     s2_max_ind, s2_max=pulse_finder_area(sum_data,t_min_search,t_max_search,s2_window)
     s2_found=s2_max>s2_thresh
     if s2_found: # Found a pulse (maybe an s2)
@@ -223,8 +223,9 @@ for i in range(0, v_matrix.shape[0]):
     # once per event
     #if s1_max_ind>-1 and not s1_height_range>s1_range_thresh:
     #if 0.60<t_drift<0.70:
-    #if t_drift>3:
+    #if 1.08<t_drift<1.12:
     if False:
+    #if s1_found and s2_found:
         pl.figure(1,figsize=(20, 20))
         pl.clf()
         pl.rc('xtick', labelsize=25)
@@ -319,6 +320,8 @@ for j in range(0, n_channels):
     pl.xlabel("Pulse integral")
     #pl.yscale('log')
     pl.title('Ch '+str(j))
+    
+    
 pl.figure()
 pl.clf()
 pl.hist(s2_area_array[s2_found_array*s1_found_array],bins=100)
@@ -326,7 +329,7 @@ pl.axvline(x=np.mean(s2_area_array[s2_found_array*s1_found_array]),ls='--',color
 pl.xlabel("S2 area")
 pl.figure()
 pl.clf()
-pl.hist(s1_area_array[s2_found_array*s1_found_array],bins=100)
+pl.hist(s1_area_array[s2_found_array*s1_found_array*(t_drift_array>0.3)],bins=500,range=(0,10000))
 pl.axvline(x=np.mean(s1_area_array[s2_found_array*s1_found_array]),ls='--',color='r')
 pl.xlabel("S1 area")
 pl.figure()
@@ -340,12 +343,10 @@ pl.hist(s2_height_array[s2_found_array*s1_found_array],bins=100)
 pl.axvline(x=np.mean(s2_height_array[s2_found_array*s1_found_array]),ls='--',color='r')
 pl.xlabel("S2 height (mV)")
    
-#for i in range(0,3):
-#    pl.figure()
-#    pl.clf()
-#    pl.hist(t_drift_array[s2_found_array*s1_found_array][300*i:300+300*i],bins=100)
-#    pl.xlabel("drift time (us)")
-#    pl.title(i)
+pl.figure()
+pl.clf()
+pl.hist(t_drift_array[s2_found_array*s1_found_array],bins=100)
+pl.xlabel("drift time (us)")
 
 t_drift_plot=t_drift_array[s2_found_array*s1_found_array]
 s2_width_plot=s2_width_array[s2_found_array*s1_found_array]
