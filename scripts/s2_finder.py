@@ -1,6 +1,6 @@
 import numpy as np
-import pylab as pl
-#import matplotlib.pyplot as pl
+#import pylab as pl
+import matplotlib.pyplot as pl
 import matplotlib as mpl
 
 def pulse_finder_area(data,t_min_search,t_max_search,window):
@@ -44,10 +44,15 @@ mpl.rcParams['figure.figsize']=[16.0,12.0]
 #channel_3=np.fromfile("wave3.dat", dtype="int16")
 
 
-channel_0=np.fromfile("../../080719/t6/A-3.9kv.dat", dtype="int16")
-channel_1=np.fromfile("../../080719/t6/B-3.9kv.dat", dtype="int16")
-channel_2=np.fromfile("../../080719/t6/C-3.9kv.dat", dtype="int16")
-channel_3=np.fromfile("../../080719/t6/D-3.9kv.dat", dtype="int16")
+#channel_0=np.fromfile("../../080719/t6/A-3.9kv.dat", dtype="int16")
+#channel_1=np.fromfile("../../080719/t6/B-3.9kv.dat", dtype="int16")
+#channel_2=np.fromfile("../../080719/t6/C-3.9kv.dat", dtype="int16")
+#channel_3=np.fromfile("../../080719/t6/D-3.9kv.dat", dtype="int16")
+
+channel_0=np.fromfile("../../080519/t3_25us/A-thorium-4kv.dat", dtype="int16")
+channel_1=np.fromfile("../../080519/t3_25us/B-thorium-4kv.dat", dtype="int16")
+channel_2=np.fromfile("../../080519/t3_25us/C-thorium-4kv.dat", dtype="int16")
+channel_3=np.fromfile("../../080519/t3_25us/D-thorium-4kv.dat", dtype="int16")
 
 #channel_0=np.fromfile("A-thorium-3kv.dat", dtype="int16")
 #channel_1=np.fromfile("B-thorium-3kv.dat", dtype="int16")
@@ -78,10 +83,10 @@ V_2=V_2[:int(len(V)/wsize)*wsize]
 V_3=vscale*channel_3
 V_3=V_3[:int(len(V)/wsize)*wsize]
 n_channels=5 # including sum
-v_matrix = V.reshape((V.size/wsize),wsize)
-v1_matrix = V_1.reshape((V.size/wsize),wsize)
-v2_matrix = V_2.reshape((V.size/wsize),wsize)
-v3_matrix = V_3.reshape((V.size/wsize),wsize)
+v_matrix = V.reshape(int(V.size/wsize),wsize)
+v1_matrix = V_1.reshape(int(V.size/wsize),wsize)
+v2_matrix = V_2.reshape(int(V.size/wsize),wsize)
+v3_matrix = V_3.reshape(int(V.size/wsize),wsize)
 v4_matrix = v_matrix+v1_matrix+v2_matrix+v3_matrix
 v_matrix_all_ch=[v_matrix,v1_matrix,v2_matrix,v3_matrix,v4_matrix]
 x=np.arange(0, wsize, 1)
@@ -222,16 +227,15 @@ for i in range(0, v_matrix.shape[0]):
 		
     # once per event
     #if s1_max_ind>-1 and not s1_height_range>s1_range_thresh:
-    #if 0.60<t_drift<0.70:
+    #if 1.5<t_drift:
     #if 1.08<t_drift<1.12:
     if False:
     #if s1_found and s2_found:
-        pl.figure(1,figsize=(20, 20))
-        pl.clf()
+        fig=pl.figure(1,figsize=(20, 20))
         pl.rc('xtick', labelsize=25)
         pl.rc('ytick', labelsize=25)
         
-        pl.subplot(2,3,1)
+        pl.subplot2grid((2,3),(0,0))
         pl.plot(t_matrix[i,:],v_matrix[i,:],'y')
         pl.xlim([0, 10])
         pl.ylim([0, 1500])
@@ -241,7 +245,7 @@ for i in range(0, v_matrix.shape[0]):
         triggertime_us = (t[-1]*0.2)
         pl.plot(np.array([1,1])*triggertime_us,np.array([0,16384]),'k--')
         
-        pl.subplot(2,3,2)
+        pl.subplot2grid((2,3),(0,1))
         pl.plot(t_matrix[i,:],v1_matrix[i,:],'cyan')
         pl.xlim([0, 10])
         pl.ylim([0, 1500])
@@ -251,7 +255,7 @@ for i in range(0, v_matrix.shape[0]):
         triggertime_us = (t[-1]*0.2)
         pl.plot(np.array([1,1])*triggertime_us,np.array([0,16384]),'k--')
         
-        pl.subplot(2,3,3)
+        pl.subplot2grid((2,3),(0,2))
         pl.plot(t_matrix[i,:],v2_matrix[i,:],'magenta')
         pl.xlim([0, 10])
         pl.ylim([0, 1500])
@@ -261,7 +265,7 @@ for i in range(0, v_matrix.shape[0]):
         triggertime_us = (t[-1]*0.2)
         pl.plot(np.array([1,1])*triggertime_us,np.array([0,16384]),'k--')
         
-        pl.subplot(2,3,4)
+        pl.subplot2grid((2,3),(1,0))
         pl.plot(t_matrix[i,:],v3_matrix[i,:],'blue')
         pl.xlim([0, 10])
         pl.ylim([0, 1500])
@@ -271,7 +275,7 @@ for i in range(0, v_matrix.shape[0]):
         triggertime_us = (t[-1]*0.2)
         pl.plot(np.array([1,1])*triggertime_us,np.array([0,16384]),'k--')
         
-        ax=pl.subplot(2,3,5)
+        ax=pl.subplot2grid((2,3),(1,1),colspan=2)
         pl.plot(t_matrix[i,:],v4_matrix[i,:],'blue')
         pl.xlim([0, 10])
         pl.ylim([0, 2500])
@@ -279,15 +283,16 @@ for i in range(0, v_matrix.shape[0]):
         pl.ylabel('Millivolts')
         pl.title("Sum,"+ str(i))
         triggertime_us = (t[-1]*0.2)
-        pl.plot(np.array([1,1])*triggertime_us,np.array([0,16384]),'k--')
+        #pl.plot(np.array([1,1])*triggertime_us,np.array([0,16384]),'k--')
         if s2_found:
             ax.axvspan(s2_start_pos*tscale, s2_end_pos*tscale, alpha=0.5, color='blue')
         if s1_found:
             ax.axvspan(s1_start_pos*tscale, s1_end_pos*tscale, alpha=0.5, color='green')
-            print("height range: ",s1_height_range)
-        
-        pl.show(0)
-        inn = raw_input("Press enter to continue")
+            
+        pl.draw()
+        pl.show(block=0)
+        inn = input("Press enter to continue")
+        fig.clf()
 
 print("Events w/ S1+S2: ",s2_area_array[s2_found_array*s1_found_array].size)
 print("S2 Area mean: ", np.mean(s2_area_array[s2_found_array*s1_found_array]))
@@ -297,7 +302,6 @@ print("Drift time mean: ", np.mean(t_drift_array[s2_found_array*s1_found_array])
 print("S1 Area mean: ", np.mean(s1_area_array[s2_found_array*s1_found_array]))
 
 pl.figure(figsize=(20, 20))
-pl.clf()     
 for j in range(0, n_channels):   
     pl.subplot(3,2,j+1)
     pl.hist(max_ind_array[:,j],bins=100)
@@ -305,7 +309,6 @@ for j in range(0, n_channels):
     pl.xlabel("Time of max value")
     pl.title('Ch '+str(j))
 pl.figure(figsize=(20, 20))
-pl.clf()
 for j in range(0, n_channels):    
     pl.subplot(3,2,j+1)  
     pl.hist(max_val_array[:,j],bins=100)
@@ -313,7 +316,6 @@ for j in range(0, n_channels):
     pl.yscale('log')
     pl.title('Ch '+str(j))
 pl.figure(figsize=(20, 20))
-pl.clf()
 for j in range(0, n_channels):    
     pl.subplot(3,2,j+1)
     pl.hist(integral_array[:,j],bins=100,range=(-100,1500))
@@ -323,28 +325,26 @@ for j in range(0, n_channels):
     
     
 pl.figure()
-pl.clf()
 pl.hist(s2_area_array[s2_found_array*s1_found_array],bins=100)
 pl.axvline(x=np.mean(s2_area_array[s2_found_array*s1_found_array]),ls='--',color='r')
 pl.xlabel("S2 area")
+
 pl.figure()
-pl.clf()
 pl.hist(s1_area_array[s2_found_array*s1_found_array*(t_drift_array>0.3)],bins=500,range=(0,10000))
 pl.axvline(x=np.mean(s1_area_array[s2_found_array*s1_found_array]),ls='--',color='r')
 pl.xlabel("S1 area")
+
 pl.figure()
-pl.clf()
 pl.hist(s2_width_array[s2_found_array*s1_found_array],bins=100)
 pl.axvline(x=np.mean(s2_width_array[s2_found_array*s1_found_array]),ls='--',color='r')
 pl.xlabel("S2 width (us)")
+
 pl.figure()
-pl.clf()
 pl.hist(s2_height_array[s2_found_array*s1_found_array],bins=100)
 pl.axvline(x=np.mean(s2_height_array[s2_found_array*s1_found_array]),ls='--',color='r')
 pl.xlabel("S2 height (mV)")
    
 pl.figure()
-pl.clf()
 pl.hist(t_drift_array[s2_found_array*s1_found_array],bins=100)
 pl.xlabel("drift time (us)")
 
@@ -352,7 +352,6 @@ t_drift_plot=t_drift_array[s2_found_array*s1_found_array]
 s2_width_plot=s2_width_array[s2_found_array*s1_found_array]
 s2_area_plot=s2_area_array[s2_found_array*s1_found_array]
 pl.figure()
-pl.clf()
 pl.scatter(t_drift_plot,s2_area_plot)
 pl.xlabel("drift time (us)")
 pl.ylabel("S2 area")
@@ -370,7 +369,6 @@ for i_bin in range(len(drift_bins)):
 pl.errorbar(drift_bins, s2_means, yerr=s2_std_err, linewidth=3, elinewidth=3, capsize=5, capthick=4, color='red')
 
 pl.figure()
-pl.clf()
 pl.scatter(s2_area_plot,s2_width_plot)
 pl.xlabel("S2 area")
 pl.ylabel("S2 width (us)")
