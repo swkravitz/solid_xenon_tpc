@@ -40,7 +40,10 @@ mpl.rcParams['figure.figsize']=[16.0,12.0]
 
 #channel_0=np.fromfile("wave0.dat", dtype="int16")
 
-channel_0=np.fromfile("../../082919/chB_49_5V_18mV.dat", dtype="int16")
+#channel_0=np.fromfile("../../082919/chB_49_5V_18mV.dat", dtype="int16")
+channel_0=np.fromfile("../../Desktop/crystallize_data/082919_CHB/CHB_49_5V_18mV.dat", dtype="int16")
+
+
 
 vscale=(2000.0/16384.0)
 wsize=1000
@@ -68,14 +71,15 @@ s2_height_array=np.zeros(v_matrix.shape[0])
 t_drift_array=np.zeros(v_matrix.shape[0])
 s2_found_array=np.zeros(v_matrix.shape[0],dtype='bool')
 s1_found_array=np.zeros(v_matrix.shape[0],dtype='bool')
-
+ratio_array=np.zeros(v_matrix.shape[0])
 # s2_area_array=[]
 # s1_area_array=[]
 # s2_width_array=[]
 # t_drift_array=[]
 # s2_found_array=[]
 # s1_found_array=[]
-inn ='' 
+inn =''
+ 
 print("Total events: ",v_matrix.shape[0])
 for i in range(0, int(v_matrix.shape[0])):
     if i%100==0: print("Event #",i)
@@ -136,6 +140,16 @@ for i in range(0, int(v_matrix.shape[0])):
     t_offset=int(0.00/tscale)
     s2_max_ind, s2_max=pulse_finder_area(sum_data,t_min_search,t_max_search,s2_window)
     #print(s2_max)
+    pos=0
+    neg=0
+    
+    for i in range(s2_max_ind, s2_max_ind+s2_window):
+        if sum_data[i]>0:
+            pos+=sum_data[i]
+        elif sum_data[i]<0:
+            neg+=abs(sum_data[i])
+    ratio = pos/neg
+	
     s2_found=s2_max>s2_thresh
     if s2_found: # Found a pulse (maybe an s2)
         # print("s2 window time: ",s2_max_ind*tscale,"s2 area max: ",s2_max)
@@ -186,15 +200,16 @@ for i in range(0, int(v_matrix.shape[0])):
     t_drift_array[i]=t_drift
     s1_found_array[i]=s1_found
     s2_found_array[i]=s2_found
-	 
+    ratio_array[i]=ratio	 
 		
     # once per event
     #if s1_max_ind>-1 and not s1_height_range>s1_range_thresh:
     #if 1.5<t_drift:
     #if 1.08<t_drift<1.12:
-    if s2_found and not inn=='q':
+    if s2_found and not inn=='q' and (ratio > 1):
     #if s1_found and s2_found:
-        fig=pl.figure(1,figsize=(20, 20))
+        print(ratio)
+        fig=pl.figure(1,figsize=(10, 10))
         pl.rc('xtick', labelsize=25)
         pl.rc('ytick', labelsize=25)
         
@@ -206,6 +221,7 @@ for i in range(0, int(v_matrix.shape[0])):
         pl.ylabel('Millivolts')
         pl.title("Sum,"+ str(i))
         triggertime_us = (t[-1]*0.5)
+        
         #pl.plot(np.array([1,1])*triggertime_us,np.array([0,16384]),'k--')
         if s2_found:
             ax.axvspan(s2_start_pos*tscale, s2_end_pos*tscale, alpha=0.5, color='blue')
@@ -223,10 +239,17 @@ print("Events w/ S2: ",s2_area_array[s2_found_array].size)
 print("S2 Area mean: ", singleMean)
 print("S2 width mean: ", np.mean(s2_width_array[s2_found_array]))
 print("S2 height mean: ", np.mean(s2_height_array[s2_found_array]))
-  
+
+
+
+pl.figure()
+pl.xlim([0,3])
+pl.hist(ratio_array, bins=1000)
+pl.xlabel("positive_area/negative_area")
+pl.show()
     
 pl.figure()
-pl.hist(s2_area_array[s2_found_array],bins=100)
+pl.hist(s2_area_array[s2_found_array*(ratio_array>2)],bins=100)
 pl.axvline(x=singleMean,ls='--',color='r')
 pl.text(0.3,0.8,'Mean single count area: {0:g}'.format(singleMean),transform=pl.gca().transAxes)
 pl.xlabel("S2 area")

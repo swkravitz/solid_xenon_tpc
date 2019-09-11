@@ -1,8 +1,25 @@
+
 import numpy as np
 #import pylab as pl
 import matplotlib.pyplot as pl
 import matplotlib as mpl
-
+import scipy
+from scipy.signal import find_peaks
+def smooth(data,t_min,window):
+    avg_array=np.zeros(len(data))
+    print(avg_array)
+    m=20
+    for i in range(t_min, t_min+window):
+        min_ind=i-m
+        max_ind=i+m
+        if min_ind<0: min_ind=0
+        if max_ind>len(data): max_ind = len(data)
+        avg_array[i]=(np.mean(data[min_ind:max_ind]))
+    return(avg_array)
+def maxima(data):
+    y = data
+    peaks = find_peaks(y)
+    return(peaks)
 def pulse_finder_area(data,t_min_search,t_max_search,window):
 # Assumes data is already baseline-subtracted
     max_area=-1
@@ -49,10 +66,10 @@ mpl.rcParams['figure.figsize']=[16.0,12.0]
 #channel_2=np.fromfile("../../080719/t6/C-3.9kv.dat", dtype="int16")
 #channel_3=np.fromfile("../../080719/t6/D-3.9kv.dat", dtype="int16")
 
-channel_0=np.fromfile("../../080519/t3_25us/A-thorium-4kv.dat", dtype="int16")
-channel_1=np.fromfile("../../080519/t3_25us/B-thorium-4kv.dat", dtype="int16")
-channel_2=np.fromfile("../../080519/t3_25us/C-thorium-4kv.dat", dtype="int16")
-channel_3=np.fromfile("../../080519/t3_25us/D-thorium-4kv.dat", dtype="int16")
+channel_0=np.fromfile("../../Desktop/crystallize_data/t3-0805/A-thorium-4kv-t3.dat", dtype="int16")
+channel_1=np.fromfile("../../Desktop/crystallize_data/t3-0805/B-thorium-4kv-t3.dat", dtype="int16")
+channel_2=np.fromfile("../../Desktop/crystallize_data/t3-0805/C-thorium-4kv-t3.dat", dtype="int16")
+channel_3=np.fromfile("../../Desktop/crystallize_data/t3-0805/D-thorium-4kv-t3.dat", dtype="int16")
 
 #channel_0=np.fromfile("A-thorium-3kv.dat", dtype="int16")
 #channel_1=np.fromfile("B-thorium-3kv.dat", dtype="int16")
@@ -106,6 +123,7 @@ s2_height_array=np.zeros(v_matrix.shape[0])
 t_drift_array=np.zeros(v_matrix.shape[0])
 s2_found_array=np.zeros(v_matrix.shape[0],dtype='bool')
 s1_found_array=np.zeros(v_matrix.shape[0],dtype='bool')
+
 
 # s2_area_array=[]
 # s1_area_array=[]
@@ -162,10 +180,10 @@ for i in range(0, v_matrix.shape[0]):
     t_drift=-1
     s1_found=False
     s2_found=False
-
+    
     sum_baseline=np.mean(v4_matrix[i,int(15./tscale):int(20./tscale)]) #avg ~10 us, later in acquisition since there may be odd noise earlier?
     sum_data=v4_matrix[i,:]-sum_baseline
-    
+      
     # Do a moving average (sum) of the waveform with different time windows for s1, s2
 	# Look for where this value is maximized
 	# Look for the s2 using a moving average (sum) of the waveform over a wide window
@@ -174,6 +192,9 @@ for i in range(0, v_matrix.shape[0]):
     t_offset=int(0.05/tscale)
     s2_max_ind, s2_max=pulse_finder_area(sum_data,t_min_search,t_max_search,s2_window)
     s2_found=s2_max>s2_thresh
+    
+    output = smooth(sum_data,t_min_search,t_min_search+s2_window)
+    print(output)
     if s2_found: # Found a pulse (maybe an s2)
         # print("s2 window time: ",s2_max_ind*tscale,"s2 area max: ",s2_max)
         start_frac=0.05 # pulse starts at this fraction of peak height above baseline
@@ -229,7 +250,7 @@ for i in range(0, v_matrix.shape[0]):
     #if s1_max_ind>-1 and not s1_height_range>s1_range_thresh:
     #if 1.5<t_drift:
     #if 1.08<t_drift<1.12:
-    if False:
+    if True:
     #if s1_found and s2_found:
         fig=pl.figure(1,figsize=(20, 20))
         pl.rc('xtick', labelsize=25)
@@ -275,6 +296,33 @@ for i in range(0, v_matrix.shape[0]):
         triggertime_us = (t[-1]*0.2)
         pl.plot(np.array([1,1])*triggertime_us,np.array([0,16384]),'k--')
         
+
+
+        #pl.figure()
+        #pl.plot(t_matrix[i,:], smooth, 'blue')
+        #pl.xlim([0,10])
+        #pl.ylim([0,2500])
+
+        #pl.xlabel('Time (us)')
+        #pl.ylabel('Millivolts')
+        #pl.title('average')
+        #pl.show()
+
+
+
+
+
+        #pl.figure()
+        #pl.plot
+        #pl.figure()
+        #pl.plot(t_matrix[i,:],v4_matrix[i,:],'blue')
+        #pl.xlim([0,10])
+        #pl.ylim([0,2500])
+        #pl.xlabel('Time (us)')
+        #pl.ylabel('Millivolts')
+        #pl.title("SUM")
+        #pl.show()
+
         ax=pl.subplot2grid((2,3),(1,1),colspan=2)
         pl.plot(t_matrix[i,:],v4_matrix[i,:],'blue')
         pl.xlim([0, 10])
@@ -322,7 +370,6 @@ for j in range(0, n_channels):
     pl.xlabel("Pulse integral")
     #pl.yscale('log')
     pl.title('Ch '+str(j))
-    
     
 pl.figure()
 pl.hist(s2_area_array[s2_found_array*s1_found_array],bins=100)
