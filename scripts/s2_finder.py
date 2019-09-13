@@ -5,9 +5,10 @@ import matplotlib.pyplot as pl
 import matplotlib as mpl
 import scipy
 from scipy.signal import find_peaks
+import time
 def smooth(data,t_min,window):
     avg_array=np.zeros(len(data))
-    print(avg_array)
+    #print(avg_array)
     m=20
     for i in range(t_min, t_min+window):
         min_ind=i-m
@@ -39,12 +40,12 @@ def pulse_bounds(data,t_min,window,start_frac,end_frac):
     peak_pos=np.argmax(data[t_min:t_min+window])
     #start_frac: pulse starts at this fraction of peak height above baseline
     for i_start in range(t_min,t_min+window):
-        if data[i_start]>max(peak_val*start_frac,3):
+        if data[i_start]>max(peak_val*start_frac,4.5/chA_spe_size):
             start_pos=i_start
             break
     #end_frac: pulse ends at this fraction of peak height above baseline
     for i_start in range(t_min+window,t_min,-1):
-        if data[i_start]>max(peak_val*end_frac,3):
+        if data[i_start]>max(peak_val*end_frac,4.5/chA_spe_size):
             end_pos=i_start
             break
     return (start_pos, end_pos)
@@ -60,16 +61,15 @@ mpl.rcParams['figure.figsize']=[16.0,12.0]
 #channel_2=np.fromfile("wave2.dat", dtype="int16")
 #channel_3=np.fromfile("wave3.dat", dtype="int16")
 
+channel_0=np.fromfile("../../091219/A_3.5g_3.9c_50mV_Co57_strong.dat", dtype="int16")
+channel_1=np.fromfile("../../091219/B_3.5g_3.9c_50mV_Co57_strong.dat", dtype="int16")
+channel_2=np.fromfile("../../091219/C_3.5g_3.9c_50mV_Co57_strong.dat", dtype="int16")
+channel_3=np.fromfile("../../091219/D_3.5g_3.9c_50mV_Co57_strong.dat", dtype="int16")
 
-#channel_0=np.fromfile("../../080719/t6/A-3.9kv.dat", dtype="int16")
-#channel_1=np.fromfile("../../080719/t6/B-3.9kv.dat", dtype="int16")
-#channel_2=np.fromfile("../../080719/t6/C-3.9kv.dat", dtype="int16")
-#channel_3=np.fromfile("../../080719/t6/D-3.9kv.dat", dtype="int16")
-
-channel_0=np.fromfile("../../Desktop/crystallize_data/t3-0805/A-thorium-4kv-t3.dat", dtype="int16")
-channel_1=np.fromfile("../../Desktop/crystallize_data/t3-0805/B-thorium-4kv-t3.dat", dtype="int16")
-channel_2=np.fromfile("../../Desktop/crystallize_data/t3-0805/C-thorium-4kv-t3.dat", dtype="int16")
-channel_3=np.fromfile("../../Desktop/crystallize_data/t3-0805/D-thorium-4kv-t3.dat", dtype="int16")
+#channel_0=np.fromfile("../../Desktop/crystallize_data/t3-0805/A-thorium-4kv-t3.dat", dtype="int16")
+#channel_1=np.fromfile("../../Desktop/crystallize_data/t3-0805/B-thorium-4kv-t3.dat", dtype="int16")
+#channel_2=np.fromfile("../../Desktop/crystallize_data/t3-0805/C-thorium-4kv-t3.dat", dtype="int16")
+#channel_3=np.fromfile("../../Desktop/crystallize_data/t3-0805/D-thorium-4kv-t3.dat", dtype="int16")
 
 #channel_0=np.fromfile("A-thorium-3kv.dat", dtype="int16")
 #channel_1=np.fromfile("B-thorium-3kv.dat", dtype="int16")
@@ -90,14 +90,18 @@ channel_3=np.fromfile("../../Desktop/crystallize_data/t3-0805/D-thorium-4kv-t3.d
 
 vscale=(2000.0/16384.0)
 wsize=12500
-V=vscale*channel_0
+chA_spe_size = 64.4
+V=vscale*channel_0/chA_spe_size # ch A, calib size 644 
 # Ensure we have an integer number of events
 V=V[:int(len(V)/wsize)*wsize]
-V_1=vscale*channel_1
+chB_spe_size = 50.5
+V_1=vscale*channel_1/chB_spe_size
 V_1=V_1[:int(len(V)/wsize)*wsize]
-V_2=vscale*channel_2
+chC_spe_size = 33.9
+V_2=vscale*channel_2/chC_spe_size
 V_2=V_2[:int(len(V)/wsize)*wsize]
-V_3=vscale*channel_3
+chD_spe_size = 30.6
+V_3=vscale*channel_3/chD_spe_size
 V_3=V_3[:int(len(V)/wsize)*wsize]
 n_channels=5 # including sum
 v_matrix = V.reshape(int(V.size/wsize),wsize)
@@ -132,9 +136,12 @@ s1_found_array=np.zeros(v_matrix.shape[0],dtype='bool')
 # s2_found_array=[]
 # s1_found_array=[]
 
+inn=""
+
 print("Total events: ",v_matrix.shape[0])
-for i in range(0, v_matrix.shape[0]):
+for i in range(0, int(v_matrix.shape[0]/1)):
     if i%100==0: print("Event #",i)
+    t0=time.time()
     # for each channel
     for j in range(0, n_channels):
         #i = input("Window number between 1 and " + str((V.size/wsize)) + ": ")
@@ -160,10 +167,10 @@ for i in range(0, v_matrix.shape[0]):
         
 	# Look for events with S1 and S2 from summed channel
     s1_window = int(0.5/tscale)
-    s2_window = int(1.2/tscale)
-    s1_thresh = 400
-    s1_range_thresh = 10
-    s2_thresh = 1e3
+    s2_window = int(2.0/tscale)
+    s1_thresh = 400/chA_spe_size
+    s1_range_thresh = 10/chA_spe_size
+    s2_thresh = 1e3/chA_spe_size
     s1_max=s1_thresh
     s1_max_ind=-1
     s1_area=-1
@@ -181,25 +188,31 @@ for i in range(0, v_matrix.shape[0]):
     s1_found=False
     s2_found=False
     
-    sum_baseline=np.mean(v4_matrix[i,int(15./tscale):int(20./tscale)]) #avg ~10 us, later in acquisition since there may be odd noise earlier?
+    sum_baseline=np.mean(v4_matrix[i,int(0./tscale):int(2./tscale)]) #avg ~us, avoiding trigger
     sum_data=v4_matrix[i,:]-sum_baseline
       
     # Do a moving average (sum) of the waveform with different time windows for s1, s2
 	# Look for where this value is maximized
 	# Look for the s2 using a moving average (sum) of the waveform over a wide window
-    t_min_search=int(1./tscale)
-    t_max_search=int(10./tscale)
+    t_min_search=int(10./tscale)
+    t_max_search=int(22./tscale)
     t_offset=int(0.05/tscale)
     s2_max_ind, s2_max=pulse_finder_area(sum_data,t_min_search,t_max_search,s2_window)
     s2_found=s2_max>s2_thresh
+    t1=time.time()
+    #print("pulse finder time: ", t1-t0)
     
-    output = smooth(sum_data,t_min_search,t_min_search+s2_window)
-    print(output)
+    #output = smooth(sum_data,t_min_search,t_min_search+s2_window)
+    t2=time.time()
+    #print("smooth time: ", t2-t1)
+    #print(output)
     if s2_found: # Found a pulse (maybe an s2)
         # print("s2 window time: ",s2_max_ind*tscale,"s2 area max: ",s2_max)
         start_frac=0.05 # pulse starts at this fraction of peak height above baseline
         end_frac=0.05 # pulse starts at this fraction of peak height above baseline
         s2_start_pos, s2_end_pos = pulse_bounds(sum_data,s2_max_ind-t_offset,s2_window,start_frac,end_frac)
+        t3=time.time()
+        #print("pulse bounds time: ", t3-t2)
         s2_area=np.sum(sum_data[s2_start_pos:s2_end_pos])
         s2_width=(s2_end_pos-s2_start_pos)*tscale
         s2_height=np.max(sum_data[s2_start_pos:s2_end_pos])
@@ -210,9 +223,9 @@ for i in range(0, v_matrix.shape[0]):
 		
         # Now look for a prior s1                                                   
         s1_max_ind, s1_max=pulse_finder_area(sum_data,t_min_search,s2_start_pos-s1_window-t_offset,s1_window)
-       # print("s1 area: ",s1_max)
+        #print("s1 area: ",s1_max)
         if s1_max>s1_thresh:
-            # print("s1 window time: ",s1_max_ind*tscale,"s1 area max: ",s1_max)    
+            #print("s1 window time: ",s1_max_ind*tscale,"s1 area max: ",s1_max)    
             s1_start_pos, s1_end_pos = pulse_bounds(sum_data,s1_max_ind-t_offset,s1_window,0.1,0.1)
             if s1_start_pos > -1 and s1_end_pos > s1_start_pos:
                # print(s1_start_pos)
@@ -234,6 +247,8 @@ for i in range(0, v_matrix.shape[0]):
          	        #s1_found_array.append(s1_found)       
 	            #s1_area_array.append(s1_area)
 	            #t_drift_array.append(t_drift)
+    t4=time.time()
+    #print("remaining time: ",t4-t3)
 	
 
 
@@ -250,7 +265,7 @@ for i in range(0, v_matrix.shape[0]):
     #if s1_max_ind>-1 and not s1_height_range>s1_range_thresh:
     #if 1.5<t_drift:
     #if 1.08<t_drift<1.12:
-    if True:
+    if True and not inn=='q':
     #if s1_found and s2_found:
         fig=pl.figure(1,figsize=(20, 20))
         pl.rc('xtick', labelsize=25)
@@ -258,40 +273,40 @@ for i in range(0, v_matrix.shape[0]):
         
         pl.subplot2grid((2,3),(0,0))
         pl.plot(t_matrix[i,:],v_matrix[i,:],'y')
-        pl.xlim([0, 10])
-        pl.ylim([0, 1500])
+        pl.xlim([0, 25])
+        pl.ylim([0, 2500/chA_spe_size])
         pl.xlabel('Time (us)')
-        pl.ylabel('Millivolts')
+        pl.ylabel('Phd/sample')
         pl.title("A,"+ str(i))
         triggertime_us = (t[-1]*0.2)
         pl.plot(np.array([1,1])*triggertime_us,np.array([0,16384]),'k--')
         
         pl.subplot2grid((2,3),(0,1))
         pl.plot(t_matrix[i,:],v1_matrix[i,:],'cyan')
-        pl.xlim([0, 10])
-        pl.ylim([0, 1500])
+        pl.xlim([0, 25])
+        pl.ylim([0, 2500/chA_spe_size])
         pl.xlabel('Time (us)')
-        pl.ylabel('Millivolts')
+        pl.ylabel('Phd/sample')
         pl.title("B,"+ str(i))
         triggertime_us = (t[-1]*0.2)
         pl.plot(np.array([1,1])*triggertime_us,np.array([0,16384]),'k--')
         
         pl.subplot2grid((2,3),(0,2))
         pl.plot(t_matrix[i,:],v2_matrix[i,:],'magenta')
-        pl.xlim([0, 10])
-        pl.ylim([0, 1500])
+        pl.xlim([0, 25])
+        pl.ylim([0, 2500/chA_spe_size])
         pl.xlabel('Time (us)')
-        pl.ylabel('Millivolts')
+        pl.ylabel('Phd/sample')
         pl.title("C,"+ str(i))
         triggertime_us = (t[-1]*0.2)
         pl.plot(np.array([1,1])*triggertime_us,np.array([0,16384]),'k--')
         
         pl.subplot2grid((2,3),(1,0))
         pl.plot(t_matrix[i,:],v3_matrix[i,:],'blue')
-        pl.xlim([0, 10])
-        pl.ylim([0, 1500])
+        pl.xlim([0, 25])
+        pl.ylim([0, 2500/chA_spe_size])
         pl.xlabel('Time (us)')
-        pl.ylabel('Millivolts')
+        pl.ylabel('Phd/sample')
         pl.title("D,"+ str(i))
         triggertime_us = (t[-1]*0.2)
         pl.plot(np.array([1,1])*triggertime_us,np.array([0,16384]),'k--')
@@ -325,10 +340,10 @@ for i in range(0, v_matrix.shape[0]):
 
         ax=pl.subplot2grid((2,3),(1,1),colspan=2)
         pl.plot(t_matrix[i,:],v4_matrix[i,:],'blue')
-        pl.xlim([0, 10])
-        pl.ylim([0, 2500])
+        pl.xlim([0, 25])
+        pl.ylim([0, 6000/chA_spe_size])
         pl.xlabel('Time (us)')
-        pl.ylabel('Millivolts')
+        pl.ylabel('Phd/sample')
         pl.title("Sum,"+ str(i))
         triggertime_us = (t[-1]*0.2)
         #pl.plot(np.array([1,1])*triggertime_us,np.array([0,16384]),'k--')
@@ -339,7 +354,7 @@ for i in range(0, v_matrix.shape[0]):
             
         pl.draw()
         pl.show(block=0)
-        inn = input("Press enter to continue")
+        inn = input("Press enter to continue, q to skip plotting")
         fig.clf()
 
 print("Events w/ S1+S2: ",s2_area_array[s2_found_array*s1_found_array].size)
@@ -374,12 +389,12 @@ for j in range(0, n_channels):
 pl.figure()
 pl.hist(s2_area_array[s2_found_array*s1_found_array],bins=100)
 pl.axvline(x=np.mean(s2_area_array[s2_found_array*s1_found_array]),ls='--',color='r')
-pl.xlabel("S2 area")
+pl.xlabel("S2 area (phd)")
 
 pl.figure()
-pl.hist(s1_area_array[s2_found_array*s1_found_array*(t_drift_array>0.3)],bins=500,range=(0,10000))
+pl.hist(s1_area_array[s2_found_array*s1_found_array],bins=500,range=(0,10000/chA_spe_size))#(t_drift_array>0.3)
 pl.axvline(x=np.mean(s1_area_array[s2_found_array*s1_found_array]),ls='--',color='r')
-pl.xlabel("S1 area")
+pl.xlabel("S1 area (phd)")
 
 pl.figure()
 pl.hist(s2_width_array[s2_found_array*s1_found_array],bins=100)
@@ -401,7 +416,7 @@ s2_area_plot=s2_area_array[s2_found_array*s1_found_array]
 pl.figure()
 pl.scatter(t_drift_plot,s2_area_plot)
 pl.xlabel("drift time (us)")
-pl.ylabel("S2 area")
+pl.ylabel("S2 area (phd)")
 
 drift_bins=np.linspace(0,5,50)
 drift_ind=np.digitize(t_drift_plot, bins=drift_bins)
@@ -417,7 +432,7 @@ pl.errorbar(drift_bins, s2_means, yerr=s2_std_err, linewidth=3, elinewidth=3, ca
 
 pl.figure()
 pl.scatter(s2_area_plot,s2_width_plot)
-pl.xlabel("S2 area")
+pl.xlabel("S2 area (phd)")
 pl.ylabel("S2 width (us)")
 
 pl.show()
