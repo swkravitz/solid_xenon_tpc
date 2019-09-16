@@ -21,7 +21,7 @@ def maxima(data):
     y = data
     peaks = find_peaks(y)
     return(peaks)
-def pulse_finder_area(data,t_min_search,t_max_search,window):
+def pulse_finder_area_series(data,t_min_search,t_max_search,window):
 # Assumes data is already baseline-subtracted
     max_area=-1
     max_ind=-1
@@ -31,6 +31,14 @@ def pulse_finder_area(data,t_min_search,t_max_search,window):
             max_area=area
             max_ind=i_start
     return (max_ind, max_area)
+	
+def pulse_finder_area(data,t_min_search,t_max_search,window):
+# Assumes data is already baseline-subtracted
+    weights = np.repeat(1.0, window)#/window #to do avg instead of sum
+    data_conv = np.convolve(data, weights, 'same')
+	# Search only w/in search range, offset so that max_ind is the start of the window rather than the center
+    max_ind=np.argmax(data_conv[int(t_min_search+window/2):int(t_max_search+window/2)])+int(t_min_search)
+    return (max_ind, data_conv[max_ind+int(window/2)])
 
 def pulse_bounds(data,t_min,window,start_frac,end_frac):
 # Assumes data is already baseline-subtracted
