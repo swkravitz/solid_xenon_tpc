@@ -61,10 +61,10 @@ mpl.rcParams['figure.figsize']=[16.0,12.0]
 #channel_2=np.fromfile("wave2.dat", dtype="int16")
 #channel_3=np.fromfile("wave3.dat", dtype="int16")
 
-channel_0=np.fromfile("../../091219/A_3.5g_3.9c_50mV_Co57_strong.dat", dtype="int16")
-channel_1=np.fromfile("../../091219/B_3.5g_3.9c_50mV_Co57_strong.dat", dtype="int16")
-channel_2=np.fromfile("../../091219/C_3.5g_3.9c_50mV_Co57_strong.dat", dtype="int16")
-channel_3=np.fromfile("../../091219/D_3.5g_3.9c_50mV_Co57_strong.dat", dtype="int16")
+channel_0=np.fromfile("../../091619/A_3.5g_3.9c_50mV_Co57_back.dat", dtype="int16")
+channel_1=np.fromfile("../../091619/B_3.5g_3.9c_50mV_Co57_back.dat", dtype="int16")
+channel_2=np.fromfile("../../091619/C_3.5g_3.9c_50mV_Co57_back.dat", dtype="int16")
+channel_3=np.fromfile("../../091619/D_3.5g_3.9c_50mV_Co57_back.dat", dtype="int16")
 
 #channel_0=np.fromfile("../../Desktop/crystallize_data/t3-0805/A-thorium-4kv-t3.dat", dtype="int16")
 #channel_1=np.fromfile("../../Desktop/crystallize_data/t3-0805/B-thorium-4kv-t3.dat", dtype="int16")
@@ -119,6 +119,8 @@ max_ind_array=np.zeros((v_matrix.shape[0],n_channels) )
 max_val_array=np.zeros((v_matrix.shape[0],n_channels) )
 integral_array=np.zeros((v_matrix.shape[0],n_channels) )
 s2_integral_array=np.zeros((v_matrix.shape[0],n_channels) )
+s1_ch_array=np.zeros((v_matrix.shape[0],n_channels-1) )
+s2_ch_array=np.zeros((v_matrix.shape[0],n_channels-1) )
 # One entry per event
 s2_area_array=np.zeros(v_matrix.shape[0])
 s1_area_array=np.zeros(v_matrix.shape[0])
@@ -139,7 +141,7 @@ s1_found_array=np.zeros(v_matrix.shape[0],dtype='bool')
 inn=""
 
 print("Total events: ",v_matrix.shape[0])
-for i in range(0, int(v_matrix.shape[0]/1)):
+for i in range(0, int(v_matrix.shape[0])):
     if i%100==0: print("Event #",i)
     t0=time.time()
     # for each channel
@@ -167,7 +169,7 @@ for i in range(0, int(v_matrix.shape[0]/1)):
         
 	# Look for events with S1 and S2 from summed channel
     s1_window = int(0.5/tscale)
-    s2_window = int(2.0/tscale)
+    s2_window = int(1.5/tscale)
     s1_thresh = 400/chA_spe_size
     s1_range_thresh = 10/chA_spe_size
     s2_thresh = 1e3/chA_spe_size
@@ -187,9 +189,18 @@ for i in range(0, int(v_matrix.shape[0]/1)):
     t_drift=-1
     s1_found=False
     s2_found=False
-    
-    sum_baseline=np.mean(v4_matrix[i,int(0./tscale):int(2./tscale)]) #avg ~us, avoiding trigger
+    s1_ch_area=[-1]*(n_channels-1)
+    s2_ch_area=[-1]*(n_channels-1)
+
+    baseline_start = int(0./tscale)
+    baseline_end = int(2./tscale)
+    t0=time.time()
+    sum_baseline=np.mean(v4_matrix[i,baseline_start:baseline_end]) #avg ~us, avoiding trigger
+    baselines = [np.mean(ch_j[i,baseline_start:baseline_end] ) for ch_j in v_matrix_all_ch]
     sum_data=v4_matrix[i,:]-sum_baseline
+    ch_data=[ch_j[i,:]-baseline_j for (ch_j,baseline_j) in zip(v_matrix_all_ch,baselines)]
+    t0a=time.time()
+    #print("ch baseline calc time: ",t0a-t0)
       
     # Do a moving average (sum) of the waveform with different time windows for s1, s2
 	# Look for where this value is maximized
@@ -214,6 +225,7 @@ for i in range(0, int(v_matrix.shape[0]/1)):
         t3=time.time()
         #print("pulse bounds time: ", t3-t2)
         s2_area=np.sum(sum_data[s2_start_pos:s2_end_pos])
+        s2_ch_area = [np.sum(ch[s2_start_pos:s2_end_pos]) for ch in ch_data]
         s2_width=(s2_end_pos-s2_start_pos)*tscale
         s2_height=np.max(sum_data[s2_start_pos:s2_end_pos])
         #s2_area_array.append(s2_area)
@@ -244,6 +256,7 @@ for i in range(0, int(v_matrix.shape[0]/1)):
                 else:    
                     t_drift=(s2_start_pos-s1_start_pos)*tscale
                     s1_area=np.sum(sum_data[s1_start_pos:s1_end_pos])
+                    s1_ch_area = [np.sum(ch[s1_start_pos:s1_end_pos]) for ch in ch_data]
          	        #s1_found_array.append(s1_found)       
 	            #s1_area_array.append(s1_area)
 	            #t_drift_array.append(t_drift)
@@ -259,6 +272,9 @@ for i in range(0, int(v_matrix.shape[0]/1)):
     t_drift_array[i]=t_drift
     s1_found_array[i]=s1_found
     s2_found_array[i]=s2_found
+    for j in range(n_channels-1):
+        s1_ch_array[i,j] = s1_ch_area[j]
+        s2_ch_array[i,j] = s2_ch_area[j]
 	 
 		
     # once per event
@@ -385,6 +401,20 @@ for j in range(0, n_channels):
     pl.xlabel("Pulse integral")
     #pl.yscale('log')
     pl.title('Ch '+str(j))
+pl.figure(figsize=(20, 20))
+for j in range(0, n_channels-1):   
+    pl.subplot(2,2,j+1)
+    pl.hist(s1_ch_array[s2_found_array*s1_found_array][:,j],bins=100,range=(0,100))
+    #pl.yscale('log')
+    pl.xlabel("S1 area (phd)")
+    pl.title('Ch '+str(j))
+pl.figure(figsize=(20, 20))
+for j in range(0, n_channels-1):   
+    pl.subplot(2,2,j+1)
+    pl.hist(s2_ch_array[s2_found_array*s1_found_array][:,j],bins=100,range=(0,4000))
+    #pl.yscale('log')
+    pl.xlabel("S2 area (phd)")
+    pl.title('Ch '+str(j))
     
 pl.figure()
 pl.hist(s2_area_array[s2_found_array*s1_found_array],bins=100)
@@ -392,7 +422,7 @@ pl.axvline(x=np.mean(s2_area_array[s2_found_array*s1_found_array]),ls='--',color
 pl.xlabel("S2 area (phd)")
 
 pl.figure()
-pl.hist(s1_area_array[s2_found_array*s1_found_array],bins=500,range=(0,10000/chA_spe_size))#(t_drift_array>0.3)
+pl.hist(s1_area_array[s2_found_array*s1_found_array],bins=200,range=(0,20000/chA_spe_size))#(t_drift_array>0.3)
 pl.axvline(x=np.mean(s1_area_array[s2_found_array*s1_found_array]),ls='--',color='r')
 pl.xlabel("S1 area (phd)")
 
