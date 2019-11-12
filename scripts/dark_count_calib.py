@@ -30,6 +30,8 @@ def pulse_bounds(data,t_min,window,start_frac,end_frac):
         if data[i_start]>max(peak_val*end_frac,3):
             end_pos=i_start
             break
+    if start_pos == -1:
+        print("tmin: ",t_min,"window: ",window,"peak_val: ",peak_val,"peak_pos: ",peak_pos)
     return (start_pos, end_pos)
 
 # set plotting style
@@ -41,12 +43,12 @@ mpl.rcParams['figure.figsize']=[16.0,12.0]
 #channel_0=np.fromfile("wave0.dat", dtype="int16")
 
 #channel_0=np.fromfile("../../082919/chB_49_5V_18mV.dat", dtype="int16")
-channel_0=np.fromfile("../../Desktop/crystallize_data/082919_CHB/CHB_49_5V_18mV.dat", dtype="int16")
+channel_0=np.fromfile("../../111219/chA_51.5V_17mV.dat", dtype="int16")
 
 
 
 vscale=(2000.0/16384.0)
-wsize=1000
+wsize=4096 # Number of samples per waveform
 V=vscale*channel_0
 # Ensure we have an integer number of events
 V=V[:int(len(V)/wsize)*wsize]
@@ -55,7 +57,7 @@ v_matrix = V.reshape(int(V.size/wsize),wsize)
 v4_matrix = v_matrix
 v_matrix_all_ch=[v_matrix,v4_matrix]
 x=np.arange(0, wsize, 1)
-tscale=(8.0/4096.0)
+tscale=(8.0/4096.0) # Conversion from samples to us (do not change)
 t=tscale*x
 t_matrix=np.repeat(t[np.newaxis,:], V.size/wsize, 0)
 # One entry per channel
@@ -111,7 +113,7 @@ for i in range(0, int(v_matrix.shape[0])):
     s2_window = int(0.5/tscale)
     s1_thresh = 400
     s1_range_thresh = 10
-    s2_thresh = 100.
+    s2_thresh = 0.
     s1_max=s1_thresh
     s1_max_ind=-1
     s1_area=-1
@@ -129,69 +131,23 @@ for i in range(0, int(v_matrix.shape[0])):
     s1_found=False
     s2_found=False
 
-    sum_baseline=np.mean(v4_matrix[i,int(1./tscale):int(1.75/tscale)]) #avg 0.5 us, later in acquisition since there may be odd noise earlier?
+    sum_baseline=np.mean(v4_matrix[i,int(0./tscale):int(0.35/tscale)]) #avg 0.5 us, later in acquisition since there may be odd noise earlier?
     sum_data=v4_matrix[i,:]-sum_baseline
     
     # Do a moving average (sum) of the waveform with different time windows for s1, s2
 	# Look for where this value is maximized
 	# Look for the s2 using a moving average (sum) of the waveform over a wide window
     t_min_search=int(0./tscale)
-    t_max_search=int(1.2/tscale)
+    t_max_search=int(4./tscale)
     t_offset=int(0.00/tscale)
     s2_max_ind, s2_max=pulse_finder_area(sum_data,t_min_search,t_max_search,s2_window)
     #print(s2_max)
-    pos=0
-    neg=0
-    
-    for i in range(s2_max_ind, s2_max_ind+s2_window):
-        if sum_data[i]>0:
-            pos+=sum_data[i]
-        elif sum_data[i]<0:
-            neg+=abs(sum_data[i])
-    ratio = pos/neg
+  
 	
-    s2_found=s2_max>s2_thresh
-    if s2_found: # Found a pulse (maybe an s2)
-        # print("s2 window time: ",s2_max_ind*tscale,"s2 area max: ",s2_max)
-        start_frac=0.1 # pulse starts at this fraction of peak height above baseline
-        end_frac=0.2 # pulse starts at this fraction of peak height above baseline
-        s2_start_pos, s2_end_pos = pulse_bounds(sum_data,s2_max_ind-t_offset,s2_window,start_frac,end_frac)
-        s2_area=np.sum(sum_data[s2_start_pos:s2_end_pos])
-        s2_width=(s2_end_pos-s2_start_pos)*tscale
-        s2_height=np.max(sum_data[s2_start_pos:s2_end_pos])
-        #s2_area_array.append(s2_area)
-        #s2_width_array.append(s2_width)
-        #s2_found_array.append(s2_found)
-        #print("s2 start: ",s2_start_pos*tscale," s2 end: ",s2_end_pos*tscale)
-		
-        # Now look for a prior s1                                                   
-        s1_max_ind, s1_max=pulse_finder_area(sum_data,t_min_search,s2_start_pos-s1_window-t_offset,s1_window)
-       # print("s1 area: ",s1_max)
-        if s1_max>s1_thresh:
-            # print("s1 window time: ",s1_max_ind*tscale,"s1 area max: ",s1_max)    
-            s1_start_pos, s1_end_pos = pulse_bounds(sum_data,s1_max_ind-t_offset,s1_window,0.1,0.1)
-            if s1_start_pos > -1 and s1_end_pos > s1_start_pos:
-               # print(s1_start_pos)
-               # print(s1_end_pos)
-                # Check that we didn't accidentally find noise (related to poor baseline subtraction)
-                s1_height_range=np.max(sum_data[s1_start_pos:s1_end_pos])-np.min(sum_data[s1_start_pos:s1_end_pos]) 
-                s1_found = s1_height_range>s1_range_thresh
-                # print("s1 start: ",s1_start_pos*tscale," s1 end: ",s1_end_pos*tscale)
-                if 0.60<t_drift<0.70:
-                    print("s1_max_ind: ",s1_max_ind*tscale," s1_start_pos: ",s1_start_pos*tscale," tdrift: ",t_drift)
-                    print("s1 range: ",s1_height_range)
-                    print("baseline: ",sum_baseline)
-                if not s1_found:
-                    pass
-                   # print("under range, s1 range: ",s1_height_range)
-                else:    
-                    t_drift=(s2_start_pos-s1_start_pos)*tscale
-                    s1_area=np.sum(sum_data[s1_start_pos:s1_end_pos])
-         	        #s1_found_array.append(s1_found)       
-	            #s1_area_array.append(s1_area)
-	            #t_drift_array.append(t_drift)
+    s2_found=True#s2_max>s2_thresh
+    s2_area=s2_max
 	
-
+    ratio=-1
 
     s2_area_array[i]=s2_area
     s2_width_array[i]=s2_width
@@ -206,23 +162,24 @@ for i in range(0, int(v_matrix.shape[0])):
     #if s1_max_ind>-1 and not s1_height_range>s1_range_thresh:
     #if 1.5<t_drift:
     #if 1.08<t_drift<1.12:
-    if s2_found and not inn=='q' and (ratio > 1):
+    if s2_found and s2_area>150 and not inn=='q':
     #if s1_found and s2_found:
-        print(ratio)
+        #print(ratio)
         fig=pl.figure(1,figsize=(10, 10))
         pl.rc('xtick', labelsize=25)
         pl.rc('ytick', labelsize=25)
         
         ax=pl.subplot2grid((1,1),(0,0),colspan=2)
         pl.plot(t_matrix[i,:],sum_data,'blue')
-        #pl.xlim([0, 2])
-        pl.ylim([-20, 100])
+        pl.xlim([0, 2])
+        pl.ylim([-5, 20])
         pl.xlabel('Time (us)')
         pl.ylabel('Millivolts')
         pl.title("Sum,"+ str(i))
-        triggertime_us = (t[-1]*0.5)
+        triggertime_us = (t[-1]*0.1)
         
-        #pl.plot(np.array([1,1])*triggertime_us,np.array([0,16384]),'k--')
+        #ax.axvspan(t_min_search*tscale, t_max_search*tscale, alpha=0.5, color='red')
+        pl.plot(np.array([1,1])*triggertime_us,np.array([0,16384]),'k--')
         if s2_found:
             ax.axvspan(s2_start_pos*tscale, s2_end_pos*tscale, alpha=0.5, color='blue')
         if s1_found:
@@ -230,11 +187,12 @@ for i in range(0, int(v_matrix.shape[0])):
             
         pl.draw()
         pl.show(block=0)
+        print("s2 area: ",s2_area)
         inn = input("Press enter to continue, q to skip plotting")
         fig.clf()
 
 singleCutoff = 1000.
-singleMean = np.mean(s2_area_array[s2_found_array*(s2_area_array<singleCutoff)])
+singleMean = np.mean(s2_area_array[s2_found_array])
 print("Events w/ S2: ",s2_area_array[s2_found_array].size)
 print("S2 Area mean: ", singleMean)
 print("S2 width mean: ", np.mean(s2_width_array[s2_found_array]))
@@ -242,32 +200,35 @@ print("S2 height mean: ", np.mean(s2_height_array[s2_found_array]))
 
 
 
-pl.figure()
-pl.xlim([0,3])
-pl.hist(ratio_array, bins=1000)
-pl.xlabel("positive_area/negative_area")
-pl.show()
+#pl.figure()
+#pl.xlim([0,3])
+#pl.hist(ratio_array, bins=1000)
+#pl.xlabel("positive_area/negative_area")
+#pl.show()
     
 pl.figure()
-pl.hist(s2_area_array[s2_found_array*(ratio_array>2)],bins=100)
+pl.hist(s2_area_array[s2_found_array],bins=125,range=(0,800))
+pl.ylim((0,1000))
+pl.grid(b=True,which='major',color='lightgray',linestyle='--')
+#pl.yscale("log")
 pl.axvline(x=singleMean,ls='--',color='r')
 pl.text(0.3,0.8,'Mean single count area: {0:g}'.format(singleMean),transform=pl.gca().transAxes)
 pl.xlabel("S2 area")
 
 
-pl.figure()
-pl.hist(s2_width_array[s2_found_array],bins=100)
-pl.axvline(x=np.mean(s2_width_array[s2_found_array]),ls='--',color='r')
-pl.xlabel("S2 width (us)")
+#pl.figure()
+#pl.hist(s2_width_array[s2_found_array],bins=100)
+#pl.axvline(x=np.mean(s2_width_array[s2_found_array]),ls='--',color='r')
+#pl.xlabel("S2 width (us)")
 
-pl.figure()
-pl.hist(s2_height_array[s2_found_array],bins=100)
-pl.axvline(x=np.mean(s2_height_array[s2_found_array]),ls='--',color='r')
-pl.xlabel("S2 height (mV)")
+#pl.figure()
+#pl.hist(s2_height_array[s2_found_array],bins=100)
+#pl.axvline(x=np.mean(s2_height_array[s2_found_array]),ls='--',color='r')
+#pl.xlabel("S2 height (mV)")
 
-pl.figure()
-pl.scatter(s2_area_array[s2_found_array],s2_width_array[s2_found_array])
-pl.xlabel("S2 area")
-pl.ylabel("S2 width (us)")
+#pl.figure()
+#pl.scatter(s2_area_array[s2_found_array],s2_width_array[s2_found_array])
+#pl.xlabel("S2 area")
+#pl.ylabel("S2 width (us)")
 
 pl.show()
