@@ -107,14 +107,14 @@ mpl.rcParams['figure.figsize']=[16.0,12.0]
 #channel_2=np.fromfile("wave2.dat", dtype="int16")
 #channel_3=np.fromfile("wave3.dat", dtype="int16")
 
-channel_0=np.fromfile("../../Desktop/crystallize_data/091319/A_3.2g_3.6c_50mV_Th232_frozen.dat", dtype="int16")
-channel_1=np.fromfile("../../Desktop/crystallize_data/091319/B_3.2g_3.6c_50mV_Th232_frozen.dat", dtype="int16")
-channel_2=np.fromfile("../../Desktop/crystallize_data/091319/C_3.2g_3.6c_50mV_Th232_frozen.dat", dtype="int16")
-channel_3=np.fromfile("../../Desktop/crystallize_data/091319/D_3.2g_3.6c_50mV_Th232_frozen.dat", dtype="int16")
-channel_4=np.fromfile()
-channel_5=np.fromfile()
-channel_6=np.fromfile()
-channel_7=np.fromfile()
+channel_0=np.fromfile("../../111219/chA_3.5g_3.9c_noTh.dat", dtype="int16")
+channel_1=np.fromfile("../../111219/chB_3.5g_3.9c_noTh.dat", dtype="int16")
+channel_2=np.fromfile("../../111219/chC_3.5g_3.9c_noTh.dat", dtype="int16")
+channel_3=np.fromfile("../../111219/chD_3.5g_3.9c_noTh.dat", dtype="int16")
+channel_4=np.fromfile("../../111219/chE_3.5g_3.9c_noTh.dat", dtype="int16")
+channel_5=np.fromfile("../../111219/chF_3.5g_3.9c_noTh.dat", dtype="int16")
+channel_6=np.fromfile("../../111219/chG_3.5g_3.9c_noTh.dat", dtype="int16")
+channel_7=np.fromfile("../../111219/chH_3.5g_3.9c_noTh.dat", dtype="int16")
 #channel_0=np.fromfile("../../Desktop/crystallize_data/t3-0805/A-thorium-4kv-t3.dat", dtype="int16")
 #channel_1=np.fromfile("../../Desktop/crystallize_data/t3-0805/B-thorium-4kv-t3.dat", dtype="int16")
 #channel_2=np.fromfile("../../Desktop/crystallize_data/t3-0805/C-thorium-4kv-t3.dat", dtype="int16")
@@ -139,29 +139,29 @@ channel_7=np.fromfile()
 
 vscale=(2000.0/16384.0)
 wsize=12500
-chA_spe_size = 64.4
+chA_spe_size = 27.5
 V=vscale*channel_0/chA_spe_size # ch A, calib size 644 
 # Ensure we have an integer number of events
 V=V[:int(len(V)/wsize)*wsize]
-chB_spe_size = 50.5
+chB_spe_size = 27.5
 V_1=vscale*channel_1/chB_spe_size
 V_1=V_1[:int(len(V)/wsize)*wsize]
-chC_spe_size = 33.9
+chC_spe_size = 27.5
 V_2=vscale*channel_2/chC_spe_size
 V_2=V_2[:int(len(V)/wsize)*wsize]
-chD_spe_size = 30.6
+chD_spe_size = 27.5
 V_3=vscale*channel_3/chD_spe_size
 V_3=V_3[:int(len(V)/wsize)*wsize]
-chE_spe_size=-1
+chE_spe_size=27.5
 V_4=vscale*channel_4/chE_spe_size
 V_4=V_4[:int(len(V)/wsize)*wsize]
-chF_spe_size=-1
+chF_spe_size=27.5
 V_5=vscale*channel_5/chF_spe_size
 V_5=V_5[:int(len(V)/wsize)*wsize]
-chG_spe_size=-1
+chG_spe_size=27.5
 V_6=vscale*channel_6/chG_spe_size
 V_6=V_6[:int(len(V)/wsize)*wsize]
-chH_spe_size=-1
+chH_spe_size=27.5
 V_7=vscale*channel_7/chH_spe_size
 V_7=V_7[:int(len(V)/wsize)*wsize]
 n_channels=9 # including sum
@@ -169,10 +169,10 @@ v_matrix = V.reshape(int(V.size/wsize),wsize)
 v1_matrix = V_1.reshape(int(V.size/wsize),wsize)
 v2_matrix = V_2.reshape(int(V.size/wsize),wsize)
 v3_matrix = V_3.reshape(int(V.size/wsize),wsize)
-v4_matrix = v_4.reshape(int(V.size/wisize),wsize)
-v5_matrix = v_4.reshape(int(V.size/wisize),wsize)
-v6_matrix = v_4.reshape(int(V.size/wisize),wsize)
-v7_matrix = v_4.reshape(int(V.size/wisize),wsize)
+v4_matrix = V_4.reshape(int(V.size/wsize),wsize)
+v5_matrix = V_4.reshape(int(V.size/wsize),wsize)
+v6_matrix = V_4.reshape(int(V.size/wsize),wsize)
+v7_matrix = V_4.reshape(int(V.size/wsize),wsize)
 v8_matrix = v_matrix+v1_matrix+v2_matrix+v3_matrix+v4_matrix+v5_matrix+v6_matrix+v7_matrix
 v_matrix_all_ch=[v_matrix,v1_matrix,v2_matrix,v3_matrix,v4_matrix,v5_matrix,v6_matrix,v7_matrix,v8_matrix]
 x=np.arange(0, wsize, 1)
@@ -235,9 +235,9 @@ for i in range(0, int(v_matrix.shape[0])):
 	# Look for events with S1 and S2 from summed channel
     s1_window = int(0.5/tscale)
     s2_window = int(1.5/tscale)
-    s1_thresh = 400/chA_spe_size
+    s1_thresh = 200/chA_spe_size
     s1_range_thresh = 10/chA_spe_size
-    s2_thresh = 1e3/chA_spe_size
+    s2_thresh = 500/chA_spe_size
     s1_max=s1_thresh
     s1_max_ind=-1
     s1_area=-1
@@ -371,11 +371,11 @@ for i in range(0, int(v_matrix.shape[0])):
     #if s1_max_ind>-1 and not s1_height_range>s1_range_thresh:
     #if 1.5<t_drift:
     #if 1.08<t_drift<1.12:
-    merge_start, merge_end = merged_bounds(output,s2_max_ind-t_offset,s2_window,start_frac,end_frac)
-    s2_2 = merge_start > -1
-    print("merge_start:", merge_start)
-    print("merge_end:", merge_end)
-    if True and not inn=='q' and fiducial:
+    #merge_start, merge_end = merged_bounds(output,s2_max_ind-t_offset,s2_window,start_frac,end_frac)
+    #s2_2 = merge_start > -1
+    #print("merge_start:", merge_start)
+    #print("merge_end:", merge_end)
+    if True and not inn=='q':
     #if s1_found and s2_found:
         fig=pl.figure(1,figsize=(20, 20))
         pl.rc('xtick', labelsize=25)
@@ -383,8 +383,8 @@ for i in range(0, int(v_matrix.shape[0])):
         
         ax=pl.subplot2grid((2,3),(0,0))
         pl.plot(t_matrix[i,:],v_matrix[i,:],'y')
-        pl.xlim([0, 25])
-        pl.ylim([0, 2500/chA_spe_size])
+        pl.xlim([15,25])
+        pl.ylim([0, 1000/chA_spe_size])
         pl.xlabel('Time (us)')
         pl.ylabel('Phd/sample')
         pl.title("A,"+ str(i))
@@ -399,8 +399,8 @@ for i in range(0, int(v_matrix.shape[0])):
         
         ax=pl.subplot2grid((2,3),(0,1))
         pl.plot(t_matrix[i,:],v1_matrix[i,:],'cyan')
-        pl.xlim([0, 25])
-        pl.ylim([0, 2500/chA_spe_size])
+        pl.xlim([15, 25])
+        pl.ylim([0, 1000/chA_spe_size])
         pl.xlabel('Time (us)')
         pl.ylabel('Phd/sample')
         pl.title("B,"+ str(i))
@@ -415,8 +415,8 @@ for i in range(0, int(v_matrix.shape[0])):
 
         ax=pl.subplot2grid((2,3),(0,2))
         pl.plot(t_matrix[i,:],v2_matrix[i,:],'magenta')
-        pl.xlim([0, 25])
-        pl.ylim([0, 2500/chA_spe_size])
+        pl.xlim([15, 25])
+        pl.ylim([0, 1000/chA_spe_size])
         pl.xlabel('Time (us)')
         pl.ylabel('Phd/sample')
         pl.title("C,"+ str(i))
@@ -431,8 +431,8 @@ for i in range(0, int(v_matrix.shape[0])):
         
         ax=pl.subplot2grid((2,3),(1,0))
         pl.plot(t_matrix[i,:],v3_matrix[i,:],'blue')
-        pl.xlim([0, 25])
-        pl.ylim([0, 2500/chA_spe_size])
+        pl.xlim([15, 25])
+        pl.ylim([0, 1000/chA_spe_size])
         pl.xlabel('Time (us)')
         pl.ylabel('Phd/sample')
         pl.title("D,"+ str(i))
@@ -444,14 +444,14 @@ for i in range(0, int(v_matrix.shape[0])):
         if s1_found:
             ax.axvspan(s1_start_pos*tscale, s1_end_pos*tscale, alpha=0.5, color='green')
         
-        fig=pl.figure(1,figsize=(20, 20))
+        fig=pl.figure(2,figsize=(20, 20))
         pl.rc('xtick', labelsize=25)
         pl.rc('ytick', labelsize=25)
         
         ax=pl.subplot2grid((2,3),(0,0))
         pl.plot(t_matrix[i,:],v4_matrix[i,:],'y')
-        pl.xlim([0, 25])
-        pl.ylim([0, 2500/chE_spe_size])
+        pl.xlim([15, 25])
+        pl.ylim([0, 1000/chE_spe_size])
         pl.xlabel('Time (us)')
         pl.ylabel('Phd/sample')
         pl.title("E,"+ str(i))
@@ -465,8 +465,8 @@ for i in range(0, int(v_matrix.shape[0])):
         
         ax=pl.subplot2grid((2,3),(0,1))
         pl.plot(t_matrix[i,:],v5_matrix[i,:],'cyan')
-        pl.xlim([0, 25])
-        pl.ylim([0, 2500/chF_spe_size])
+        pl.xlim([15, 25])
+        pl.ylim([0, 1000/chF_spe_size])
         pl.xlabel('Time (us)')
         pl.ylabel('Phd/sample')
         pl.title("F,"+ str(i))
@@ -480,8 +480,8 @@ for i in range(0, int(v_matrix.shape[0])):
         
         ax=pl.subplot2grid((2,3),(0,2))
         pl.plot(t_matrix[i,:],v6_matrix[i,:],'magenta')
-        pl.xlim([0, 25])
-        pl.ylim([0, 2500/chG_spe_size])
+        pl.xlim([15, 25])
+        pl.ylim([0, 1000/chG_spe_size])
         pl.xlabel('Time (us)')
         pl.ylabel('Phd/sample')
         pl.title("G,"+ str(i))
@@ -495,8 +495,8 @@ for i in range(0, int(v_matrix.shape[0])):
 
         ax=pl.subplot2grid((2,3),(1,0))
         pl.plot(t_matrix[i,:],v7_matrix[i,:],'blue')
-        pl.xlim([0, 25])
-        pl.ylim([0, 2500/chH_spe_size])
+        pl.xlim([15, 25])
+        pl.ylim([0, 1000/chH_spe_size])
         pl.xlabel('Time (us)')
         pl.ylabel('Phd/sample')
         pl.title("H,"+ str(i))
@@ -508,6 +508,23 @@ for i in range(0, int(v_matrix.shape[0])):
         if s1_found:
             ax.axvspan(s1_start_pos*tscale, s1_end_pos*tscale, alpha=0.5, color='green')
 
+
+            
+        ax=pl.subplot2grid((2,3),(1,1),colspan=2)
+        pl.plot(t_matrix[i,:],v8_matrix[i,:],'blue')
+        pl.xlim([15,25])
+        pl.ylim([0, 8000/chA_spe_size])
+        pl.xlabel('Time (us)')
+        pl.ylabel('Phd/sample')
+        pl.title("Sum,"+ str(i))
+        triggertime_us = (t[-1]*0.2)
+        #pl.plot(np.array([1,1])*triggertime_us,np.array([0,16384]),'k--')
+        if s2_found:
+            ax.axvspan(s2_start_pos*tscale, s2_end_pos*tscale, alpha=0.5, color='blue')
+        if s1_found:
+            ax.axvspan(s1_start_pos*tscale, s1_end_pos*tscale, alpha=0.5, color='green')
+        #if s2_2:
+            #ax.axvspan(merge_start*tscale, merge_end*tscale, alpha=0.5, color='yellow')
 
         #pl.figure()
         #pl.plot(t_matrix[i,:], smooth, 'blue')
@@ -522,54 +539,37 @@ for i in range(0, int(v_matrix.shape[0])):
 
 
 
+        #fig=pl.figure(3,figsize=(20, 20))
+        #pl.rc('xtick', labelsize=25)
+        #pl.rc('ytick', labelsize=25)
+            
 
-
-        pl.figure()
-        pl.plot
-        pl.plot(t_matrix[i,:],output,'blue')
-       
-
-        time_array=[]
-        for o in t_matrix[i,:]:
-            time_array.append(o)
+        #time_array=[]
+        #for o in t_matrix[i,:]:
+        #    time_array.append(o)
    
           
-        t = np.asarray(time_array)
-        b = (np.diff(np.sign(np.diff(output))) > 0).nonzero()[0] + 1         # list of index locations of maxima
-        c = (np.diff(np.sign(np.diff(output))) < 0).nonzero()[0] + 1         # list of index locations of minima
-        for k in b:
+        #t = np.asarray(time_array)
+        #b = (np.diff(np.sign(np.diff(output))) > 0).nonzero()[0] + 1         # list of index locations of maxima
+        #c = (np.diff(np.sign(np.diff(output))) < 0).nonzero()[0] + 1         # list of index locations of minima
+        #for k in b:
             
-            if output[k]>1:
-                print('output[k]:', output[k])
-                pl.plot(t[k], output[k], marker ='o', color='b')
-                print("maxima:", k)
-        for a in c:
-            if output[a]>1:
-                pl.plot(t[a],output[a],marker='o', color='r')
-                print("minima:", a)            
-        pl.xlim([0,25])
-        pl.ylim([0,6000/chA_spe_size])
-        pl.xlabel('Time (us)')
-        pl.ylabel('Millivolts')
-        pl.title("SMOOTH")
-        pl.show()
+        #    if output[k]>1:
+        #        print('output[k]:', output[k])
+        #        pl.plot(t[k], output[k], marker ='o', color='b')
+        #        print("maxima:", k)
+        #for a in c:
+        #    if output[a]>1:
+        #        pl.plot(t[a],output[a],marker='o', color='r')
+        #        print("minima:", a)            
+        #pl.xlim([0,25])
+        #pl.ylim([0,6000/chA_spe_size])
+        #pl.xlabel('Time (us)')
+        #pl.ylabel('Millivolts')
+        #pl.title("SMOOTH")
+        #pl.show()
 
 
-        ax=pl.subplot2grid((2,3),(1,1),colspan=2)
-        pl.plot(t_matrix[i,:],v8_matrix[i,:],'blue')
-        pl.xlim([0, 25])
-        pl.ylim([0, 6000/chA_spe_size])
-        pl.xlabel('Time (us)')
-        pl.ylabel('Phd/sample')
-        pl.title("Sum,"+ str(i))
-        triggertime_us = (t[-1]*0.2)
-        #pl.plot(np.array([1,1])*triggertime_us,np.array([0,16384]),'k--')
-        if s2_found:
-            ax.axvspan(s2_start_pos*tscale, s2_end_pos*tscale, alpha=0.5, color='blue')
-        if s1_found:
-            ax.axvspan(s1_start_pos*tscale, s1_end_pos*tscale, alpha=0.5, color='green')
-        if s2_2:
-            ax.axvspan(merge_start*tscale, merge_end*tscale, alpha=0.5, color='yellow')
         
         pl.draw()
         pl.show(block=0)
