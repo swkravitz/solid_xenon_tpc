@@ -158,29 +158,29 @@ channel_7=np.fromfile(data_dir+"wave7.dat", dtype="int16")
 
 vscale=(2000.0/16384.0)
 wsize=12500
-chA_spe_size = 27.5
+chA_spe_size = 29.02
 V=vscale*channel_0/chA_spe_size # ch A, calib size 644 
 # Ensure we have an integer number of events
 V=V[:int(len(V)/wsize)*wsize]
-chB_spe_size = 27.5
+chB_spe_size = 30.61
 V_1=vscale*channel_1/chB_spe_size
 V_1=V_1[:int(len(V)/wsize)*wsize]
-chC_spe_size = 27.5
+chC_spe_size = 28.87
 V_2=vscale*channel_2/chC_spe_size
 V_2=V_2[:int(len(V)/wsize)*wsize]
-chD_spe_size = 27.5
+chD_spe_size = 28.86
 V_3=vscale*channel_3/chD_spe_size
 V_3=V_3[:int(len(V)/wsize)*wsize]
-chE_spe_size=27.5
+chE_spe_size=30.4
 V_4=vscale*channel_4/chE_spe_size
 V_4=V_4[:int(len(V)/wsize)*wsize]
-chF_spe_size=27.5
+chF_spe_size=30.44
 V_5=vscale*channel_5/chF_spe_size
 V_5=V_5[:int(len(V)/wsize)*wsize]
-chG_spe_size=27.5
+chG_spe_size=30.84
 V_6=vscale*channel_6/chG_spe_size
 V_6=V_6[:int(len(V)/wsize)*wsize]
-chH_spe_size=27.5
+chH_spe_size=30.3
 V_7=vscale*channel_7/chH_spe_size
 V_7=V_7[:int(len(V)/wsize)*wsize]
 n_channels=9 # including sum

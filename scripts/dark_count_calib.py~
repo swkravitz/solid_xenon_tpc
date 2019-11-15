@@ -42,7 +42,7 @@ mpl.rcParams['figure.figsize']=[16.0,12.0]
 #channel_0=np.fromfile("wave0.dat", dtype="int16")
 
 #channel_0=np.fromfile("../../082919/chB_49_5V_18mV.dat", dtype="int16")
-channel_0=np.fromfile("../../Desktop/crystallize_data/110819/chH_51.5V_12mV.dat", dtype="int16")
+channel_0=np.fromfile("../../Desktop/crystallize_data/110819/chA_51.5V_12mV.dat", dtype="int16")
 
 
 
@@ -209,12 +209,10 @@ def gaussian(x, mean, std,a):
 pl.figure()
 h,b,_=pl.hist(s2_area_array[s2_found_array],bins=125,range=(0,800))
 bin_centers = b[:-1] + np.diff(b)/2
-popt, _ = curve_fit(gaussian,bin_centers[18:55],h[18:55], p0=[270,80,450])
-print("bin_centers:", bin_centers)
-print("h:", h)
+popt, _ = curve_fit(gaussian,bin_centers[120:350],h[120:350], p0=[250,73,435])
 print("popt:",popt)
 pl.plot(bin_centers, gaussian(bin_centers, *popt), label ='fit')
-
+print("h:", h)
 pl.grid(b=True,which='major',color='lightgray',linestyle='--')
 #pl.yscale("log")
 pl.axvline(x=popt[0],ls='--',color='r')
