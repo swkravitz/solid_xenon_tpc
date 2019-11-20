@@ -1,5 +1,11 @@
 #!/bin/bash
 
+# script to continuously take data until process is killed.
+# creates "datasets" which are new, timestamped directories
+# that contain files with a preset number of events in them
+# number of events per file is set in the config file for 
+# the CAEN DAQ
+
 while [ 1 ]
 do
 
