@@ -42,6 +42,8 @@ def pulse_finder_area_series(data,t_min_search,t_max_search,window):
 	
 def pulse_finder_area(data,t_min_search,t_max_search,window):
 # Assumes data is already baseline-subtracted
+    if t_max_search < t_min_search+1:
+        return (-1, -1)
     weights = np.repeat(1.0, window)#/window #to do avg instead of sum
     data_conv = np.convolve(data, weights, 'same')
 	# Search only w/in search range, offset so that max_ind is the start of the window rather than the center
@@ -53,15 +55,17 @@ def pulse_bounds(data,t_min,window,start_frac,end_frac):
 # Assumes data is already baseline-subtracted
     start_pos=-1
     end_pos=-1
-    peak_val=np.max(data[t_min:t_min+window])
-    peak_pos=np.argmax(data[t_min:t_min+window])
+    min_search = np.maximum(0,t_min)
+    max_search = np.minimum(len(data)-1,t_min+window)
+    peak_val=np.max(data[min_search:max_search])
+    peak_pos=np.argmax(data[min_search:max_search])
     #start_frac: pulse starts at this fraction of peak height above baseline
-    for i_start in range(t_min,t_min+window):
+    for i_start in range(min_search,max_search):
         if data[i_start]>max(peak_val*start_frac,6.0/chA_spe_size):
             start_pos=i_start
             break
     #end_frac: pulse ends at this fraction of peak height above baseline
-    for i_start in range(t_min+window,t_min,-1):
+    for i_start in range(max_search,min_search,-1):
         if data[i_start]>max(peak_val*end_frac,6.0/chA_spe_size):
             end_pos=i_start
             break
@@ -116,7 +120,7 @@ mpl.rcParams['figure.figsize']=[16.0,12.0]
 #channel_2=np.fromfile("wave2.dat", dtype="int16")
 #channel_3=np.fromfile("wave3.dat", dtype="int16")
 
-data_dir="../../111419/80mV_thresh_3.5g_3.9c/"
+data_dir="../../112119/afterfill_3.5g_3.9c_bkg_chE_20mV_30min_circ1/"
 channel_0=np.fromfile(data_dir+"wave0.dat", dtype="int16")
 channel_1=np.fromfile(data_dir+"wave1.dat", dtype="int16")
 channel_2=np.fromfile(data_dir+"wave2.dat", dtype="int16")
@@ -158,29 +162,29 @@ channel_7=np.fromfile(data_dir+"wave7.dat", dtype="int16")
 
 vscale=(2000.0/16384.0)
 wsize=12500
-chA_spe_size = 29.02
+chA_spe_size = 27.5
 V=vscale*channel_0/chA_spe_size # ch A, calib size 644 
 # Ensure we have an integer number of events
 V=V[:int(len(V)/wsize)*wsize]
-chB_spe_size = 30.61
+chB_spe_size = 27.5
 V_1=vscale*channel_1/chB_spe_size
 V_1=V_1[:int(len(V)/wsize)*wsize]
-chC_spe_size = 28.87
+chC_spe_size = 27.5
 V_2=vscale*channel_2/chC_spe_size
 V_2=V_2[:int(len(V)/wsize)*wsize]
-chD_spe_size = 28.86
+chD_spe_size = 27.5
 V_3=vscale*channel_3/chD_spe_size
 V_3=V_3[:int(len(V)/wsize)*wsize]
-chE_spe_size=30.4
+chE_spe_size=27.5
 V_4=vscale*channel_4/chE_spe_size
 V_4=V_4[:int(len(V)/wsize)*wsize]
-chF_spe_size=30.44
+chF_spe_size=27.5
 V_5=vscale*channel_5/chF_spe_size
 V_5=V_5[:int(len(V)/wsize)*wsize]
-chG_spe_size=30.84
+chG_spe_size=27.5
 V_6=vscale*channel_6/chG_spe_size
 V_6=V_6[:int(len(V)/wsize)*wsize]
-chH_spe_size=30.3
+chH_spe_size=27.5
 V_7=vscale*channel_7/chH_spe_size
 V_7=V_7[:int(len(V)/wsize)*wsize]
 n_channels=9 # including sum
@@ -236,9 +240,12 @@ for i in range(0, int(v_matrix.shape[0])):
         #print("baseline: ",baseline)
 
         
-	# Look for events with S1 and S2 from summed channel
+    # Look for events with S1 and S2 from summed channel
+    t_min_search=int(10./tscale)
+    t_max_search=int(22./tscale)
+    t_offset=int(0.2/tscale)
     s1_window = int(0.5/tscale)
-    s2_window = int(1.5/tscale)
+    s2_window = int(3.5/tscale)
     s1_thresh = 100/chA_spe_size
     s1_range_thresh = 10/chA_spe_size
     s2_thresh = 150/chA_spe_size
@@ -276,9 +283,7 @@ for i in range(0, int(v_matrix.shape[0])):
     # Do a moving average (sum) of the waveform with different time windows for s1, s2
 	# Look for where this value is maximized
 	# Look for the s2 using a moving average (sum) of the waveform over a wide window
-    t_min_search=int(10./tscale)
-    t_max_search=int(22./tscale)
-    t_offset=int(0.05/tscale)
+
     s2_max_ind, s2_max=pulse_finder_area(sum_data,t_min_search,t_max_search,s2_window)
     s2_found=s2_max>s2_thresh
     t1=time.time()
@@ -297,7 +302,7 @@ for i in range(0, int(v_matrix.shape[0])):
     bad_bounds=False
     if s2_found: # Found a pulse (maybe an s2)
         # print("s2 window time: ",s2_max_ind*tscale,"s2 area max: ",s2_max)
-        start_frac=0.05 # pulse starts at this fraction of peak height above baseline
+        start_frac=0.06 # pulse starts at this fraction of peak height above baseline
         end_frac=0.05 # pulse starts at this fraction of peak height above baseline
         s2_start_pos, s2_end_pos=pulse_bounds(sum_data,s2_max_ind-t_offset,s2_window,start_frac,end_frac)
         #print(s2_start_pos, s2_end_pos)
@@ -311,6 +316,11 @@ for i in range(0, int(v_matrix.shape[0])):
                 print("pulse start = end = ",s2_start_pos," for event ",i)
                 s2_start_pos=s2_start_pos-3
                 s2_end_pos=s2_end_pos+3
+        elif(s2_start_pos == -1):
+            print("could not find start of pulse for event ", i)
+            bad_bounds=True
+            s2_start_pos=s2_max_ind-3
+            s2_end_pos=s2_max_ind+3
         #s2_start_array, s2_end_array = merged_bounds(output,s2_max_ind-t_offset,s2_window,start_frac,end_frac)
         t3=time.time()
        
@@ -318,6 +328,7 @@ for i in range(0, int(v_matrix.shape[0])):
         #print('s2_end_array:', s2_end_array)
       
         #print("pulse bounds time: ", t3-t2)
+        print("s2_start_pos: ",s2_start_pos,"s2_end_pos: ",s2_end_pos)
         s2_area=np.sum(sum_data[s2_start_pos:s2_end_pos])
         s2_ch_area = [np.sum(ch[s2_start_pos:s2_end_pos]) for ch in ch_data]
        
@@ -341,15 +352,17 @@ for i in range(0, int(v_matrix.shape[0])):
             center[i] = True
         elif not fiducial:
             center[i] = False 	
-        # Now look for a prior s1                                                   
+        # Now look for a prior s1
+        #print("t_min_search: ",t_min_search,"t_max: ",s2_start_pos-s1_window-t_offset)
         s1_max_ind, s1_max=pulse_finder_area(sum_data,t_min_search,s2_start_pos-s1_window-t_offset,s1_window)
+        #print("sum baseline: ",sum_baseline)
         #print("s1 area: ",s1_max)
         if s1_max>s1_thresh:
             #print("s1 window time: ",s1_max_ind*tscale,"s1 area max: ",s1_max)    
-            s1_start_pos, s1_end_pos = pulse_bounds(sum_data,s1_max_ind-t_offset,s1_window,0.1,0.1)
+            s1_start_pos, s1_end_pos = pulse_bounds(sum_data,s1_max_ind,s1_window,0.1,0.1) # had s1_max_ind-t_offset; why?
             if s1_start_pos > -1 and s1_end_pos > s1_start_pos:
-               # print(s1_start_pos)
-               # print(s1_end_pos)
+                #print(s1_start_pos)
+                #print(s1_end_pos)
                 # Check that we didn't accidentally find noise (related to poor baseline subtraction)
                 s1_height_range=np.max(sum_data[s1_start_pos:s1_end_pos])-np.min(sum_data[s1_start_pos:s1_end_pos]) 
                 s1_found = s1_height_range>s1_range_thresh
@@ -360,8 +373,8 @@ for i in range(0, int(v_matrix.shape[0])):
                     #print("baseline: ",sum_baseline)
                     pass
                 if not s1_found:
-                    pass
-                   # print("under range, s1 range: ",s1_height_range)
+                    #pass
+                    print("under range, s1 range: ",s1_height_range)
                 else:    
                     t_drift=(s2_start_pos-s1_start_pos)*tscale
                     s1_area=np.sum(sum_data[s1_start_pos:s1_end_pos])
@@ -551,7 +564,7 @@ for j in range(0, n_channels-1):
 s1_and_s2=s2_found_array*s1_found_array
 s1_only_like=s2_found_array*np.logical_not(s1_found_array)*(s2_width_array<0.6)
 s2_like=s2_found_array*(s2_width_array>0.6)
-plot_selection=s2_like
+plot_selection=s1_and_s2
 print("events passing plot_selection cuts: ",np.size(s2_area_array[plot_selection]))
     
 pl.figure()
