@@ -241,14 +241,21 @@ for i in range(0, int(v_matrix.shape[0])):
 
         
     # Look for events with S1 and S2 from summed channel
-    t_min_search=int(10./tscale)
-    t_max_search=int(22./tscale)
+    post_trigger=0.5 # Was 0.2 for data before 11/22/19
+    event_window=25.
+    trigger_time=int(event_window*(1-post_trigger)/tscale)
     t_offset=int(0.2/tscale)
     s1_window = int(0.5/tscale)
     s2_window = int(3.5/tscale)
+    t_min_search=trigger_time-int(10./tscale)# was int(10./tscale)
+    t_max_search=trigger_time+int(10./tscale)# was int(22./tscale)
     s1_thresh = 100/chA_spe_size
     s1_range_thresh = 10/chA_spe_size
     s2_thresh = 150/chA_spe_size
+    s2_start_frac=0.06 # s2 pulse starts at this fraction of peak height above baseline
+    s2_end_frac=0.05 # s2 pulse starts at this fraction of peak height above baseline
+    s1_start_frac=0.1
+    s1_end_frac=0.1
     s1_max=s1_thresh
     s1_max_ind=-1
     s1_area=-1
@@ -302,9 +309,7 @@ for i in range(0, int(v_matrix.shape[0])):
     bad_bounds=False
     if s2_found: # Found a pulse (maybe an s2)
         # print("s2 window time: ",s2_max_ind*tscale,"s2 area max: ",s2_max)
-        start_frac=0.06 # pulse starts at this fraction of peak height above baseline
-        end_frac=0.05 # pulse starts at this fraction of peak height above baseline
-        s2_start_pos, s2_end_pos=pulse_bounds(sum_data,s2_max_ind-t_offset,s2_window,start_frac,end_frac)
+        s2_start_pos, s2_end_pos=pulse_bounds(sum_data,s2_max_ind-t_offset,s2_window,s2_start_frac,s2_end_frac)
         #print(s2_start_pos, s2_end_pos)
         if(s2_start_pos==s2_end_pos):
             if(s2_start_pos == -1):
@@ -321,14 +326,14 @@ for i in range(0, int(v_matrix.shape[0])):
             bad_bounds=True
             s2_start_pos=s2_max_ind-3
             s2_end_pos=s2_max_ind+3
-        #s2_start_array, s2_end_array = merged_bounds(output,s2_max_ind-t_offset,s2_window,start_frac,end_frac)
+        #s2_start_array, s2_end_array = merged_bounds(output,s2_max_ind-t_offset,s2_window,s2_start_frac,s2_end_frac)
         t3=time.time()
        
         #print('s2_start_array:', s2_start_array)
         #print('s2_end_array:', s2_end_array)
       
         #print("pulse bounds time: ", t3-t2)
-        print("s2_start_pos: ",s2_start_pos,"s2_end_pos: ",s2_end_pos)
+        #print("s2 start: ",s2_start_pos*tscale," s2 end: ",s2_end_pos*tscale)
         s2_area=np.sum(sum_data[s2_start_pos:s2_end_pos])
         s2_ch_area = [np.sum(ch[s2_start_pos:s2_end_pos]) for ch in ch_data]
        
@@ -338,7 +343,6 @@ for i in range(0, int(v_matrix.shape[0])):
         #s2_area_array.append(s2_area)
         #s2_width_array.append(s2_width)
         #s2_found_array.append(s2_found)
-        #print("s2 start: ",s2_start_pos*tscale," s2 end: ",s2_end_pos*tscale)
         s2_mean = np.mean(s2_ch_area[:-1])
         fiducial = True
        
@@ -359,7 +363,7 @@ for i in range(0, int(v_matrix.shape[0])):
         #print("s1 area: ",s1_max)
         if s1_max>s1_thresh:
             #print("s1 window time: ",s1_max_ind*tscale,"s1 area max: ",s1_max)    
-            s1_start_pos, s1_end_pos = pulse_bounds(sum_data,s1_max_ind,s1_window,0.1,0.1) # had s1_max_ind-t_offset; why?
+            s1_start_pos, s1_end_pos = pulse_bounds(sum_data,s1_max_ind,s1_window,s1_start_frac,s1_end_frac) # had s1_max_ind-t_offset; why?
             if s1_start_pos > -1 and s1_end_pos > s1_start_pos:
                 #print(s1_start_pos)
                 #print(s1_end_pos)
@@ -373,8 +377,8 @@ for i in range(0, int(v_matrix.shape[0])):
                     #print("baseline: ",sum_baseline)
                     pass
                 if not s1_found:
-                    #pass
-                    print("under range, s1 range: ",s1_height_range)
+                    pass
+                    #print("under range, s1 range: ",s1_height_range)
                 else:    
                     t_drift=(s2_start_pos-s1_start_pos)*tscale
                     s1_area=np.sum(sum_data[s1_start_pos:s1_end_pos])
@@ -403,11 +407,11 @@ for i in range(0, int(v_matrix.shape[0])):
     #if s1_max_ind>-1 and not s1_height_range>s1_range_thresh:
     #if 1.5<t_drift:
     #if 1.08<t_drift<1.12:
-    #merge_start, merge_end = merged_bounds(output,s2_max_ind-t_offset,s2_window,start_frac,end_frac)
+    #merge_start, merge_end = merged_bounds(output,s2_max_ind-t_offset,s2_window,s2_start_frac,s2_end_frac)
     #s2_2 = merge_start > -1
     #print("merge_start:", merge_start)
     #print("merge_end:", merge_end)
-    if True and not inn=='q':
+    if True and not inn=='q' and t_drift>4.5:
     #if s1_found and s2_found:
         fig=pl.figure(1,figsize=(30, 20))
         pl.rc('xtick', labelsize=25)
