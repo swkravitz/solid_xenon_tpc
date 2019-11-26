@@ -122,7 +122,7 @@ mpl.rcParams['figure.figsize']=[16.0,12.0]
 #channel_2=np.fromfile("wave2.dat", dtype="int16")
 #channel_3=np.fromfile("wave3.dat", dtype="int16")
 
-data_dir="../../112219/bkg_3.5g_3.9c_chE_100mV_1hr45min_posttrig50_circ3/"
+data_dir="../../112619/Th_3.5g_3.9c_chE_100mV_freezing_3min/"
 channel_0=np.fromfile(data_dir+"wave0.dat", dtype="int16")
 channel_1=np.fromfile(data_dir+"wave1.dat", dtype="int16")
 channel_2=np.fromfile(data_dir+"wave2.dat", dtype="int16")
@@ -574,8 +574,8 @@ for j in range(0, n_channels-1):
 s1_and_s2=s2_found_array*s1_found_array*(s2_width_array>0.2) # cut out events with unrealistically-short s2s
 s1_only_like=s2_found_array*np.logical_not(s1_found_array)*(s2_width_array<0.6)
 s2_like=s2_found_array*(s2_width_array>0.6)
-long_drift = t_drift_array > 7
-plot_selection=s1_and_s2*long_drift#*(t_drift_array>7.5)#*(t_drift_array<7)
+long_drift = t_drift_array > 7.5
+plot_selection=s1_and_s2#*(t_drift_array<7)
 print("events passing plot_selection cuts: ",np.size(s2_area_array[plot_selection]))
     
 pl.figure()
@@ -584,7 +584,7 @@ pl.axvline(x=np.mean(s2_area_array[plot_selection]),ls='--',color='r')
 pl.xlabel("S2 area (phd)")
 
 pl.figure()
-pl.hist(s1_area_array[plot_selection],bins=200)#,range=(0,20000/chA_spe_size))#(t_drift_array>0.3)
+pl.hist(s1_area_array[plot_selection],bins=200,range=(0,200000/chA_spe_size))#(t_drift_array>0.3)
 pl.axvline(x=np.mean(s1_area_array[plot_selection]),ls='--',color='r')
 pl.xlabel("S1 area (phd)")
 
