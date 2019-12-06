@@ -117,12 +117,8 @@ mpl.rcParams['legend.fontsize']='small'
 mpl.rcParams['figure.autolayout']=True
 mpl.rcParams['figure.figsize']=[16.0,12.0]
 
-#channel_0=np.fromfile("wave0.dat", dtype="int16")
-#channel_1=np.fromfile("wave1.dat", dtype="int16")
-#channel_2=np.fromfile("wave2.dat", dtype="int16")
-#channel_3=np.fromfile("wave3.dat", dtype="int16")
 
-data_dir="../../112619/Th_3.5g_3.9c_chE_100mV_freezing_3min/"
+data_dir="../../120419/Th_3.5g_3.9c_chC_16mV_liquid_test_source_at_bottom_1_3_bar_recovery_6_5min/"
 channel_0=np.fromfile(data_dir+"wave0.dat", dtype="int16")
 channel_1=np.fromfile(data_dir+"wave1.dat", dtype="int16")
 channel_2=np.fromfile(data_dir+"wave2.dat", dtype="int16")
@@ -132,14 +128,6 @@ channel_5=np.fromfile(data_dir+"wave5.dat", dtype="int16")
 channel_6=np.fromfile(data_dir+"wave6.dat", dtype="int16")
 channel_7=np.fromfile(data_dir+"wave7.dat", dtype="int16")
 
-#channel_0=np.fromfile("../../111219/chA_3.5g_3.9c.dat", dtype="int16")
-#channel_1=np.fromfile("../../111219/chB_3.5g_3.9c.dat", dtype="int16")
-#channel_2=np.fromfile("../../111219/chC_3.5g_3.9c.dat", dtype="int16")
-#channel_3=np.fromfile("../../111219/chD_3.5g_3.9c.dat", dtype="int16")
-#channel_4=np.fromfile("../../111219/chE_3.5g_3.9c.dat", dtype="int16")
-#channel_5=np.fromfile("../../111219/chF_3.5g_3.9c.dat", dtype="int16")
-#channel_6=np.fromfile("../../111219/chG_3.5g_3.9c.dat", dtype="int16")
-#channel_7=np.fromfile("../../111219/chH_3.5g_3.9c.dat", dtype="int16")
 #channel_0=np.fromfile("../../Desktop/crystallize_data/t3-0805/A-thorium-4kv-t3.dat", dtype="int16")
 #channel_1=np.fromfile("../../Desktop/crystallize_data/t3-0805/B-thorium-4kv-t3.dat", dtype="int16")
 #channel_2=np.fromfile("../../Desktop/crystallize_data/t3-0805/C-thorium-4kv-t3.dat", dtype="int16")
@@ -149,17 +137,6 @@ channel_7=np.fromfile(data_dir+"wave7.dat", dtype="int16")
 #channel_1=np.fromfile("B-thorium-3kv.dat", dtype="int16")
 #channel_2=np.fromfile("C-thorium-3kv.dat", dtype="int16")
 #channel_3=np.fromfile("D-thorium-3kv.dat", dtype="int16")
-
-#channel_0=np.fromfile("A-thorium-2kv.dat", dtype="int16")
-#channel_1=np.fromfile("B-thorium-2kv.dat", dtype="int16")
-#channel_2=np.fromfile("C-thorium-2kv.dat", dtype="int16")
-#channel_3=np.fromfile("D-thorium-2kv.dat", dtype="int16")
-
-#channel_0=np.fromfile("A-thorium-1kv.dat", dtype="int16")
-#channel_1=np.fromfile("B-thorium-1kv.dat", dtype="int16")
-#channel_2=np.fromfile("C-thorium-1kv.dat", dtype="int16")
-#channel_3=np.fromfile("D-thorium-1kv.dat", dtype="int16")
-
 
 
 vscale=(2000.0/16384.0)
@@ -198,8 +175,8 @@ v4_matrix = V_4.reshape(int(V.size/wsize),wsize)
 v5_matrix = V_5.reshape(int(V.size/wsize),wsize)
 v6_matrix = V_6.reshape(int(V.size/wsize),wsize)
 v7_matrix = V_7.reshape(int(V.size/wsize),wsize)
-v8_matrix = v_matrix+v1_matrix+v2_matrix+v3_matrix+v4_matrix+v5_matrix+v6_matrix+v7_matrix
-v_matrix_all_ch=[v_matrix,v1_matrix,v2_matrix,v3_matrix,v4_matrix,v5_matrix,v6_matrix,v7_matrix,v8_matrix]
+vsum_matrix = v_matrix+v1_matrix+v2_matrix+v3_matrix+v4_matrix+v5_matrix+v6_matrix+v7_matrix
+v_matrix_all_ch=[v_matrix,v1_matrix,v2_matrix,v3_matrix,v4_matrix,v5_matrix,v6_matrix,v7_matrix,vsum_matrix]
 x=np.arange(0, wsize, 1)
 tscale=(8.0/4096.0)
 t=tscale*x
@@ -346,6 +323,7 @@ for i in range(0, int(v_matrix.shape[0])):
       
         s2_width=(s2_end_pos-s2_start_pos)*tscale
         s2_height=np.max(sum_data[s2_start_pos:s2_end_pos])
+        
         #s2_area_array.append(s2_area)
         #s2_width_array.append(s2_width)
         #s2_found_array.append(s2_found)
@@ -458,7 +436,7 @@ for i in range(0, int(v_matrix.shape[0])):
 
                     
         ax=pl.subplot2grid((2,2),(1,0),colspan=2)
-        pl.plot(t_matrix[i,:],v8_matrix[i,:],'blue')
+        pl.plot(t_matrix[i,:],vsum_matrix[i,:],'blue')
         pl.xlim([0,25])
         pl.ylim([0, 4000/chA_spe_size])
         pl.xlabel('Time (us)')
@@ -572,9 +550,9 @@ for j in range(0, n_channels-1):
 
 # Event selection for summary plots, i.e. analysis cuts
 s1_and_s2=s2_found_array*s1_found_array*(s2_width_array>0.2) # cut out events with unrealistically-short s2s
-s1_only_like=s2_found_array*np.logical_not(s1_found_array)*(s2_width_array<0.6)
+s1_only_like=s2_found_array*np.logical_not(s1_found_array)*(s2_width_array<0.8)
 s2_like=s2_found_array*(s2_width_array>0.6)
-long_drift = t_drift_array > 7.5
+long_drift = t_drift_array > 8
 plot_selection=s1_and_s2#*(t_drift_array<7)
 print("events passing plot_selection cuts: ",np.size(s2_area_array[plot_selection]))
     
@@ -610,6 +588,7 @@ pl.xlabel("drift time (us)")
 t_drift_plot=t_drift_array[plot_selection]
 s2_width_plot=s2_width_array[plot_selection]
 s2_area_plot=s2_area_array[plot_selection]
+s2_height_plot=s2_height_array[plot_selection]
 s1_area_plot=s1_area_array[plot_selection]
 pl.figure()
 pl.scatter(t_drift_plot,s2_area_plot)
@@ -634,6 +613,20 @@ pl.scatter(s1_area_plot,s2_area_plot)
 pl.xlabel("S1 area (phd)")
 pl.ylabel("S2 area (phd)")
 pl.yscale("log")
+
+pl.figure()
+pl.scatter(t_drift_plot,s2_height_plot)
+pl.xlabel("drift time (us)")
+pl.ylabel("S2 height (phd/sample)")
+s2_height_means=np.zeros(np.shape(drift_bins))
+s2_height_std_err=np.ones(np.shape(drift_bins))
+for i_bin in range(len(drift_bins)):
+    found_i_bin = np.where(drift_ind==i_bin) 
+    s2_height_i_bin = s2_height_plot[found_i_bin]
+    if len(s2_height_i_bin) < 1: continue
+    s2_height_means[i_bin]=np.median(s2_height_i_bin)
+    s2_height_std_err[i_bin]=np.std(s2_height_i_bin)/np.sqrt(len(s2_height_i_bin))
+pl.errorbar(drift_bins, s2_height_means, yerr=s2_height_std_err, linewidth=3, elinewidth=3, capsize=5, capthick=4, color='red')
 
 pl.figure()
 pl.scatter(s2_area_plot,s2_width_plot)
