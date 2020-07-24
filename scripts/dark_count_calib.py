@@ -39,10 +39,10 @@ mpl.rcParams['legend.fontsize']='small'
 mpl.rcParams['figure.autolayout']=True
 mpl.rcParams['figure.figsize']=[16.0,12.0]
 
-#channel_0=np.fromfile("wave0.dat", dtype="int16")
+channel_0=np.fromfile("../../072320/chB_darkcount_calib_50V_-6.1mV/wave0.dat", dtype="int16")
 
 #channel_0=np.fromfile("../../082919/chB_49_5V_18mV.dat", dtype="int16")
-channel_0=np.fromfile("../../Desktop/crystallize_data/110819/chH_51.5V_12mV.dat", dtype="int16")
+#channel_0=np.fromfile("../../Desktop/crystallize_data/110819/chH_51.5V_12mV.dat", dtype="int16")
 
 
 
@@ -108,8 +108,8 @@ for i in range(0, int(v_matrix.shape[0])):
         #print(max_val)
         
 	# Look for events with S1 and S2 from summed channel
-    s1_window = int(0.5/tscale)
-    s2_window = int(0.5/tscale)
+    s1_window = int(0.2/tscale)
+    s2_window = int(0.2/tscale)
     s1_thresh = 400
     s1_range_thresh = 10
     s2_thresh = 0.
@@ -130,14 +130,14 @@ for i in range(0, int(v_matrix.shape[0])):
     s1_found=False
     s2_found=False
 
-    sum_baseline=np.mean(v4_matrix[i,int(0./tscale):int(0.35/tscale)]) #avg 0.5 us, later in acquisition since there may be odd noise earlier?
+    sum_baseline=np.mean(v4_matrix[i,int(0./tscale):int(0.3/tscale)]) #avg 0.3 us, later in acquisition since there may be odd noise earlier?
     sum_data=v4_matrix[i,:]-sum_baseline
     
     # Do a moving average (sum) of the waveform with different time windows for s1, s2
 	# Look for where this value is maximized
 	# Look for the s2 using a moving average (sum) of the waveform over a wide window
     t_min_search=int(0./tscale)
-    t_max_search=int(4./tscale)
+    t_max_search=int(2./tscale)
     t_offset=int(0.00/tscale)
     s2_max_ind, s2_max=pulse_finder_area(sum_data,t_min_search,t_max_search,s2_window)
     #print(s2_max)
@@ -171,7 +171,7 @@ for i in range(0, int(v_matrix.shape[0])):
         ax=pl.subplot2grid((1,1),(0,0),colspan=2)
         pl.plot(t_matrix[i,:],sum_data,'blue')
         pl.xlim([0, 2])
-        pl.ylim([-5, 20])
+        pl.ylim([-10, 20])
         pl.xlabel('Time (us)')
         pl.ylabel('Millivolts')
         pl.title("Sum,"+ str(i))

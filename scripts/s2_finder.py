@@ -118,7 +118,7 @@ mpl.rcParams['figure.autolayout']=True
 mpl.rcParams['figure.figsize']=[16.0,12.0]
 
 
-data_dir="../../120419/Th_3.5g_3.9c_chC_16mV_liquid_test_source_at_bottom_1_3_bar_recovery_6_5min/"
+data_dir="../../072420/XeGasS1Testing_20mV_triggerChA_Th_1_5min/"
 channel_0=np.fromfile(data_dir+"wave0.dat", dtype="int16")
 channel_1=np.fromfile(data_dir+"wave1.dat", dtype="int16")
 channel_2=np.fromfile(data_dir+"wave2.dat", dtype="int16")
@@ -264,6 +264,7 @@ for i in range(0, int(v_matrix.shape[0])):
     sum_baseline=np.mean(v_matrix_all_ch[-1][i,baseline_start:baseline_end]) #avg ~us, avoiding trigger
     baselines = [np.mean(ch_j[i,baseline_start:baseline_end] ) for ch_j in v_matrix_all_ch]
     #print("baseline:", baselines)
+    #print("sum baseline:", sum_baseline)
     sum_data=v_matrix_all_ch[-1][i,:]-sum_baseline
     ch_data=[ch_j[i,:]-baseline_j for (ch_j,baseline_j) in zip(v_matrix_all_ch,baselines)]
     t0a=time.time()
@@ -552,8 +553,8 @@ for j in range(0, n_channels-1):
 s1_and_s2=s2_found_array*s1_found_array*(s2_width_array>0.2) # cut out events with unrealistically-short s2s
 s1_only_like=s2_found_array*np.logical_not(s1_found_array)*(s2_width_array<0.8)
 s2_like=s2_found_array*(s2_width_array>0.6)
-long_drift = t_drift_array > 8
-plot_selection=s1_and_s2#*(t_drift_array<7)
+long_drift = t_drift_array > 7.5
+plot_selection=s2_found_array#s1_and_s2#*long_drift#*(t_drift_array<7)
 print("events passing plot_selection cuts: ",np.size(s2_area_array[plot_selection]))
     
 pl.figure()
@@ -562,7 +563,7 @@ pl.axvline(x=np.mean(s2_area_array[plot_selection]),ls='--',color='r')
 pl.xlabel("S2 area (phd)")
 
 pl.figure()
-pl.hist(s1_area_array[plot_selection],bins=200,range=(0,200000/chA_spe_size))#(t_drift_array>0.3)
+pl.hist(s1_area_array[plot_selection],bins=200,range=(0,50000/chA_spe_size))#(t_drift_array>0.3)
 pl.axvline(x=np.mean(s1_area_array[plot_selection]),ls='--',color='r')
 pl.xlabel("S1 area (phd)")
 
