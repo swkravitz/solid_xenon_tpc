@@ -2,7 +2,7 @@ import numpy as np
 
 #function to find start and end of a pulse in event
 #inputs: event number and baseline subtracted waveform numpy array
-#ouputs: sample number for start, end and max of pulse
+#ouputs: sample number for start, end, and max of pulse
 
 def findaPulse( evt, waveforms_bls ):
     
