@@ -8,6 +8,9 @@ from scipy.signal import find_peaks
 from scipy.signal import argrelmin
 import time
 
+import PulseFinderSimple as pf
+import PulseQuantities as pq
+
 # set plotting style
 mpl.rcParams['font.size']=10
 mpl.rcParams['legend.fontsize']='small'
@@ -93,7 +96,7 @@ x = np.arange(0, wsize, 1)
 t = tscale*x
 t_matrix = np.repeat(t[np.newaxis,:], V.size/wsize, 0)
 
-tot_events = int(v_matrix.shape[0])
+n_events = int(v_matrix.shape[0])
 
 # perform baseline subtraction:
 # for now, using first 2 µs of event
@@ -103,8 +106,8 @@ baseline_end = int(2./tscale)
 # baseline subtracted (bls) waveforms saved in this matrix:
 v_bls_matrix_all_ch = np.zeros( np.shape(v_matrix_all_ch) ) # dims are (chan #, evt #, sample #)
 
-print("Total events: ",tot_events)
-for i in range(0, tot_events):
+print("Total events: ",n_events)
+for i in range(0, n_events):
     #if i%100==0: print("Event #",i)
     
     sum_baseline = np.mean( v_matrix_all_ch[-1][i,baseline_start:baseline_end] ) #avg ~us, avoiding trigger
@@ -120,7 +123,7 @@ for i in range(0, tot_events):
 # ==================================================================
 # now setup for pulse finding on the baseline-subtracted sum waveform
 
-# parameters
+# old parameters
 post_trigger = 0.5 # Was 0.2 for data before 11/22/19
 event_window = wsize*tscale
 trigger_time_us = event_window*(1-post_trigger)
@@ -138,18 +141,77 @@ s2_end_frac=0.05 # s2 pulse starts at this fraction of peak height above baselin
 s1_start_frac=0.1
 s1_end_frac=0.1
 
+# other parameters
+n_pulses = 2 # number of pulses to search for in each event
+
+# pulse RQs to save
+
+# one entry per channel
+max_ind_array = np.zeros((n_events,n_channels) )
+max_val_array = np.zeros((n_events,n_channels) )
+integral_array = np.zeros((n_events,n_channels) )
+s2_integral_array = np.zeros((n_events,n_channels) )
+s1_ch_array = np.zeros((n_events,n_channels-1) )
+s2_ch_array = np.zeros((n_events,n_channels-1) )
+
+# one entry per event
+s2_area_array = np.zeros(n_events)
+s1_area_array = np.zeros(n_events)
+s2_width_array = np.zeros(n_events)
+s2_height_array = np.zeros(n_events)
+s1_height_array = np.zeros(n_events)
+t_drift_array = np.zeros(n_events)
+s2_found_array = np.zeros(n_events,dtype='bool')
+s1_found_array = np.zeros(n_events,dtype='bool')
+
+
+start = np.zeros(n_pulses,dtype=np.int)
+end   = np.zeros(n_pulses,dtype=np.int)
+found = np.zeros(n_pulses,dtype=np.int)
+
+p_start = np.zeros((n_events,n_pulses),dtype=np.int)
+p_end   = np.zeros((n_events,n_pulses),dtype=np.int)
+p_found = np.zeros((n_events,n_pulses),dtype=np.int)
+
+p_area_sum = np.zeros((n_events,n_pulses))
+p_max_height_sum = np.zeros((n_events,n_pulses))
 
 inn=""
 
-for i in range(0, tot_events):
+#make copy of waveforms:
+v_bls_matrix_all_ch_cpy = v_bls_matrix_all_ch.copy()
+print("Running pulse finder...")
+for i in range(0, n_events):
+    if i%100==0: print("Event #",i)
+    
+    # Loop over number of pulses per event and save pulse quantities along the way
+    for p in range(n_pulses):
+        
+        start[p],end[p],found[p] = pf.findaPulse(i,v_bls_matrix_all_ch_cpy[-1,:,:])
+        
+        # Clear the waveform array of this pulse
+        if found[p] == 1:
+            v_bls_matrix_all_ch_cpy[-1,i,:] = pq.ClearWaveform( start[p], end[p]+1, v_bls_matrix_all_ch_cpy[-1,i,:] )
+        
+    # Sort pulses by start times, not areas
+    startinds = np.argsort(start)
+    pp = int(0)
+    for p_index in startinds:
+        p_found[i,pp] = found[p_index]
+        p_start[i,pp] = start[p_index]
+        p_end[i,pp] = end[p_index]
+        
+        if p_found[i,pp] == 1:
+            p_area_sum[i,pp] = pq.GetPulseArea( p_start[i,pp], p_end[i,pp]+1, v_bls_matrix_all_ch[-1,i,:] )
+            p_max_height_sum[i,pp] = pq.GetPulseMaxHeight( p_start[i,pp], p_end[i,pp]+1, v_bls_matrix_all_ch[-1,i,:] )
+            
+        pp += 1
+        # end second (sorted) pulse loop
     
     
     
     
-    
-    
-    
-    
+    # =============================================================
     # draw the waveform and the pulse bounds found
     if True and not inn=='q':
         
@@ -168,22 +230,33 @@ for i in range(0, tot_events):
                 pl.title("Bottom array, event "+str(i))
                 pl.grid(b=True,which='major',color='lightgray',linestyle='--')
             
-            pl.plot(t_matrix[i,:],v_bls_matrix_all_ch[i_chan,i,:],color=ch_colors[i_chan],label=ch_labels[i_chan])
-            pl.xlim([trigger_time_us-8,trigger_time_us+8])
-            pl.ylim([-10, 1000/chA_spe_size])
-            pl.xlabel('Time (us)')
+            #pl.plot(t_matrix[i,:],v_bls_matrix_all_ch[i_chan,i,:],color=ch_colors[i_chan],label=ch_labels[i_chan])
+            pl.plot( x, v_bls_matrix_all_ch[i_chan,i,:],color=ch_colors[i_chan],label=ch_labels[i_chan] )
+            #pl.xlim([trigger_time_us-8,trigger_time_us+8])
+            pl.xlim([wsize/2-4000,wsize/2+4000])
+            pl.ylim([-5, 3000/chA_spe_size])
+            #pl.xlabel('Time (us)')
+            pl.xlabel('Samples')
             pl.ylabel('phd/sample')
             pl.legend()
         
         ax = pl.subplot2grid((2,2),(1,0),colspan=2)
-        pl.plot(t_matrix[i,:],v_bls_matrix_all_ch[-1,i,:],'blue')
-        pl.xlim([0,25])
-        pl.ylim([-10, 4000/chA_spe_size])
-        pl.xlabel('Time (us)')
+        #pl.plot(t_matrix[i,:],v_bls_matrix_all_ch[-1,i,:],'blue')
+        pl.plot( x, v_bls_matrix_all_ch[-1,i,:],'blue' )
+        pl.xlim([0,wsize])
+        pl.ylim( [-5, 1.01*np.max(p_max_height_sum[i,:])])
+        #pl.xlabel('Time (us)')
+        pl.xlabel('Samples')
         pl.ylabel('phd/sample')
         pl.title("Sum, event "+ str(i))
         pl.grid(b=True,which='major',color='lightgray',linestyle='--')
         triggertime_us = (t[-1]*0.2)
+        
+        for pulse in range(n_pulses):
+            if p_found[i,pulse]:
+                ax.axvspan( p_start[i,pulse], p_end[i,pulse], alpha=0.25, color='blue')
+        
+        ax.axhline( 1, 0, wsize, linestyle='--', lw=0.5, color='orange')
         
         pl.draw()
         pl.show(block=0)
