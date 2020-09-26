@@ -9,12 +9,13 @@ def findaPulse( evt, waveforms_bls ):
     numSamples = len(waveforms_bls[0,:])
     boxAreaRolling = np.zeros(numSamples)
     tmpBoxArea = 0
+    areaStepSize = 5 # higher can help improve speed of initial search
     
     boxWidth = 1000
     nLookAhead = 1
     nLookBefore = 1
     
-    noiseThreshold = 1
+    noiseThreshold = 0.8
     
     quietCut = 3
     
@@ -26,7 +27,7 @@ def findaPulse( evt, waveforms_bls ):
     
     
     #first loop through event and find box areas
-    for t in range(numSamples-boxWidth-1):
+    for t in range(0,numSamples-boxWidth-1,areaStepSize):
         
         #for i in range(t,t+boxWidth):
         #    tmpBoxArea = tmpBoxArea + waveforms_bls[evt,i]

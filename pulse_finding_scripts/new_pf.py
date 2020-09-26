@@ -39,6 +39,7 @@ chH_spe_size = 30.3
 
 #load in raw data
 data_dir="../data/fewevts/"
+#data_dir="../data/po_5min/"
 channel_0 = np.fromfile(data_dir+"wave0.dat", dtype="int16")
 channel_1 = np.fromfile(data_dir+"wave1.dat", dtype="int16")
 channel_2 = np.fromfile(data_dir+"wave2.dat", dtype="int16")
@@ -129,41 +130,11 @@ event_window = wsize*tscale
 trigger_time_us = event_window*(1-post_trigger)
 trigger_time = int(trigger_time_us/tscale)
 t_offset = int(0.2/tscale)
-s1_window = int(0.5/tscale)
-s2_window = int(3.5/tscale)
-t_min_search = trigger_time-int(10./tscale)# was int(10./tscale)
-t_max_search = trigger_time+int(10./tscale)# was int(22./tscale)
-s1_thresh = 100/chA_spe_size
-s1_range_thresh = 10/chA_spe_size
-s2_thresh = 150/chA_spe_size
-s2_start_frac=0.06 # s2 pulse starts at this fraction of peak height above baseline
-s2_end_frac=0.05 # s2 pulse starts at this fraction of peak height above baseline
-s1_start_frac=0.1
-s1_end_frac=0.1
 
 # other parameters
 n_pulses = 2 # number of pulses to search for in each event
 
 # pulse RQs to save
-
-# one entry per channel
-max_ind_array = np.zeros((n_events,n_channels) )
-max_val_array = np.zeros((n_events,n_channels) )
-integral_array = np.zeros((n_events,n_channels) )
-s2_integral_array = np.zeros((n_events,n_channels) )
-s1_ch_array = np.zeros((n_events,n_channels-1) )
-s2_ch_array = np.zeros((n_events,n_channels-1) )
-
-# one entry per event
-s2_area_array = np.zeros(n_events)
-s1_area_array = np.zeros(n_events)
-s2_width_array = np.zeros(n_events)
-s2_height_array = np.zeros(n_events)
-s1_height_array = np.zeros(n_events)
-t_drift_array = np.zeros(n_events)
-s2_found_array = np.zeros(n_events,dtype='bool')
-s1_found_array = np.zeros(n_events,dtype='bool')
-
 
 start = np.zeros(n_pulses,dtype=np.int)
 end   = np.zeros(n_pulses,dtype=np.int)
@@ -173,8 +144,30 @@ p_start = np.zeros((n_events,n_pulses),dtype=np.int)
 p_end   = np.zeros((n_events,n_pulses),dtype=np.int)
 p_found = np.zeros((n_events,n_pulses),dtype=np.int)
 
-p_area_sum = np.zeros((n_events,n_pulses))
-p_max_height_sum = np.zeros((n_events,n_pulses))
+#p_area = np.zeros((n_events,n_pulses))
+#p_max_height = np.zeros((n_events,n_pulses))
+
+p_area = np.zeros((n_events,n_pulses))
+p_max_height = np.zeros((n_events,n_pulses))
+p_width = np.zeros((n_events,n_pulses))
+
+p_afs_2l = np.zeros((n_events,n_pulses),dtype=np.int)
+p_afs_2r = np.zeros((n_events,n_pulses),dtype=np.int)
+p_afs_1 = np.zeros((n_events,n_pulses),dtype=np.int)
+p_afs_25 = np.zeros((n_events,n_pulses),dtype=np.int)
+p_afs_50 = np.zeros((n_events,n_pulses),dtype=np.int)
+p_afs_75 = np.zeros((n_events,n_pulses),dtype=np.int)
+p_afs_99 = np.zeros((n_events,n_pulses),dtype=np.int)
+            
+p_hfs_10l = np.zeros((n_events,n_pulses),dtype=np.int)
+p_hfs_50l = np.zeros((n_events,n_pulses),dtype=np.int)
+p_hfs_10r = np.zeros((n_events,n_pulses),dtype=np.int)
+p_hfs_50r = np.zeros((n_events,n_pulses),dtype=np.int)
+
+p_mean_time = np.zeros((n_events,n_pulses))
+p_rms_time = np.zeros((n_events,n_pulses))
+
+
 
 inn=""
 
@@ -188,8 +181,7 @@ for i in range(0, n_events):
     for p in range(n_pulses):
         
         start[p],end[p],found[p] = pf.findaPulse(i,v_bls_matrix_all_ch_cpy[-1,:,:])
-        
-        # Clear the waveform array of this pulse
+        # Clear the waveform array of the found pulse:
         if found[p] == 1:
             v_bls_matrix_all_ch_cpy[-1,i,:] = pq.ClearWaveform( start[p], end[p]+1, v_bls_matrix_all_ch_cpy[-1,i,:] )
         
@@ -202,14 +194,20 @@ for i in range(0, n_events):
         p_end[i,pp] = end[p_index]
         
         if p_found[i,pp] == 1:
-            p_area_sum[i,pp] = pq.GetPulseArea( p_start[i,pp], p_end[i,pp]+1, v_bls_matrix_all_ch[-1,i,:] )
-            p_max_height_sum[i,pp] = pq.GetPulseMaxHeight( p_start[i,pp], p_end[i,pp]+1, v_bls_matrix_all_ch[-1,i,:] )
+            
+            p_area[i,pp] = pq.GetPulseArea( p_start[i,pp], p_end[i,pp]+1, v_bls_matrix_all_ch[-1,i,:] )
+            p_max_height[i,pp] = pq.GetPulseMaxHeight( p_start[i,pp], p_end[i,pp]+1, v_bls_matrix_all_ch[-1,i,:] )
+            
+            (p_afs_2l[i,pp], p_afs_2r[i,pp], p_afs_1[i,pp], p_afs_25[i,pp], p_afs_50[i,pp], p_afs_75[i,pp], p_afs_99[i,pp]) = pq.GetAreaFractionSamples( p_start[i,pp], p_end[i,pp]+1, v_bls_matrix_all_ch[-1,i,:] )
+            
+            p_hfs_10l[i,pp], p_hfs_50l[i,pp], p_hfs_10r[i,pp], p_hfs_50r[i,pp] = pq.GetHeightFractionSamples( p_start[i,pp], p_end[i,pp]+1, v_bls_matrix_all_ch[-1,i,:] )
+            #   Using height fractions for mean and RMS
+            p_mean_time[i,pp], p_rms_time[i,pp] = pq.GetPulseMeanAndRMS( p_hfs_10l[i,pp], p_hfs_10r[i,pp]+1, v_bls_matrix_all_ch[-1,i,:] )
+            
+            p_width[i,pp] = p_afs_2r[i,pp] - p_afs_2l[i,pp]
             
         pp += 1
         # end second (sorted) pulse loop
-    
-    
-    
     
     # =============================================================
     # draw the waveform and the pulse bounds found
@@ -244,7 +242,7 @@ for i in range(0, n_events):
         #pl.plot(t_matrix[i,:],v_bls_matrix_all_ch[-1,i,:],'blue')
         pl.plot( x, v_bls_matrix_all_ch[-1,i,:],'blue' )
         pl.xlim([0,wsize])
-        pl.ylim( [-5, 1.01*np.max(p_max_height_sum[i,:])])
+        pl.ylim( [-5, 1.01*np.max(p_max_height[i,:])])
         #pl.xlabel('Time (us)')
         pl.xlabel('Samples')
         pl.ylabel('phd/sample')
@@ -264,3 +262,18 @@ for i in range(0, n_events):
         fig.clf()
         
 # end of pulse finding and plotting event loop
+
+
+# =============================================================
+# =============================================================
+# now make plots of interesting pulse quantities
+
+pl.figure()
+pl.scatter( p_area.flatten(), tscale*p_width.flatten(), 1 )
+pl.xlabel("Pulse Area (phd)")
+pl.ylabel("Pulse Width (us)")
+pl.xlim([1,3e5])
+pl.ylim([0.01, 5])
+pl.xscale("log")
+#pl.yscale("log")
+pl.show()
