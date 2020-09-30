@@ -179,8 +179,10 @@ for i in range(0, n_events):
     
     # Loop over number of pulses per event and save pulse quantities along the way
     for p in range(n_pulses):
-        
+        t0 = time.time()
         start[p],end[p],found[p] = pf.findaPulse(i,v_bls_matrix_all_ch_cpy[-1,:,:])
+        t1 = time.time()
+        print(t1-t0)
         # Clear the waveform array of the found pulse:
         if found[p] == 1:
             v_bls_matrix_all_ch_cpy[-1,i,:] = pq.ClearWaveform( start[p], end[p]+1, v_bls_matrix_all_ch_cpy[-1,i,:] )
@@ -250,9 +252,10 @@ for i in range(0, n_events):
         pl.grid(b=True,which='major',color='lightgray',linestyle='--')
         triggertime_us = (t[-1]*0.2)
         
+        colors = ['blue','green']
         for pulse in range(n_pulses):
             if p_found[i,pulse]:
-                ax.axvspan( p_start[i,pulse], p_end[i,pulse], alpha=0.25, color='blue')
+                ax.axvspan( p_start[i,pulse], p_end[i,pulse], alpha=0.25, color=colors[pulse])
         
         ax.axhline( 1, 0, wsize, linestyle='--', lw=0.5, color='orange')
         
