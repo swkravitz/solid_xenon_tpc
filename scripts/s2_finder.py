@@ -118,15 +118,21 @@ mpl.rcParams['figure.autolayout']=True
 mpl.rcParams['figure.figsize']=[16.0,12.0]
 
 
-data_dir="../../072420/XeGasS1Testing_20mV_triggerChA_Th_1_5min/"
-channel_0=np.fromfile(data_dir+"wave0.dat", dtype="int16")
-channel_1=np.fromfile(data_dir+"wave1.dat", dtype="int16")
-channel_2=np.fromfile(data_dir+"wave2.dat", dtype="int16")
-channel_3=np.fromfile(data_dir+"wave3.dat", dtype="int16")
-channel_4=np.fromfile(data_dir+"wave4.dat", dtype="int16")
-channel_5=np.fromfile(data_dir+"wave5.dat", dtype="int16")
-channel_6=np.fromfile(data_dir+"wave6.dat", dtype="int16")
-channel_7=np.fromfile(data_dir+"wave7.dat", dtype="int16")
+data_dir="../../092420/bkg_3.5g_3.9c_1.0bara_25mV_fan_in_4_allchanOR_post30sfill_5min/"
+event_window=25. # in us
+wsize=int(500*event_window) # samples per waveform # 12500 for 25 us
+max_evts=-1 #25000 # -1 means read in all entries; 25000 is roughly the max allowed in memory on the DAQ computer
+max_pts=-1 # do not change
+if max_evts>0:
+    max_pts = wsize*max_evts
+channel_0=np.fromfile(data_dir+"wave0.dat", dtype="int16", count=max_pts)
+channel_1=np.fromfile(data_dir+"wave1.dat", dtype="int16", count=max_pts)
+channel_2=np.fromfile(data_dir+"wave2.dat", dtype="int16", count=max_pts)
+channel_3=np.fromfile(data_dir+"wave3.dat", dtype="int16", count=max_pts)
+channel_4=np.fromfile(data_dir+"wave4.dat", dtype="int16", count=max_pts)
+channel_5=np.fromfile(data_dir+"wave5.dat", dtype="int16", count=max_pts)
+channel_6=np.fromfile(data_dir+"wave6.dat", dtype="int16", count=max_pts)
+channel_7=np.fromfile(data_dir+"wave7.dat", dtype="int16", count=max_pts)
 
 #channel_0=np.fromfile("../../Desktop/crystallize_data/t3-0805/A-thorium-4kv-t3.dat", dtype="int16")
 #channel_1=np.fromfile("../../Desktop/crystallize_data/t3-0805/B-thorium-4kv-t3.dat", dtype="int16")
@@ -140,7 +146,6 @@ channel_7=np.fromfile(data_dir+"wave7.dat", dtype="int16")
 
 
 vscale=(2000.0/16384.0)
-wsize=12500
 chA_spe_size = 29.02
 V=vscale*channel_0/chA_spe_size # ch A, calib size 644 
 # Ensure we have an integer number of events
@@ -221,15 +226,17 @@ for i in range(0, int(v_matrix.shape[0])):
 
         
     # Look for events with S1 and S2 from summed channel
+    n_top = int((n_channels-1)/2)
+    top_channels=np.array(range(n_top),int)
+    bottom_channels=np.array(range(n_top,2*n_top),int)
     post_trigger=0.5 # Was 0.2 for data before 11/22/19
-    event_window=25.
     trigger_time_us=event_window*(1-post_trigger)
     trigger_time=int(trigger_time_us/tscale)
     t_offset=int(0.2/tscale)
     s1_window = int(0.5/tscale)
-    s2_window = int(3.5/tscale)
-    t_min_search=trigger_time-int(10./tscale)# was int(10./tscale)
-    t_max_search=trigger_time+int(10./tscale)# was int(22./tscale)
+    s2_window = int(7.0/tscale)
+    t_min_search=trigger_time-int(event_window/2.1/tscale)# was int(10./tscale)
+    t_max_search=trigger_time+int(event_window/2.1/tscale)# was int(22./tscale)
     s1_thresh = 100/chA_spe_size
     s1_range_thresh = 10/chA_spe_size
     s2_thresh = 150/chA_spe_size
@@ -329,18 +336,17 @@ for i in range(0, int(v_matrix.shape[0])):
         #s2_width_array.append(s2_width)
         #s2_found_array.append(s2_found)
         s2_mean = np.mean(s2_ch_area[:-1])
+        s2_top_mean = np.mean(np.array(s2_ch_area)[top_channels])
         fiducial = True
        
         for k in range(0,len(s2_ch_area)-1):
             #print(s2_ch_area[k], s2_mean)
-            if not (s2_ch_area[k] > 0.3*s2_mean and s2_ch_area[k] < 2*s2_mean):
+            if not (s2_ch_area[k] > 0.3*s2_top_mean and s2_ch_area[k] < 2*s2_top_mean):
                 fiducial = False
                 break
         #print("fiducial? ", fiducial)        
-        if fiducial:
-            center[i] = True
-        elif not fiducial:
-            center[i] = False 	
+        center[i] = fiducial
+         	
         # Now look for a prior s1
         #print("t_min_search: ",t_min_search,"t_max: ",s2_start_pos-s1_window-t_offset)
         s1_max_ind, s1_max=pulse_finder_area(sum_data,t_min_search,s2_start_pos-s1_window-t_offset,s1_window)
@@ -397,6 +403,9 @@ for i in range(0, int(v_matrix.shape[0])):
     #s2_2 = merge_start > -1
     #print("merge_start:", merge_start)
     #print("merge_end:", merge_end)
+    s2_bottom = np.sum(np.array(s2_ch_area)[bottom_channels])
+    s2_top = np.sum(np.array(s2_ch_area)[top_channels])
+    s2_tba = (s2_top-s2_bottom)/(s2_top+s2_bottom)
     if True and not inn=='q':
     #if s1_found and s2_found:
         fig=pl.figure(1,figsize=(30, 20))
@@ -426,7 +435,7 @@ for i in range(0, int(v_matrix.shape[0])):
                     ax.axvspan(s1_start_pos*tscale, s1_end_pos*tscale, alpha=0.3, color='green')
             
             pl.plot(t_matrix[i,:],v_matrix_all_ch[i_chan][i,:],color=ch_colors[i_chan],label=ch_labels[i_chan])
-            pl.xlim([trigger_time_us-8,trigger_time_us+8])
+            pl.xlim([trigger_time_us-10,trigger_time_us+10])
             pl.ylim([0, 1000/chA_spe_size])
             pl.xlabel('Time (us)')
             pl.ylabel('Phd/sample')
@@ -438,7 +447,7 @@ for i in range(0, int(v_matrix.shape[0])):
                     
         ax=pl.subplot2grid((2,2),(1,0),colspan=2)
         pl.plot(t_matrix[i,:],vsum_matrix[i,:],'blue')
-        pl.xlim([0,25])
+        pl.xlim([0,event_window])
         pl.ylim([0, 4000/chA_spe_size])
         pl.xlabel('Time (us)')
         pl.ylabel('Phd/sample')
@@ -502,13 +511,22 @@ for i in range(0, int(v_matrix.shape[0])):
         fig.clf()
 s2_frac_array = s2_ch_array/s2_area_array.reshape(np.size(s2_area_array),1)
 s1_frac_array = s1_ch_array/s1_area_array.reshape(np.size(s1_area_array),1)
-print("s2_frac_Array sum:",np.sum(s2_frac_array, axis=1))
-print("s1_frac_array sum:", np.sum(s1_frac_array, axis=1))
+#print("s2_frac_Array sum:",np.sum(s2_frac_array, axis=1))
+#print("s1_frac_array sum:", np.sum(s1_frac_array, axis=1))
+s2_max_frac_array = np.max(s2_frac_array, axis=1)
+s1_max_frac_array = np.max(s1_frac_array, axis=1)
+s2_top_array = np.sum(s2_ch_array[:,top_channels], axis=1)
+s2_bottom_array = np.sum(s2_ch_array[:,bottom_channels], axis=1)
+s2_tba = (s2_top_array-s2_bottom_array)/(s2_top_array+s2_bottom_array)
+s1_top_array = np.sum(s1_ch_array[:,top_channels], axis=1)
+s1_bottom_array = np.sum(s1_ch_array[:,bottom_channels], axis=1)
+s1_tba = (s1_top_array-s1_bottom_array)/(s1_top_array+s1_bottom_array)
+
 s2_frac_sum=(np.sum(s2_frac_array, axis=1))[s2_found_array*s1_found_array]
 print("s2_frac_sum where not 1:",s2_frac_sum[np.where(s2_frac_sum < 0.99)[0]])
-print("s2_found_array:", len(s2_found_array))
-print("s1_found_array:", len(s1_found_array))
-print("center:", len(center))
+print("s2_found_array:", np.sum(s2_found_array))
+print("s1_found_array:", np.sum(s1_found_array))
+print("center:", np.sum(center))
 print("Events w/ S1+S2 fiducial: ",s2_area_array[s2_found_array*s1_found_array*center].size)
 print("Events w/ S1+S2: ",s2_area_array[s2_found_array*s1_found_array].size)
 print("S2 Area mean: ", np.mean(s2_area_array[s2_found_array*s1_found_array]))
@@ -516,22 +534,6 @@ print("S2 width mean: ", np.mean(s2_width_array[s2_found_array*s1_found_array]))
 print("S2 height mean: ", np.mean(s2_height_array[s2_found_array*s1_found_array]))
 print("Drift time mean: ", np.mean(t_drift_array[s2_found_array*s1_found_array]))
 print("S1 Area mean: ", np.mean(s1_area_array[s2_found_array*s1_found_array]))
-
-pl.figure(figsize=(30, 20))
-for j in range(0, n_channels-1):   
-    pl.subplot(4,2,j+1)
-    pl.hist(s1_ch_array[s2_found_array*s1_found_array][:,j],bins=100,range=(0,100))
-    #pl.yscale('log')
-    pl.xlabel("S1 area (phd)")
-    pl.title('Ch '+str(j))
-pl.figure(figsize=(30, 20))
-for j in range(0, n_channels-1):   
-    pl.subplot(4,2,j+1)
-    pl.hist(s2_ch_array[s2_found_array*s1_found_array][:,j],bins=100,range=(0,4000))
-    #pl.yscale('log')
-    pl.xlabel("S2 area (phd)")
-    pl.title('Ch '+str(j))
-
 
 pl.figure(figsize=(30,20))
 for j in range(0, n_channels-1):
@@ -549,42 +551,109 @@ for j in range(0, n_channels-1):
     pl.xlabel("drift time")
     pl.ylabel("S2_CH_"+ch_labels[j]+"/S2")
 
+
 # Event selection for summary plots, i.e. analysis cuts
 s1_and_s2=s2_found_array*s1_found_array*(s2_width_array>0.2) # cut out events with unrealistically-short s2s
-s1_only_like=s2_found_array*np.logical_not(s1_found_array)*(s2_width_array<0.8)
+s1_only_like=s2_found_array*np.logical_not(s1_found_array)*(s2_width_array<0.6)
 s2_like=s2_found_array*(s2_width_array>0.6)
-long_drift = t_drift_array > 7.5
-plot_selection=s2_found_array#s1_and_s2#*long_drift#*(t_drift_array<7)
+print("S2-like events (pulse found, long width): ",np.size(s2_area_array[s2_like]))
+long_drift = t_drift_array > 3
+save_plots=True
+cut_name="S1S2"
+plot_selection=s1_and_s2#*(s2_tba>0)*(s1_tba<0)#*(t_drift_array>6)#s2_found_array#
 print("events passing plot_selection cuts: ",np.size(s2_area_array[plot_selection]))
+    
+#pl.figure(figsize=(30, 20))
+#for j in range(0, n_channels-1):   
+#    pl.subplot(4,2,j+1)
+#    pl.hist(s1_ch_array[plot_selection][:,j],bins=100,range=(0,100))
+#    #pl.yscale('log')
+#    pl.xlabel("S1 area (phd)")
+#    pl.title('Ch '+str(j))
+#pl.figure(figsize=(30, 20))
+#for j in range(0, n_channels-1):   
+#    pl.subplot(4,2,j+1)
+#    pl.hist(s2_ch_array[plot_selection][:,j],bins=100,range=(0,4000))
+#    #pl.yscale('log')
+#    pl.xlabel("S2 area (phd)")
+#    pl.title('Ch '+str(j))
+    
+pl.figure(figsize=(30, 20))
+for j in range(0, n_channels-1):   
+    pl.subplot(4,2,j+1)
+    pl.hist(s1_frac_array[plot_selection][:,j],bins=100,range=(0,1))
+    #pl.yscale('log')
+    pl.xlabel("S1 area fraction")
+    pl.title('Ch '+str(j))
+if save_plots: pl.savefig(data_dir+"S1_ch_area_frac_"+cut_name+".png")
+
+pl.figure(figsize=(30, 20))
+for j in range(0, n_channels-1):   
+    pl.subplot(4,2,j+1)
+    pl.hist(s2_frac_array[plot_selection][:,j],bins=100,range=(0,1))
+    #pl.yscale('log')
+    pl.xlabel("S2 area fraction")
+    pl.title('Ch '+str(j))
+if save_plots: pl.savefig(data_dir+"S2_ch_area_frac_"+cut_name+".png")
+    
+pl.figure()
+pl.hist(s2_max_frac_array[plot_selection],bins=100,range=[0,1])
+pl.axvline(x=np.mean(s2_max_frac_array[plot_selection]),ls='--',color='r')
+pl.xlabel("S2 area max channel fraction")
+if save_plots: pl.savefig(data_dir+"S2_max_ch_frac_"+cut_name+".png")
+
+pl.figure()
+pl.hist(s1_max_frac_array[plot_selection],bins=100,range=[0,1])
+pl.axvline(x=np.mean(s1_max_frac_array[plot_selection]),ls='--',color='r')
+pl.xlabel("S1 area max channel fraction")
+if save_plots: pl.savefig(data_dir+"S1_max_ch_frac_"+cut_name+".png")
     
 pl.figure()
 pl.hist(s2_area_array[plot_selection],bins=100)#,range=(0,1e6/chA_spe_size))
 pl.axvline(x=np.mean(s2_area_array[plot_selection]),ls='--',color='r')
 pl.xlabel("S2 area (phd)")
+if save_plots: pl.savefig(data_dir+"S2_area_"+cut_name+".png")
 
 pl.figure()
-pl.hist(s1_area_array[plot_selection],bins=200,range=(0,50000/chA_spe_size))#(t_drift_array>0.3)
+pl.hist(s1_area_array[plot_selection],bins=100,range=(0,10000))#(t_drift_array>0.3)
 pl.axvline(x=np.mean(s1_area_array[plot_selection]),ls='--',color='r')
 pl.xlabel("S1 area (phd)")
+if save_plots: pl.savefig(data_dir+"S1_area_"+cut_name+".png")
+
+pl.figure()
+pl.hist(s2_tba[plot_selection],bins=100,range=(-1,1))
+pl.axvline(x=np.mean(s2_tba[plot_selection]),ls='--',color='r')
+pl.xlabel("S2 TBA (t-b)/(t+b)")
+if save_plots: pl.savefig(data_dir+"S2_TBA_"+cut_name+".png")
+
+pl.figure()
+pl.hist(s1_tba[plot_selection],bins=100,range=(-1,1))
+pl.axvline(x=np.mean(s1_tba[plot_selection]),ls='--',color='r')
+pl.xlabel("S1 TBA (t-b)/(t+b)")
+if save_plots: pl.savefig(data_dir+"S1_TBA_"+cut_name+".png")
 
 pl.figure()
 pl.hist(s2_width_array[plot_selection],bins=100)
 pl.axvline(x=np.mean(s2_width_array[plot_selection]),ls='--',color='r')
 pl.xlabel("S2 width (us)")
+if save_plots: pl.savefig(data_dir+"S2_width_"+cut_name+".png")
 
 pl.figure()
 pl.hist(s2_height_array[plot_selection],bins=100)
 pl.axvline(x=np.mean(s2_height_array[plot_selection]),ls='--',color='r')
 pl.xlabel("S2 height (phd/sample)")
+if save_plots: pl.savefig(data_dir+"S2_height_"+cut_name+".png")
 
 pl.figure()
 pl.hist(s1_height_array[plot_selection],bins=100)
 pl.axvline(x=np.mean(s1_height_array[plot_selection]),ls='--',color='r')
 pl.xlabel("S1 height (phd/sample)")
+if save_plots: pl.savefig(data_dir+"S1_height_"+cut_name+".png")
                                      
 pl.figure()
 pl.hist(t_drift_array[plot_selection],bins=100)
 pl.xlabel("drift time (us)")
+if save_plots: pl.savefig(data_dir+"drift_time_"+cut_name+".png")
 
 t_drift_plot=t_drift_array[plot_selection]
 s2_width_plot=s2_width_array[plot_selection]
@@ -597,7 +666,7 @@ pl.xlabel("drift time (us)")
 pl.ylabel("S2 area (phd)")
 
 
-drift_bins=np.linspace(0,5,50)
+drift_bins=np.linspace(0,10,100)
 drift_ind=np.digitize(t_drift_plot, bins=drift_bins)
 s2_means=np.zeros(np.shape(drift_bins))
 s2_std_err=np.ones(np.shape(drift_bins))*10000
@@ -608,12 +677,14 @@ for i_bin in range(len(drift_bins)):
     s2_means[i_bin]=np.median(s2_area_i_bin)
     s2_std_err[i_bin]=np.std(s2_area_i_bin)/np.sqrt(len(s2_area_i_bin))
 pl.errorbar(drift_bins, s2_means, yerr=s2_std_err, linewidth=3, elinewidth=3, capsize=5, capthick=4, color='red')
+if save_plots: pl.savefig(data_dir+"S2_area_vs_drift_"+cut_name+".png")
 
 pl.figure()
 pl.scatter(s1_area_plot,s2_area_plot)
 pl.xlabel("S1 area (phd)")
 pl.ylabel("S2 area (phd)")
 pl.yscale("log")
+if save_plots: pl.savefig(data_dir+"S2_area_vs_S1_area_"+cut_name+".png")
 
 pl.figure()
 pl.scatter(t_drift_plot,s2_height_plot)
@@ -628,6 +699,7 @@ for i_bin in range(len(drift_bins)):
     s2_height_means[i_bin]=np.median(s2_height_i_bin)
     s2_height_std_err[i_bin]=np.std(s2_height_i_bin)/np.sqrt(len(s2_height_i_bin))
 pl.errorbar(drift_bins, s2_height_means, yerr=s2_height_std_err, linewidth=3, elinewidth=3, capsize=5, capthick=4, color='red')
+if save_plots: pl.savefig(data_dir+"S2_height_vs_drift_"+cut_name+".png")
 
 pl.figure()
 pl.scatter(s2_area_plot,s2_width_plot)
