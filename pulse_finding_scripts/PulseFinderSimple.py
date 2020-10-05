@@ -1,4 +1,24 @@
 import numpy as np
+import time
+
+
+def wfm_convolve(data, window, avg=False):
+    # Assumes data is already baseline-subtracted
+    weights = np.repeat(1.0, window)
+    if avg: weights /= window  # do avg instead of sum
+    return np.convolve(data, weights, 'same')
+
+
+def pulse_finder_area(data, t_min_search, t_max_search, window):
+    # Assumes data is already baseline-subtracted
+    if t_max_search < t_min_search + 1:
+        return (-1, -1)
+
+    data_conv = wfm_convolve(data, window)
+    # Search only w/in search range, offset so that max_ind is the start of the window rather than the center
+    max_ind = np.argmax(data_conv[int(t_min_search + window / 2):int(t_max_search + window / 2)]) + int(t_min_search)
+    return (max_ind, data_conv[max_ind + int(window / 2)])
+
 
 #function to find start and end of a pulse in event
 #inputs: event number and baseline subtracted waveform numpy array
@@ -11,7 +31,7 @@ def findaPulse( evt, waveforms_bls ):
     tmpBoxArea = 0
     areaStepSize = 5 # higher can help improve speed of initial search
     
-    boxWidth = 1000
+    boxWidth = 50 # in samples
     nLookAhead = 1
     nLookBefore = 1
     
@@ -21,27 +41,43 @@ def findaPulse( evt, waveforms_bls ):
     
     width_cut = 8000
     
+    #min_area = 1 # box area must be at least this big
+    
     pulse_start = 99999
     pulse_end = 99999
     foundPulse = int(0) # flag indicating a pulse was found
     
-    
+    #t0 = time.time()
     #first loop through event and find box areas
-    for t in range(0,numSamples-boxWidth-1,areaStepSize):
-        
-        #for i in range(t,t+boxWidth):
-        #    tmpBoxArea = tmpBoxArea + waveforms_bls[evt,i]
-        tmpBoxArea = np.sum(waveforms_bls[evt,t:t+boxWidth])
-        
-        boxAreaRolling[t] = tmpBoxArea
+    #for t in range(0,numSamples-boxWidth-1,areaStepSize):
+    #    tmpBoxArea = np.sum(waveforms_bls[evt,t:t+boxWidth])
+    #    boxAreaRolling[t] = tmpBoxArea
         
     #find max area and the beginning of box that encloses that area
+    #max_boxArea_value = np.max(boxAreaRolling)
+    #max_boxArea_sample = np.argmax(boxAreaRolling)
+    #print('max area = {:0.1f} phd located at {:d}'.format(max_boxArea_value,max_boxArea_sample))
+    # find waveform max value and location of max value inside box
+    #max_pulse_height = np.max(waveforms_bls[evt,max_boxArea_sample:max_boxArea_sample+boxWidth])
+    #max_pulse_sample = max_boxArea_sample + np.argmax(waveforms_bls[evt,max_boxArea_sample:max_boxArea_sample+boxWidth])
+    #t1 = time.time()
+    #print(t1-t0)
+    
+    # alternate way:
+    t0 = time.time()
+    boxAreaRolling = wfm_convolve( waveforms_bls[evt,:] , boxWidth )
+    # find max area and the beginning of box that encloses that area
     max_boxArea_value = np.max(boxAreaRolling)
     max_boxArea_sample = np.argmax(boxAreaRolling)
+    #print('max area = {:0.1f} phd located at {:d}'.format(max_boxArea_value,max_boxArea_sample))
+    # find waveform max value and location of max value inside box
+    #max_pulse_sample = max_boxArea_sample
+    max_pulse_sample = (max_boxArea_sample-int(boxWidth/2)) + np.argmax(waveforms_bls[evt,(max_boxArea_sample-int(boxWidth/2)):(max_boxArea_sample+int(boxWidth/2))])
+    max_pulse_height = waveforms_bls[evt,max_pulse_sample]
     
-    #now find waveform max value and location of max value inside box
-    max_pulse_height = np.max(waveforms_bls[evt,max_boxArea_sample:max_boxArea_sample+boxWidth])
-    max_pulse_sample = max_boxArea_sample + np.argmax(waveforms_bls[evt,max_boxArea_sample:max_boxArea_sample+boxWidth])
+    #t1 = time.time()
+    #print(t1-t0)
+    
     
     # FINDING PULSE START
     #start at max value of pulse and step backward to find point where pulse avg goes

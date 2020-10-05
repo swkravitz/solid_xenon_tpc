@@ -19,7 +19,9 @@ mpl.rcParams['figure.figsize']=[8.0,6.0]
 
 # ==================================================================
 # define DAQ and other parameters
-wsize = 12500             # size of event window in samples. 1 sample = 2 ns.
+#wsize = 12500             # size of event window in samples. 1 sample = 2 ns.
+event_window = 25.  # in us
+wsize = int(500 * event_window)  # samples per waveform # 12500 for 25 us
 vscale = (2000.0/16384.0) # = 0.122 mV/ADCC, vertical scale
 tscale = (8.0/4096.0)     # = 0.002 µs/sample, time scale
 
@@ -38,16 +40,23 @@ chH_spe_size = 30.3
 # ==================================================================
 
 #load in raw data
-data_dir="../data/fewevts/"
+data_dir="../data/bkg_3.5g_3.9c_27mV_7_postrecover2_5min/"
+#data_dir="../data/fewevts/"
 #data_dir="../data/po_5min/"
-channel_0 = np.fromfile(data_dir+"wave0.dat", dtype="int16")
-channel_1 = np.fromfile(data_dir+"wave1.dat", dtype="int16")
-channel_2 = np.fromfile(data_dir+"wave2.dat", dtype="int16")
-channel_3 = np.fromfile(data_dir+"wave3.dat", dtype="int16")
-channel_4 = np.fromfile(data_dir+"wave4.dat", dtype="int16")
-channel_5 = np.fromfile(data_dir+"wave5.dat", dtype="int16")
-channel_6 = np.fromfile(data_dir+"wave6.dat", dtype="int16")
-channel_7 = np.fromfile(data_dir+"wave7.dat", dtype="int16")
+max_evts = 1000  # 25000 # -1 means read in all entries; 25000 is roughly the max allowed in memory on the DAQ computer
+max_pts = -1  # do not change
+if max_evts > 0:
+    max_pts = wsize * max_evts
+channel_0 = np.fromfile(data_dir + "wave0.dat", dtype="int16", count=max_pts)
+channel_1 = np.fromfile(data_dir + "wave1.dat", dtype="int16", count=max_pts)
+channel_2 = np.fromfile(data_dir + "wave2.dat", dtype="int16", count=max_pts)
+channel_3 = np.fromfile(data_dir + "wave3.dat", dtype="int16", count=max_pts)
+channel_4 = np.fromfile(data_dir + "wave4.dat", dtype="int16", count=max_pts)
+channel_5 = np.fromfile(data_dir + "wave5.dat", dtype="int16", count=max_pts)
+channel_6 = np.fromfile(data_dir + "wave6.dat", dtype="int16", count=max_pts)
+channel_7 = np.fromfile(data_dir + "wave7.dat", dtype="int16", count=max_pts)
+
+t0 = time.time()
 
 # scale waveforms to get units of mV/sample
 # then for each channel ensure we 
@@ -97,7 +106,10 @@ x = np.arange(0, wsize, 1)
 t = tscale*x
 t_matrix = np.repeat(t[np.newaxis,:], V.size/wsize, 0)
 
-n_events = int(v_matrix.shape[0])
+tot_events = int(v_matrix.shape[0])
+
+#only run over n_events
+n_events = max_evts
 
 # perform baseline subtraction:
 # for now, using first 2 µs of event
@@ -107,9 +119,9 @@ baseline_end = int(2./tscale)
 # baseline subtracted (bls) waveforms saved in this matrix:
 v_bls_matrix_all_ch = np.zeros( np.shape(v_matrix_all_ch) ) # dims are (chan #, evt #, sample #)
 
-print("Total events: ",n_events)
+print("Total events: ",tot_events)
+print("Only processing {:d} events...".format(n_events))
 for i in range(0, n_events):
-    #if i%100==0: print("Event #",i)
     
     sum_baseline = np.mean( v_matrix_all_ch[-1][i,baseline_start:baseline_end] ) #avg ~us, avoiding trigger
     baselines = [ np.mean( ch_j[i,baseline_start:baseline_end] ) for ch_j in v_matrix_all_ch ]
@@ -131,8 +143,8 @@ trigger_time_us = event_window*(1-post_trigger)
 trigger_time = int(trigger_time_us/tscale)
 t_offset = int(0.2/tscale)
 
-# other parameters
-n_pulses = 2 # number of pulses to search for in each event
+# number of pulses to search for in each event:
+n_pulses = 2 
 
 # pulse RQs to save
 
@@ -173,16 +185,15 @@ inn=""
 
 #make copy of waveforms:
 v_bls_matrix_all_ch_cpy = v_bls_matrix_all_ch.copy()
-print("Running pulse finder...")
+print("Running pulse finder on {:d} events...".format(n_events))
 for i in range(0, n_events):
     if i%100==0: print("Event #",i)
     
     # Loop over number of pulses per event and save pulse quantities along the way
     for p in range(n_pulses):
-        t0 = time.time()
+        
         start[p],end[p],found[p] = pf.findaPulse(i,v_bls_matrix_all_ch_cpy[-1,:,:])
-        t1 = time.time()
-        print(t1-t0)
+        
         # Clear the waveform array of the found pulse:
         if found[p] == 1:
             v_bls_matrix_all_ch_cpy[-1,i,:] = pq.ClearWaveform( start[p], end[p]+1, v_bls_matrix_all_ch_cpy[-1,i,:] )
@@ -213,7 +224,7 @@ for i in range(0, n_events):
     
     # =============================================================
     # draw the waveform and the pulse bounds found
-    if True and not inn=='q':
+    if False and not inn=='q':
         
         fig = pl.figure(1,figsize=(10, 7))
         pl.rc('xtick', labelsize=10)
@@ -266,6 +277,8 @@ for i in range(0, n_events):
         
 # end of pulse finding and plotting event loop
 
+t1 = time.time()
+print('time to complete: ',t1-t0)
 
 # =============================================================
 # =============================================================
