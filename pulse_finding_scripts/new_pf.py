@@ -40,9 +40,11 @@ chH_spe_size = 30.3
 # ==================================================================
 
 #load in raw data
-data_dir="../data/bkg_3.5g_3.9c_27mV_7_postrecover2_5min/"
+#data_dir="../data/bkg_3.5g_3.9c_27mV_7_postrecover2_5min/"
+data_dir="../data/bkg_3.5g_3.9c_27mV_1_5min/"
 #data_dir="../data/fewevts/"
 #data_dir="../data/po_5min/"
+
 max_evts = 1000  # 25000 # -1 means read in all entries; 25000 is roughly the max allowed in memory on the DAQ computer
 max_pts = -1  # do not change
 if max_evts > 0:
@@ -56,7 +58,7 @@ channel_5 = np.fromfile(data_dir + "wave5.dat", dtype="int16", count=max_pts)
 channel_6 = np.fromfile(data_dir + "wave6.dat", dtype="int16", count=max_pts)
 channel_7 = np.fromfile(data_dir + "wave7.dat", dtype="int16", count=max_pts)
 
-t0 = time.time()
+#t0 = time.time()
 
 # scale waveforms to get units of mV/sample
 # then for each channel ensure we 
@@ -109,8 +111,11 @@ t_matrix = np.repeat(t[np.newaxis,:], V.size/wsize, 0)
 tot_events = int(v_matrix.shape[0])
 
 #only run over n_events
-n_events = max_evts
-
+if max_evts != -1:
+    n_events = max_evts
+else:
+    n_events = tot_events
+    
 # perform baseline subtraction:
 # for now, using first 2 µs of event
 baseline_start = int(0./tscale)
@@ -224,7 +229,7 @@ for i in range(0, n_events):
     
     # =============================================================
     # draw the waveform and the pulse bounds found
-    if False and not inn=='q':
+    if True and not inn=='q':
         
         fig = pl.figure(1,figsize=(10, 7))
         pl.rc('xtick', labelsize=10)
@@ -253,11 +258,12 @@ for i in range(0, n_events):
         
         ax = pl.subplot2grid((2,2),(1,0),colspan=2)
         #pl.plot(t_matrix[i,:],v_bls_matrix_all_ch[-1,i,:],'blue')
-        pl.plot( x, v_bls_matrix_all_ch[-1,i,:],'blue' )
-        pl.xlim([0,wsize])
+        pl.plot( x*tscale, v_bls_matrix_all_ch[-1,i,:],'blue' )
+        #pl.xlim([0,wsize])
+        pl.xlim([0,event_window])
         pl.ylim( [-5, 1.01*np.max(p_max_height[i,:])])
-        #pl.xlabel('Time (us)')
-        pl.xlabel('Samples')
+        pl.xlabel('Time (us)')
+        #pl.xlabel('Samples')
         pl.ylabel('phd/sample')
         pl.title("Sum, event "+ str(i))
         pl.grid(b=True,which='major',color='lightgray',linestyle='--')
@@ -266,9 +272,9 @@ for i in range(0, n_events):
         colors = ['blue','green']
         for pulse in range(n_pulses):
             if p_found[i,pulse]:
-                ax.axvspan( p_start[i,pulse], p_end[i,pulse], alpha=0.25, color=colors[pulse])
+                ax.axvspan( p_start[i,pulse]*tscale, p_end[i,pulse]*tscale, alpha=0.25, color=colors[pulse])
         
-        ax.axhline( 1, 0, wsize, linestyle='--', lw=0.5, color='orange')
+        ax.axhline( 0.276, 0, wsize, linestyle='--', lw=1, color='orange')
         
         pl.draw()
         pl.show(block=0)
@@ -277,8 +283,8 @@ for i in range(0, n_events):
         
 # end of pulse finding and plotting event loop
 
-t1 = time.time()
-print('time to complete: ',t1-t0)
+#t1 = time.time()
+#print('time to complete: ',t1-t0)
 
 # =============================================================
 # =============================================================

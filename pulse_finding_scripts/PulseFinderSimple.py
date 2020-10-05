@@ -35,7 +35,7 @@ def findaPulse( evt, waveforms_bls ):
     nLookAhead = 1
     nLookBefore = 1
     
-    noiseThreshold = 0.8
+    noiseThreshold = 0.276
     
     quietCut = 3
     
