@@ -21,6 +21,10 @@ wsize = int(500 * event_window)  # samples per waveform # 12500 for 25 us
 vscale = (2000.0/16384.0) # = 0.122 mV/ADCC, vertical scale
 tscale = (8.0/4096.0)     # = 0.002 µs/sample, time scale
 
+post_trigger = 0.5 # Was 0.2 for data before 11/22/19
+trigger_time_us = event_window*(1-post_trigger)
+trigger_time = int(trigger_time_us/tscale)
+
 n_sipms = 8
 n_channels = n_sipms+1 # includes sum
 
@@ -55,7 +59,7 @@ channel_5 = np.fromfile(data_dir + "wave5.dat", dtype="int16", count=max_pts)
 channel_6 = np.fromfile(data_dir + "wave6.dat", dtype="int16", count=max_pts)
 channel_7 = np.fromfile(data_dir + "wave7.dat", dtype="int16", count=max_pts)
 
-#t0 = time.time()
+t0 = time.time()
 
 # scale waveforms to get units of mV/sample
 # then for each channel ensure we 
@@ -132,15 +136,15 @@ for i in range(0, n_events):
 # ==================================================================
 # now setup for pulse finding on the baseline-subtracted sum waveform
 
-# old parameters
-post_trigger = 0.5 # Was 0.2 for data before 11/22/19
-trigger_time_us = event_window*(1-post_trigger)
-trigger_time = int(trigger_time_us/tscale)
-
-# number of pulses to search for in each event:
+# max number of pulses per event
 max_pulses = 4
 
 # pulse RQs to save
+
+# RQs to add:
+# Pulse level: channel areas (fracs; max fracs), TBA, rise time? (just difference of AFTs...)
+# Event level: drift time; S1, S2 area
+# Pulse class (S1, S2, other)
 
 start = np.zeros(max_pulses, dtype=np.int)
 end   = np.zeros(max_pulses, dtype=np.int)
@@ -149,9 +153,6 @@ found = np.zeros(max_pulses, dtype=np.int)
 p_start = np.zeros((n_events, max_pulses), dtype=np.int)
 p_end   = np.zeros((n_events, max_pulses), dtype=np.int)
 p_found = np.zeros((n_events, max_pulses), dtype=np.int)
-
-#p_area = np.zeros((n_events,n_pulses))
-#p_max_height = np.zeros((n_events,n_pulses))
 
 p_area = np.zeros((n_events, max_pulses))
 p_max_height = np.zeros((n_events, max_pulses))
@@ -183,18 +184,9 @@ print("Running pulse finder on {:d} events...".format(n_events))
 for i in range(0, n_events):
     if i%100==0: print("Event #",i)
     
-    # Find pulse locations
+    # Find pulse locations; other quantities for pf tuning/debugging
     start_times, end_times, peaks, data_conv, properties = pf.findPulses( v_bls_matrix_all_ch[-1,i,:], max_pulses )
 
-    # Loop over number of pulses per event and save pulse quantities along the way
-    # for p in range(n_pulses):
-    #
-    #     start[p],end[p],found[p] = pf.findaPulse(i,v_bls_matrix_all_ch_cpy[-1,:,:])
-    #
-    #     # Clear the waveform array of the found pulse:
-    #     if found[p] == 1:
-    #         v_bls_matrix_all_ch_cpy[-1,i,:] = pq.ClearWaveform( start[p], end[p]+1, v_bls_matrix_all_ch_cpy[-1,i,:] )
-        
     # Sort pulses by start times, not areas
     # startinds = np.argsort(start)
     # pp = int(0)
@@ -296,8 +288,8 @@ for i in range(0, n_events):
         
 # end of pulse finding and plotting event loop
 
-#t1 = time.time()
-#print('time to complete: ',t1-t0)
+t1 = time.time()
+print('time to complete: ',t1-t0)
 
 # =============================================================
 # =============================================================
