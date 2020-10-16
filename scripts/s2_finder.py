@@ -118,7 +118,7 @@ mpl.rcParams['figure.autolayout']=True
 mpl.rcParams['figure.figsize']=[16.0,12.0]
 
 
-data_dir="../../092420/bkg_3.5g_3.9c_1.0bara_25mV_fan_in_4_allchanOR_post30sfill_5min/"
+data_dir="../../101520/bkg_2.8g_3.0c_25mV_5_afterfill_1.2bar_5min/"
 event_window=25. # in us
 wsize=int(500*event_window) # samples per waveform # 12500 for 25 us
 max_evts=-1 #25000 # -1 means read in all entries; 25000 is roughly the max allowed in memory on the DAQ computer
@@ -146,12 +146,12 @@ channel_7=np.fromfile(data_dir+"wave7.dat", dtype="int16", count=max_pts)
 
 
 vscale=(2000.0/16384.0)
-chA_spe_size = 29.02
+chA_spe_size = 29.02 # mV*samples/phd
 V=vscale*channel_0/chA_spe_size # ch A, calib size 644 
 # Ensure we have an integer number of events
 V=V[:int(len(V)/wsize)*wsize]
 chB_spe_size = 30.61
-V_1=vscale*channel_1/chB_spe_size
+V_1=vscale*channel_1/chB_spe_size # convert from ADC counts to mV, then to phd/sample
 V_1=V_1[:int(len(V)/wsize)*wsize]
 chC_spe_size = 28.87
 V_2=vscale*channel_2/chC_spe_size
@@ -234,12 +234,12 @@ for i in range(0, int(v_matrix.shape[0])):
     trigger_time=int(trigger_time_us/tscale)
     t_offset=int(0.2/tscale)
     s1_window = int(0.5/tscale)
-    s2_window = int(7.0/tscale)
+    s2_window = int(5.0/tscale)
     t_min_search=trigger_time-int(event_window/2.1/tscale)# was int(10./tscale)
     t_max_search=trigger_time+int(event_window/2.1/tscale)# was int(22./tscale)
-    s1_thresh = 100/chA_spe_size
-    s1_range_thresh = 10/chA_spe_size
-    s2_thresh = 150/chA_spe_size
+    s1_thresh = 100 # in units of phd; compare to sum of waveform over multiple samples
+    s1_range_thresh = 15/chA_spe_size
+    s2_thresh = 75#150
     s2_start_frac=0.06 # s2 pulse starts at this fraction of peak height above baseline
     s2_end_frac=0.05 # s2 pulse starts at this fraction of peak height above baseline
     s1_start_frac=0.1
@@ -281,9 +281,18 @@ for i in range(0, int(v_matrix.shape[0])):
 	# Look for where this value is maximized
 	# Look for the s2 using a moving average (sum) of the waveform over a wide window
 
-    s2_max_ind, s2_max=pulse_finder_area(sum_data,t_min_search,t_max_search,s2_window)
+    # Temporary! Changing just the S2-finding range to be AFTER the trigger (assuming we trigger on the S1)
+    small_s2_mode = True
+    if small_s2_mode:
+        s2_search_min = trigger_time+int(1.0/tscale)
+        s2_search_max = int(22.0/tscale)
+        s2_max_ind, s2_max=pulse_finder_area(sum_data,s2_search_min,s2_search_max,s2_window)
+    else:
+        s2_max_ind, s2_max=pulse_finder_area(sum_data,t_min_search,t_max_search,s2_window)
     s2_found=s2_max>s2_thresh
     t1=time.time()
+    
+    
     #print("pulse finder time: ", t1-t0)
     #print("max area in s2 window: ",s2_max)
     #print("time of max area in s2 window: ",s2_max_ind," in us: ",s2_max_ind*tscale)
@@ -302,6 +311,7 @@ for i in range(0, int(v_matrix.shape[0])):
         # print("s2 window time: ",s2_max_ind*tscale,"s2 area max: ",s2_max)
         s2_start_pos, s2_end_pos=pulse_bounds(sum_data,s2_max_ind,s2_window,s2_start_frac,s2_end_frac) # had s2_max_ind-t_offset; why?
         #print(s2_start_pos, s2_end_pos)
+              
         if(s2_start_pos==s2_end_pos):
             if(s2_start_pos == -1):
                 print("could not find start or end of pulse for event ", i)
@@ -317,6 +327,17 @@ for i in range(0, int(v_matrix.shape[0])):
             bad_bounds=True
             s2_start_pos=s2_max_ind-3
             s2_end_pos=s2_max_ind+3
+            
+        # Temporary! Add S2 range requirement to avoid picking up noise pulses
+        if small_s2_mode and not bad_bounds:
+            s2_height_range=np.max(sum_data[s2_start_pos:s2_end_pos])-np.min(sum_data[s2_start_pos:s2_end_pos]) 
+            #print("range: {0}".format(s2_height_range))
+            if s2_height_range<s1_range_thresh:
+                #print("S2 fails height range cut (probably noise); range: {0}".format(s2_height_range))
+                s2_found = False
+            
+        if bad_bounds: s2_found=False
+            
         #s2_start_array, s2_end_array = merged_bounds(output,s2_max_ind-t_offset,s2_window,s2_start_frac,s2_end_frac)
         t3=time.time()
        
@@ -348,7 +369,7 @@ for i in range(0, int(v_matrix.shape[0])):
         center[i] = fiducial
          	
         # Now look for a prior s1
-        #print("t_min_search: ",t_min_search,"t_max: ",s2_start_pos-s1_window-t_offset)
+        #print("t_min_search: ",t_min_search*tscale,"t_max: ",(s2_start_pos-s1_window-t_offset)*tscale)
         s1_max_ind, s1_max=pulse_finder_area(sum_data,t_min_search,s2_start_pos-s1_window-t_offset,s1_window)
         #print("sum baseline: ",sum_baseline)
         #print("s1 area: ",s1_max)
@@ -361,15 +382,15 @@ for i in range(0, int(v_matrix.shape[0])):
                 # Check that we didn't accidentally find noise (related to poor baseline subtraction)
                 s1_height_range=np.max(sum_data[s1_start_pos:s1_end_pos])-np.min(sum_data[s1_start_pos:s1_end_pos]) 
                 s1_found = s1_height_range>s1_range_thresh
-                # print("s1 start: ",s1_start_pos*tscale," s1 end: ",s1_end_pos*tscale)
+                #print("s1 start: ",s1_start_pos*tscale," s1 end: ",s1_end_pos*tscale)
                 if 0.60<t_drift<0.70:
                     #print("s1_max_ind: ",s1_max_ind*tscale," s1_start_pos: ",s1_start_pos*tscale," tdrift: ",t_drift)
                     #print("s1 range: ",s1_height_range)
                     #print("baseline: ",sum_baseline)
                     pass
                 if not s1_found:
+                    print("under range, s1 range: ",s1_height_range)
                     pass
-                    #print("under range, s1 range: ",s1_height_range)
                 else:    
                     t_drift=(s2_start_pos-s1_start_pos)*tscale
                     s1_area=np.sum(sum_data[s1_start_pos:s1_end_pos])
@@ -406,6 +427,9 @@ for i in range(0, int(v_matrix.shape[0])):
     s2_bottom = np.sum(np.array(s2_ch_area)[bottom_channels])
     s2_top = np.sum(np.array(s2_ch_area)[top_channels])
     s2_tba = (s2_top-s2_bottom)/(s2_top+s2_bottom)
+    s1_bottom = np.sum(np.array(s1_ch_area)[bottom_channels])
+    s1_top = np.sum(np.array(s1_ch_area)[top_channels])
+    s1_tba = (s1_top-s1_bottom)/(s1_top+s1_bottom)
     if True and not inn=='q':
     #if s1_found and s2_found:
         fig=pl.figure(1,figsize=(30, 20))
@@ -446,9 +470,9 @@ for i in range(0, int(v_matrix.shape[0])):
 
                     
         ax=pl.subplot2grid((2,2),(1,0),colspan=2)
-        pl.plot(t_matrix[i,:],vsum_matrix[i,:],'blue')
+        pl.plot(t_matrix[i,:],sum_data,'blue')
         pl.xlim([0,event_window])
-        pl.ylim([0, 4000/chA_spe_size])
+        pl.ylim([-1, 5])
         pl.xlabel('Time (us)')
         pl.ylabel('Phd/sample')
         pl.title("Sum, event "+ str(i))
@@ -554,13 +578,13 @@ for j in range(0, n_channels-1):
 
 # Event selection for summary plots, i.e. analysis cuts
 s1_and_s2=s2_found_array*s1_found_array*(s2_width_array>0.2) # cut out events with unrealistically-short s2s
-s1_only_like=s2_found_array*np.logical_not(s1_found_array)*(s2_width_array<0.6)
-s2_like=s2_found_array*(s2_width_array>0.6)
+s1_only_like=s2_found_array*np.logical_not(s1_found_array)*(s2_width_array<0.6)*(s2_tba<0)
+s2_like=s2_found_array*(s2_width_array>0.6)*(s2_tba>0.)
 print("S2-like events (pulse found, long width): ",np.size(s2_area_array[s2_like]))
 long_drift = t_drift_array > 3
 save_plots=True
-cut_name="S1S2"
-plot_selection=s1_and_s2#*(s2_tba>0)*(s1_tba<0)#*(t_drift_array>6)#s2_found_array#
+cut_name="SmallS2Mode_S1S2_S2TBAcut_LgS2Area"
+plot_selection=s1_and_s2*(s2_tba>0.)*(s2_area_array>500.)#s2_found_array#*(s2_tba>0)*(s1_tba<0)*(s2_width_array>1)#s2_like##*(t_drift_array>6)#s2_found_array#
 print("events passing plot_selection cuts: ",np.size(s2_area_array[plot_selection]))
     
 #pl.figure(figsize=(30, 20))
@@ -615,7 +639,7 @@ pl.xlabel("S2 area (phd)")
 if save_plots: pl.savefig(data_dir+"S2_area_"+cut_name+".png")
 
 pl.figure()
-pl.hist(s1_area_array[plot_selection],bins=100,range=(0,10000))#(t_drift_array>0.3)
+pl.hist(s1_area_array[plot_selection],bins=100,range=(0,1000))#(t_drift_array>0.3)
 pl.axvline(x=np.mean(s1_area_array[plot_selection]),ls='--',color='r')
 pl.xlabel("S1 area (phd)")
 if save_plots: pl.savefig(data_dir+"S1_area_"+cut_name+".png")
@@ -669,7 +693,7 @@ pl.ylabel("S2 area (phd)")
 drift_bins=np.linspace(0,10,100)
 drift_ind=np.digitize(t_drift_plot, bins=drift_bins)
 s2_means=np.zeros(np.shape(drift_bins))
-s2_std_err=np.ones(np.shape(drift_bins))*10000
+s2_std_err=np.ones(np.shape(drift_bins))*0#10000
 for i_bin in range(len(drift_bins)):
     found_i_bin = np.where(drift_ind==i_bin) 
     s2_area_i_bin = s2_area_plot[found_i_bin]
@@ -677,6 +701,7 @@ for i_bin in range(len(drift_bins)):
     s2_means[i_bin]=np.median(s2_area_i_bin)
     s2_std_err[i_bin]=np.std(s2_area_i_bin)/np.sqrt(len(s2_area_i_bin))
 pl.errorbar(drift_bins, s2_means, yerr=s2_std_err, linewidth=3, elinewidth=3, capsize=5, capthick=4, color='red')
+pl.ylim(bottom=0)
 if save_plots: pl.savefig(data_dir+"S2_area_vs_drift_"+cut_name+".png")
 
 pl.figure()
@@ -699,11 +724,13 @@ for i_bin in range(len(drift_bins)):
     s2_height_means[i_bin]=np.median(s2_height_i_bin)
     s2_height_std_err[i_bin]=np.std(s2_height_i_bin)/np.sqrt(len(s2_height_i_bin))
 pl.errorbar(drift_bins, s2_height_means, yerr=s2_height_std_err, linewidth=3, elinewidth=3, capsize=5, capthick=4, color='red')
+pl.ylim(bottom=0)
 if save_plots: pl.savefig(data_dir+"S2_height_vs_drift_"+cut_name+".png")
 
 pl.figure()
 pl.scatter(s2_area_plot,s2_width_plot)
 pl.xlabel("S2 area (phd)")
 pl.ylabel("S2 width (us)")
+if save_plots: pl.savefig(data_dir+"S2_width_vs_area_"+cut_name+".png")
 
 pl.show()

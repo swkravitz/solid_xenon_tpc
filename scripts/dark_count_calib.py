@@ -39,7 +39,9 @@ mpl.rcParams['legend.fontsize']='small'
 mpl.rcParams['figure.autolayout']=True
 mpl.rcParams['figure.figsize']=[16.0,12.0]
 
-channel_0=np.fromfile("../../072320/chB_darkcount_calib_50V_-6.1mV/wave0.dat", dtype="int16")
+channel_0=np.fromfile("../../101320/chanH_50V_16mV/wave0.dat", dtype="int16")
+
+#channel_0=np.fromfile("../../072320/chB_darkcount_calib_50V_-6.1mV/wave0.dat", dtype="int16")
 
 #channel_0=np.fromfile("../../082919/chB_49_5V_18mV.dat", dtype="int16")
 #channel_0=np.fromfile("../../Desktop/crystallize_data/110819/chH_51.5V_12mV.dat", dtype="int16")
@@ -47,7 +49,7 @@ channel_0=np.fromfile("../../072320/chB_darkcount_calib_50V_-6.1mV/wave0.dat", d
 
 
 vscale=(2000.0/16384.0)
-wsize=4096 # Number of samples per waveform
+wsize=2048 # Number of samples per waveform
 V=vscale*channel_0
 # Ensure we have an integer number of events
 V=V[:int(len(V)/wsize)*wsize]
@@ -109,7 +111,7 @@ for i in range(0, int(v_matrix.shape[0])):
         
 	# Look for events with S1 and S2 from summed channel
     s1_window = int(0.2/tscale)
-    s2_window = int(0.2/tscale)
+    s2_window = int(0.25/tscale)
     s1_thresh = 400
     s1_range_thresh = 10
     s2_thresh = 0.
@@ -130,14 +132,14 @@ for i in range(0, int(v_matrix.shape[0])):
     s1_found=False
     s2_found=False
 
-    sum_baseline=np.mean(v4_matrix[i,int(0./tscale):int(0.3/tscale)]) #avg 0.3 us, later in acquisition since there may be odd noise earlier?
+    sum_baseline=np.mean(v4_matrix[i,int(1.4/tscale):int(1.7/tscale)]) #avg 0.3 us, later in acquisition since there may be odd noise earlier?
     sum_data=v4_matrix[i,:]-sum_baseline
     
     # Do a moving average (sum) of the waveform with different time windows for s1, s2
 	# Look for where this value is maximized
 	# Look for the s2 using a moving average (sum) of the waveform over a wide window
-    t_min_search=int(0./tscale)
-    t_max_search=int(2./tscale)
+    t_min_search=int(1.7/tscale)
+    t_max_search=int(3.5/tscale)
     t_offset=int(0.00/tscale)
     s2_max_ind, s2_max=pulse_finder_area(sum_data,t_min_search,t_max_search,s2_window)
     #print(s2_max)
@@ -161,16 +163,18 @@ for i in range(0, int(v_matrix.shape[0])):
     #if s1_max_ind>-1 and not s1_height_range>s1_range_thresh:
     #if 1.5<t_drift:
     #if 1.08<t_drift<1.12:
-    if s2_found and s2_area>150 and not inn=='q':
+    if s2_found and not inn=='q':
     #if s1_found and s2_found:
         #print(ratio)
-        fig=pl.figure(1,figsize=(10, 10))
+        fig=pl.figure(1,figsize=(20, 10))
         pl.rc('xtick', labelsize=25)
         pl.rc('ytick', labelsize=25)
         
         ax=pl.subplot2grid((1,1),(0,0),colspan=2)
         pl.plot(t_matrix[i,:],sum_data,'blue')
-        pl.xlim([0, 2])
+        pl.grid(b=True,which='major',color='lightgray',linestyle='--',lw=1)
+        #pl.xlim([1.5, 2.5])
+        pl.xlim([0, 4])
         pl.ylim([-10, 20])
         pl.xlabel('Time (us)')
         pl.ylabel('Millivolts')
@@ -180,7 +184,8 @@ for i in range(0, int(v_matrix.shape[0])):
         #ax.axvspan(t_min_search*tscale, t_max_search*tscale, alpha=0.5, color='red')
         pl.plot(np.array([1,1])*triggertime_us,np.array([0,16384]),'k--')
         if s2_found:
-            ax.axvspan(s2_start_pos*tscale, s2_end_pos*tscale, alpha=0.5, color='blue')
+            #ax.axvspan(s2_start_pos*tscale, s2_end_pos*tscale, alpha=0.5, color='blue')
+            ax.axvspan(s2_max_ind*tscale, (s2_max_ind+s2_window)*tscale, alpha=0.3, color='green')
         if s1_found:
             ax.axvspan(s1_start_pos*tscale, s1_end_pos*tscale, alpha=0.5, color='green')
             
@@ -207,21 +212,21 @@ print("S2 height mean: ", np.mean(s2_height_array[s2_found_array]))
 def gaussian(x, mean, std,a):
     return a*np.exp(-((x-mean)/std)**2)
 pl.figure()
-h,b,_=pl.hist(s2_area_array[s2_found_array],bins=125,range=(0,800))
+h,b,_=pl.hist(s2_area_array[s2_found_array],bins=150,range=(0,800))
 bin_centers = b[:-1] + np.diff(b)/2
-popt, _ = curve_fit(gaussian,bin_centers[18:55],h[18:55], p0=[270,80,450])
-print("bin_centers:", bin_centers)
-print("h:", h)
-print("popt:",popt)
-pl.plot(bin_centers, gaussian(bin_centers, *popt), label ='fit')
+#popt, _ = curve_fit(gaussian,bin_centers[18:55],h[18:55], p0=[270,80,450])
+#print("bin_centers:", bin_centers)
+#print("h:", h)
+#print("popt:",popt)
+#pl.plot(bin_centers, gaussian(bin_centers, *popt), label ='fit')
 
 pl.grid(b=True,which='major',color='lightgray',linestyle='--')
 #pl.yscale("log")
-pl.axvline(x=popt[0],ls='--',color='r')
-pl.text(0.3,0.8,'Gaussian Mean: {0:g}'.format(popt[0]),transform=pl.gca().transAxes)
-pl.text(0.3,0.7,'std: {0:g}'.format(popt[1]),transform=pl.gca().transAxes)
-pl.text(0.3,0.6,'Amplitude: {0:g}'.format(popt[2]),transform=pl.gca().transAxes)
-pl.xlabel("S2 area")
+#pl.axvline(x=popt[0],ls='--',color='r')
+#pl.text(0.3,0.8,'Gaussian Mean: {0:g}'.format(popt[0]),transform=pl.gca().transAxes)
+#pl.text(0.3,0.7,'std: {0:g}'.format(popt[1]),transform=pl.gca().transAxes)
+#pl.text(0.3,0.6,'Amplitude: {0:g}'.format(popt[2]),transform=pl.gca().transAxes)
+pl.xlabel("Pulse Area")
 
 
 #pl.figure()
