@@ -10,21 +10,15 @@ def findaPulse( evt, waveforms_bls ):
     boxAreaRolling = np.zeros(numSamples)
     tmpBoxArea = 0
     
-    boxWidth = 12
+    boxWidth = 1000
     nLookAhead = 1
     nLookBefore = 1
-    #noiseThreshold = 5*0.122*(10/417.7)# = 0.0146 currently
-    #noiseThreshold = 0.03
-    #noiseThreshold = 0.02
     
-    #noiseThreshold = 5*0.122 #=0.61
-    #noiseThreshold = 0.026
-    #noiseThreshold = 0.03
-    noiseThreshold = 0.06
+    noiseThreshold = 2
     
     quietCut = 3
     
-    width_cut = 60
+    width_cut = 8000
     
     pulse_start = 99999
     pulse_end = 99999
