@@ -44,7 +44,8 @@ chH_spe_size = 30.3
 #data_dir="../data/bkg_3.5g_3.9c_27mV_1_5min/"
 #data_dir="../data/fewevts/"
 #data_dir="../data/po_5min/"
-data_dir = "C:/Users/swkra/Desktop/Jupyter temp/data-202009/091720/bkg_3.5g_3.9c_27mV_7_postrecover2_5min/"
+data_dir = "C:/Users/ryanm/Documents/Research/Data/bkg_3.5g_3.9c_27mV_6_postrecover_5min/"
+#"C:/Users/swkra/Desktop/Jupyter temp/data-202009/091720/bkg_3.5g_3.9c_27mV_7_postrecover2_5min/"
 
 max_evts = 1000  # 25000 # -1 means read in all entries; 25000 is roughly the max allowed in memory on the DAQ computer
 max_pts = -1  # do not change
@@ -156,6 +157,7 @@ p_found = np.zeros((n_events, max_pulses), dtype=np.int)
 
 p_area = np.zeros((n_events, max_pulses))
 p_max_height = np.zeros((n_events, max_pulses))
+p_min_height = np.zeros((n_events, max_pulses))
 p_width = np.zeros((n_events, max_pulses))
 
 p_afs_2l = np.zeros((n_events, max_pulses), dtype=np.int)
@@ -174,7 +176,7 @@ p_hfs_50r = np.zeros((n_events, max_pulses), dtype=np.int)
 p_mean_time = np.zeros((n_events, max_pulses))
 p_rms_time = np.zeros((n_events, max_pulses))
 
-
+n_pulses = np.zeros(n_events)
 
 inn=""
 
@@ -188,9 +190,24 @@ for i in range(0, n_events):
     start_times, end_times, peaks, data_conv, properties = pf.findPulses( v_bls_matrix_all_ch[-1,i,:], max_pulses )
 
     # Sort pulses by start times, not areas
-    # startinds = np.argsort(start)
-    # pp = int(0)
-    # for p_index in startinds:
+    startinds = np.argsort(start_times)
+    n_pulses[i] = len(start_times)
+    for p_index in startinds:
+        if p_index >= max_pulses:
+            continue
+        p_start[i,p_index] = start_times[p_index]
+        p_end[i,p_index] = end_times[p_index]
+
+    # Calculate interesting quantities
+    for pp in range(max_pulses):
+        p_area[i,pp] = pq.GetPulseArea(p_start[i,pp], p_end[i,pp], v_bls_matrix_all_ch[-1,1,:] )
+        p_max_height[i,pp] = pq.GetPulseMaxHeight(p_start[i,pp], p_end[i,pp], v_bls_matrix_all_ch[-1,i,:] )
+        p_min_height[i,pp] = pq.GetPulseMinHeight(p_start[i,pp], p_end[i,pp], v_bls_matrix_all_ch[-1,i,:] )
+        p_width[i,pp] = p_end[i,pp] - p_start[i,pp]
+
+        (p_afs_2l[i,pp], p_afs_2r[i,pp], p_afs_1[i,pp], p_afs_25[i,pp], p_afs_50[i,pp], p_afs_75[i,pp], p_afs_99[i,pp]) = pq.GetAreaFractionSamples( p_start[i,pp], p_end[i,pp], v_bls_matrix_all_ch[-1,i,:] )
+
+
     #     p_found[i,pp] = found[p_index]
     #     p_start[i,pp] = start[p_index]
     #     p_end[i,pp] = end[p_index]
@@ -304,4 +321,3 @@ pl.ylim([0.01, 5])
 pl.xscale("log")
 #pl.yscale("log")
 pl.show()
-

@@ -33,7 +33,7 @@ def GetPulseMaxHeight( p_start, p_end, waveforms_bls ):
     
     max_height = -999.
     max_height_sample = int(-999)
-    
+
     if p_start != p_end:
         try:
             max_height_sample = p_start + np.argmax( waveforms_bls[p_start:p_end] )
