@@ -44,7 +44,8 @@ chH_spe_size = 30.3
 #data_dir="../data/bkg_3.5g_3.9c_27mV_1_5min/"
 #data_dir="../data/fewevts/"
 #data_dir="../data/po_5min/"
-data_dir = "C:/Users/ryanm/Documents/Research/Data/bkg_3.5g_3.9c_27mV_6_postrecover_5min/"
+#data_dir = "C:/Users/ryanm/Documents/Research/Data/bkg_3.5g_3.9c_27mV_6_postrecover_5min/"
+data_dir = "C:/Users/ryanm/Documents/Research/Data/bkg_2.8g_3.2c_25mV_1_1.6_circ_0.16bottle_5min"
 #"C:/Users/swkra/Desktop/Jupyter temp/data-202009/091720/bkg_3.5g_3.9c_27mV_7_postrecover2_5min/"
 
 max_evts = 1000  # 25000 # -1 means read in all entries; 25000 is roughly the max allowed in memory on the DAQ computer
@@ -204,9 +205,10 @@ for i in range(0, n_events):
         p_max_height[i,pp] = pq.GetPulseMaxHeight(p_start[i,pp], p_end[i,pp], v_bls_matrix_all_ch[-1,i,:] )
         p_min_height[i,pp] = pq.GetPulseMinHeight(p_start[i,pp], p_end[i,pp], v_bls_matrix_all_ch[-1,i,:] )
         p_width[i,pp] = p_end[i,pp] - p_start[i,pp]
+        #(p_mean_time[i,pp], p_rms_time[i,pp]) = pq.GetPulseMeanAndRMS(p_start[i,pp], p_end[i,pp], v_bls_matrix_all_ch[-1,i,:])
 
-        (p_afs_2l[i,pp], p_afs_2r[i,pp], p_afs_1[i,pp], p_afs_25[i,pp], p_afs_50[i,pp], p_afs_75[i,pp], p_afs_99[i,pp]) = pq.GetAreaFractionSamples( p_start[i,pp], p_end[i,pp], v_bls_matrix_all_ch[-1,i,:] )
-
+        (p_afs_2l[i,pp], p_afs_2r[i,pp], p_afs_1[i,pp], p_afs_25[i,pp], p_afs_50[i,pp], p_afs_75[i,pp], p_afs_99[i,pp]) = pq.GetAreaFractionSamples(p_start[i,pp], p_end[i,pp], v_bls_matrix_all_ch[-1,i,:] )
+        (p_hfs_10l[i,pp], p_hfs_50l[i,pp], p_hfs_10r[i,pp], p_hfs_50r[i,pp]) = pq.GetHeightFractionSamples(p_start[i,pp], p_end[i,pp], v_bls_matrix_all_ch[-1,i,:] )
 
     #     p_found[i,pp] = found[p_index]
     #     p_start[i,pp] = start[p_index]
@@ -305,6 +307,36 @@ for i in range(0, n_events):
         
 # end of pulse finding and plotting event loop
 
+# Post analysis clean up, not efficient
+dirtyWidth = p_area
+dirtyArea = p_area.flatten()
+dirtyMax = p_max_height.flatten()
+dirtyMin = p_min_height.flatten()
+
+validPulses = p_area > 0
+#cleanArea = 
+
+
+areaToPlot = tscale*p_area[validPulses]
+
+
+
+#cleanWidth = []
+#cleanArea = []
+#cleanMax = []
+#cleanMin = []
+#count = 0
+#for clean in range(len(dirtyWidth)):
+#    if dirtyWidth[clean] > 0:
+ #       cleanWidth.append(dirtyWidth[clean])
+#        cleanArea.append(dirtyArea[clean])
+#        cleanMax.append(dirtyMax[clean])
+#        cleanMin.append(dirtyMin[clean])
+#        count = count + 1
+
+    
+#print("Number of empty events: ", len(dirtyWidth) - count)
+
 t1 = time.time()
 print('time to complete: ',t1-t0)
 
@@ -312,8 +344,20 @@ print('time to complete: ',t1-t0)
 # =============================================================
 # now make plots of interesting pulse quantities
 
+
+#pl.figure()
+#pl.hist(n_pulses)
+#pl.show()
+
+onlyOne = n_pulses < 5
+oneArea = p_area[onlyOne,:]
+oneWidth = tscale*p_width[onlyOne,:]
+#print(np.mean(oneWidth.flatten()))
+
+# 50 -5
+
 pl.figure()
-pl.scatter( p_area.flatten(), tscale*p_width.flatten(), 1 )
+pl.scatter( oneArea.flatten(), oneWidth.flatten(), 1)
 pl.xlabel("Pulse Area (phd)")
 pl.ylabel("Pulse Width (us)")
 pl.xlim([1,3e5])
@@ -321,3 +365,12 @@ pl.ylim([0.01, 5])
 pl.xscale("log")
 #pl.yscale("log")
 pl.show()
+
+
+
+
+pl.figure()
+pl.scatter(p_afs_1.flatten(), p_afs_99.flatten(), 1)
+pl.xlabel('1')
+pl.ylabel('99')
+#pl.show()
