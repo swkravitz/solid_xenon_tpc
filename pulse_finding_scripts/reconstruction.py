@@ -45,7 +45,7 @@ chH_spe_size = 30.3
 #data_dir="../data/fewevts/"
 #data_dir="../data/po_5min/"
 #data_dir = "C:/Users/ryanm/Documents/Research/Data/bkg_3.5g_3.9c_27mV_6_postrecover_5min/"
-data_dir = "C:/Users/ryanm/Documents/Research/Data/bkg_2.8g_3.2c_25mV_1_1.6_circ_0.16bottle_5min"
+data_dir = "C:/Users/ryanm/Documents/Research/Data/bkg_2.8g_3.2c_25mV_1_1.6_circ_0.16bottle_5min/"
 #"C:/Users/swkra/Desktop/Jupyter temp/data-202009/091720/bkg_3.5g_3.9c_27mV_7_postrecover2_5min/"
 
 max_evts = 1000  # 25000 # -1 means read in all entries; 25000 is roughly the max allowed in memory on the DAQ computer
@@ -244,7 +244,12 @@ for i in range(0, n_events):
     except ValueError:
         plot_event_ind = i
 
-    if True and not inn == 'q' and plot_event_ind == i:
+    # Condition to plot now has includes this rise time calc, not necessary
+    toBoolUp = (p_afs_50[i,:int(n_pulses[i])]-p_afs_2l[i,:int(n_pulses[i])] )*tscale < 0.6
+    toBoolDown = (p_afs_50[i,:int(n_pulses[i])]-p_afs_2l[i,:int(n_pulses[i])] )*tscale > 0.2
+    toBoolAll = toBoolUp == toBoolDown
+    condition = np.sum(toBoolAll)
+    if True and not inn == 'q' and plot_event_ind == i and condition > 0:
         
         fig = pl.figure(1,figsize=(10, 7))
         pl.rc('xtick', labelsize=10)
@@ -321,22 +326,6 @@ areaToPlot = tscale*p_area[validPulses]
 
 
 
-#cleanWidth = []
-#cleanArea = []
-#cleanMax = []
-#cleanMin = []
-#count = 0
-#for clean in range(len(dirtyWidth)):
-#    if dirtyWidth[clean] > 0:
- #       cleanWidth.append(dirtyWidth[clean])
-#        cleanArea.append(dirtyArea[clean])
-#        cleanMax.append(dirtyMax[clean])
-#        cleanMin.append(dirtyMin[clean])
-#        count = count + 1
-
-    
-#print("Number of empty events: ", len(dirtyWidth) - count)
-
 t1 = time.time()
 print('time to complete: ',t1-t0)
 
@@ -349,21 +338,20 @@ print('time to complete: ',t1-t0)
 #pl.hist(n_pulses)
 #pl.show()
 
-onlyOne = n_pulses < 5
+onlyOne = n_pulses < 100000
 oneArea = p_area[onlyOne,:]
 oneWidth = tscale*p_width[onlyOne,:]
-#print(np.mean(oneWidth.flatten()))
 
-# 50 -5
 
 pl.figure()
-pl.scatter( oneArea.flatten(), oneWidth.flatten(), 1)
-pl.xlabel("Pulse Area (phd)")
-pl.ylabel("Pulse Width (us)")
+pl.scatter(oneArea.flatten(), tscale*(p_afs_50.flatten()-p_afs_2l.flatten() ), 1)
+pl.ylabel("50 - 2")
+pl.xlabel("Area")
 pl.xlim([1,3e5])
-pl.ylim([0.01, 5])
+#pl.ylim([1,3e5])
+pl.ylim([0.01, 10])
 pl.xscale("log")
-#pl.yscale("log")
+pl.yscale("log")
 pl.show()
 
 
