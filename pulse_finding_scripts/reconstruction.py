@@ -148,47 +148,62 @@ max_pulses = 4
 # Event level: drift time; S1, S2 area
 # Pulse class (S1, S2, other)
 
-start = np.zeros(max_pulses, dtype=np.int)
-end   = np.zeros(max_pulses, dtype=np.int)
-found = np.zeros(max_pulses, dtype=np.int)
+start = np.zeros( max_pulses, dtype=np.int)
+end   = np.zeros( max_pulses, dtype=np.int)
+found = np.zeros( max_pulses, dtype=np.int)
 
-p_start = np.zeros((n_events, max_pulses), dtype=np.int)
-p_end   = np.zeros((n_events, max_pulses), dtype=np.int)
-p_found = np.zeros((n_events, max_pulses), dtype=np.int)
+p_start = np.zeros(( n_events, max_pulses), dtype=np.int)
+p_end   = np.zeros(( n_events, max_pulses), dtype=np.int)
+p_found = np.zeros(( n_events, max_pulses), dtype=np.int)
 
-p_area = np.zeros((n_events, max_pulses))
-p_max_height = np.zeros((n_events, max_pulses))
-p_min_height = np.zeros((n_events, max_pulses))
-p_width = np.zeros((n_events, max_pulses))
+p_area = np.zeros(( n_events, max_pulses))
+p_max_height = np.zeros(( n_events, max_pulses))
+p_min_height = np.zeros(( n_events, max_pulses))
+p_width = np.zeros(( n_events, max_pulses))
 
-p_afs_2l = np.zeros((n_events, max_pulses), dtype=np.int)
-p_afs_2r = np.zeros((n_events, max_pulses), dtype=np.int)
-p_afs_1 = np.zeros((n_events, max_pulses), dtype=np.int)
-p_afs_25 = np.zeros((n_events, max_pulses), dtype=np.int)
-p_afs_50 = np.zeros((n_events, max_pulses), dtype=np.int)
-p_afs_75 = np.zeros((n_events, max_pulses), dtype=np.int)
-p_afs_99 = np.zeros((n_events, max_pulses), dtype=np.int)
+p_afs_2l = np.zeros((n_events, max_pulses) )
+p_afs_2r = np.zeros((n_events, max_pulses) )
+p_afs_1 = np.zeros((n_events, max_pulses) )
+p_afs_25 = np.zeros((n_events, max_pulses) )
+p_afs_50 = np.zeros((n_events, max_pulses) )
+p_afs_75 = np.zeros((n_events, max_pulses) )
+p_afs_99 = np.zeros((n_events, max_pulses) )
             
-p_hfs_10l = np.zeros((n_events, max_pulses), dtype=np.int)
-p_hfs_50l = np.zeros((n_events, max_pulses), dtype=np.int)
-p_hfs_10r = np.zeros((n_events, max_pulses), dtype=np.int)
-p_hfs_50r = np.zeros((n_events, max_pulses), dtype=np.int)
+p_hfs_10l = np.zeros((n_events, max_pulses) )
+p_hfs_50l = np.zeros((n_events, max_pulses) )
+p_hfs_10r = np.zeros((n_events, max_pulses) )
+p_hfs_50r = np.zeros((n_events, max_pulses) )
 
-p_mean_time = np.zeros((n_events, max_pulses))
-p_rms_time = np.zeros((n_events, max_pulses))
+p_mean_time = np.zeros((n_events, max_pulses) )
+p_rms_time = np.zeros((n_events, max_pulses) )
 
-n_pulses = np.zeros(n_events)
+p_afc = np.zeros((n_events, max_pulses, 10000) )
+
+n_pulses = np.zeros(n_events, dtype=np.int)
+
+p_area_ch = np.zeros((n_channels-1, n_events, max_pulses) )
 
 inn=""
 
 #make copy of waveforms:
 v_bls_matrix_all_ch_cpy = v_bls_matrix_all_ch.copy() # Do we need this? Not zeroing out anymore...
 print("Running pulse finder on {:d} events...".format(n_events))
+
 for i in range(0, n_events):
     if i%100==0: print("Event #",i)
     
     # Find pulse locations; other quantities for pf tuning/debugging
     start_times, end_times, peaks, data_conv, properties = pf.findPulses( v_bls_matrix_all_ch[-1,i,:], max_pulses )
+
+    # Individual channel pulse locations
+    # Can't just ":" the the first index in data, findPulses doesn't like it, so have to loop 
+    for j in range(n_channels-1):
+        start_times_ch, end_times_ch, peaks_ch, data_conv_ch, properties_ch = pf.findPulses( v_bls_matrix_all_ch[j,i,:], max_pulses )
+        
+        p_start_ch = start_times_ch
+        p_end_ch = end_times_ch
+        p_area_ch[j,i,:] = pq.GetPulseAreaChannel(p_start_ch, p_end_ch, v_bls_matrix_all_ch[j,i,:] )
+    
 
     # Sort pulses by start times, not areas
     startinds = np.argsort(start_times)
@@ -210,25 +225,7 @@ for i in range(0, n_events):
         (p_afs_2l[i,pp], p_afs_2r[i,pp], p_afs_1[i,pp], p_afs_25[i,pp], p_afs_50[i,pp], p_afs_75[i,pp], p_afs_99[i,pp]) = pq.GetAreaFractionSamples(p_start[i,pp], p_end[i,pp], v_bls_matrix_all_ch[-1,i,:] )
         (p_hfs_10l[i,pp], p_hfs_50l[i,pp], p_hfs_10r[i,pp], p_hfs_50r[i,pp]) = pq.GetHeightFractionSamples(p_start[i,pp], p_end[i,pp], v_bls_matrix_all_ch[-1,i,:] )
 
-    #     p_found[i,pp] = found[p_index]
-    #     p_start[i,pp] = start[p_index]
-    #     p_end[i,pp] = end[p_index]
-    #
-    #     if p_found[i,pp] == 1:
-    #
-    #         p_area[i,pp] = pq.GetPulseArea( p_start[i,pp], p_end[i,pp]+1, v_bls_matrix_all_ch[-1,i,:] )
-    #         p_max_height[i,pp] = pq.GetPulseMaxHeight( p_start[i,pp], p_end[i,pp]+1, v_bls_matrix_all_ch[-1,i,:] )
-    #
-    #         (p_afs_2l[i,pp], p_afs_2r[i,pp], p_afs_1[i,pp], p_afs_25[i,pp], p_afs_50[i,pp], p_afs_75[i,pp], p_afs_99[i,pp]) = pq.GetAreaFractionSamples( p_start[i,pp], p_end[i,pp]+1, v_bls_matrix_all_ch[-1,i,:] )
-    #
-    #         p_hfs_10l[i,pp], p_hfs_50l[i,pp], p_hfs_10r[i,pp], p_hfs_50r[i,pp] = pq.GetHeightFractionSamples( p_start[i,pp], p_end[i,pp]+1, v_bls_matrix_all_ch[-1,i,:] )
-    #         #   Using height fractions for mean and RMS
-    #         p_mean_time[i,pp], p_rms_time[i,pp] = pq.GetPulseMeanAndRMS( p_hfs_10l[i,pp], p_hfs_10r[i,pp]+1, v_bls_matrix_all_ch[-1,i,:] )
-    #
-    #         p_width[i,pp] = p_afs_2r[i,pp] - p_afs_2l[i,pp]
-    #
-    #     pp += 1
-    #     # end second (sorted) pulse loop
+        p_afc[i,pp, 0:(p_end[i,pp] - p_start[i,pp]) ] = pq.GetAreaFractionCumulative(p_start[i,pp], p_end[i,pp], p_area[i,pp], v_bls_matrix_all_ch[-1,i,:] )
     
     # =============================================================
     # draw the waveform and the pulse bounds found
@@ -244,12 +241,16 @@ for i in range(0, n_events):
     except ValueError:
         plot_event_ind = i
 
-    # Condition to plot now has includes this rise time calc, not necessary
+    # Condition to plot now includes this rise time calc, not necessary
     toBoolUp = (p_afs_50[i,:int(n_pulses[i])]-p_afs_2l[i,:int(n_pulses[i])] )*tscale < 0.6
     toBoolDown = (p_afs_50[i,:int(n_pulses[i])]-p_afs_2l[i,:int(n_pulses[i])] )*tscale > 0.2
     toBoolAll = toBoolUp == toBoolDown
     condition = np.sum(toBoolAll)
-    if True and not inn == 'q' and plot_event_ind == i and condition > 0:
+
+    # Condition to skip the individual plotting
+    plotyn = False
+
+    if True and not inn == 'q' and plot_event_ind == i and condition > 0 and plotyn:
         
         fig = pl.figure(1,figsize=(10, 7))
         pl.rc('xtick', labelsize=10)
@@ -312,42 +313,47 @@ for i in range(0, n_events):
         
 # end of pulse finding and plotting event loop
 
-# Post analysis clean up, not efficient
-dirtyWidth = p_area
-dirtyArea = p_area.flatten()
-dirtyMax = p_max_height.flatten()
-dirtyMin = p_min_height.flatten()
 
-validPulses = p_area > 0
-#cleanArea = 
+# Removing empty pulses
+cleanPulses = p_area > 0
+cleanAreas = p_area[cleanPulses]
+cleanWidth = p_width[cleanPulses]
+cleanMax = p_max_height[cleanPulses]
+cleanMin = p_min_height[cleanPulses]
 
 
-areaToPlot = tscale*p_area[validPulses]
 
+# Quantities for plotting only events with n number of pulses, not just all of them
+# You should only use this for plotting purposes, as there are still empty pulses here.
+howMany = n_pulses == 3 # How many pulses you do want
+nArea = p_area[howMany,:]
+nWidth = p_width[howMany,:]
+nMax = p_max_height[howMany,:]
+nmin = p_min_height[howMany,:]
+
+na2l = p_afs_2l[howMany]
+na2r = p_afs_2r[howMany]
+na1 = p_afs_1[howMany]
+na25 = p_afs_25[howMany] 
+na50 = p_afs_50[howMany]
+na75 = p_afs_75[howMany]
+na99 = p_afs_99[howMany]
 
 
 t1 = time.time()
 print('time to complete: ',t1-t0)
+
 
 # =============================================================
 # =============================================================
 # now make plots of interesting pulse quantities
 
 
-#pl.figure()
-#pl.hist(n_pulses)
-#pl.show()
-
-onlyOne = n_pulses < 100000
-oneArea = p_area[onlyOne,:]
-oneWidth = tscale*p_width[onlyOne,:]
-
-
 pl.figure()
-pl.scatter(oneArea.flatten(), tscale*(p_afs_50.flatten()-p_afs_2l.flatten() ), 1)
+pl.scatter(nArea.flatten(), tscale*(na50.flatten()-na2l.flatten() ), 1)
 pl.ylabel("50 - 2")
 pl.xlabel("Area")
-pl.xlim([1,3e5])
+pl.xlim([1,1e6])
 #pl.ylim([1,3e5])
 pl.ylim([0.01, 10])
 pl.xscale("log")

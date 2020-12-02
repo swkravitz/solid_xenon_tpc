@@ -15,6 +15,16 @@ def GetPulseArea( p_start, p_end, waveforms_bls ):
     
     return area
 
+def GetPulseAreaChannel(p_start, p_end, waveform_bls):
+    # This one needs improving...
+    area = []
+    for i in range(len(p_start)):
+        area.append(sum(waveform_bls[p_start[i]:p_end[i] ] ) )
+    while len(area) < 4:
+        area.append(0)
+
+    return area
+
 def GetPulseMaxSample( p_start, p_end, waveforms_bls ):
     
     max_height_sample = int(-999)
@@ -207,6 +217,18 @@ def GetHeightFractionSamples( p_start, p_end, waveforms_bls ):
             break
     
     return hfs_10l, hfs_50l, hfs_10r, hfs_50r
+
+
+def GetAreaFractionCumulative(p_start, p_end, p_area, waveform_bls):
+
+    p_afc = -999 
+
+    if p_start != p_end:
+        p_afc = np.cumsum( waveform_bls[p_start:p_end] )/p_area
+    
+    return p_afc
+
+
 
 def ClearWaveform( p_start, p_end, waveforms_bls ):
     
