@@ -58,21 +58,60 @@ def pulse_bounds(data,t_min,window,start_frac,end_frac):
     min_search = np.maximum(0,t_min)
     max_search = np.minimum(len(data)-1,t_min+window)
     peak_val=np.max(data[min_search:max_search])
-    peak_pos=np.argmax(data[min_search:max_search])
-    #print("peak_val: ",peak_val,"peak_pos: ",(peak_pos+min_search)*tscale)
+    peak_pos=np.argmax(data[min_search:max_search])+min_search
+    #print("peak_val: ",peak_val,"peak_pos: ",peak_pos*tscale)
     #print("min_search: ",min_search*tscale,"max_search: ",max_search*tscale)
+    
+    #print("Start thresh: {0}, end thresh: {1}".format(max(peak_val*start_frac,6.0/chA_spe_size),max(peak_val*end_frac,6.0/chA_spe_size)))
+    
     #start_frac: pulse starts at this fraction of peak height above baseline
-    for i_start in range(min_search,max_search):
-        if data[i_start]>max(peak_val*start_frac,6.0/chA_spe_size):
+    # find first instance above threshold, starting from beginning of window
+    #for i_start in range(min_search,max_search):
+    #    if data[i_start]>max(peak_val*start_frac,6.0/chA_spe_size):
+    #        start_pos=i_start
+    #        break
+    # find last instance before peak above threshold
+    min_below_thresh = 2
+    n_below_thresh = 0
+    for i_start in range(peak_pos,min_search,-1):
+        #print("pos: {0}, value: {1}".format(i_start*tscale,data[i_start]))
+        if data[i_start]<max(peak_val*start_frac,4.0/chA_spe_size):
+            n_below_thresh += 1
+        else:
+            n_below_thresh = 0
+        if n_below_thresh >= min_below_thresh:
             start_pos=i_start
             break
+    #print("start_pos: {0}".format(start_pos*tscale))
+            
     #end_frac: pulse ends at this fraction of peak height above baseline
-    for i_start in range(max_search,min_search,-1):
-        if data[i_start]>max(peak_val*end_frac,6.0/chA_spe_size):
+    # find last instance above threshold, working backwards from end of window
+    #for i_start in range(max_search,min_search,-1):
+    #    if data[i_start]>max(peak_val*end_frac,6.0/chA_spe_size):
+    #        end_pos=i_start
+    #        break
+    # find first instance after peak below threshold   
+    n_below_thresh = 0     
+    for i_start in range(peak_pos,max_search):
+        #print("pos: {0}, value: {1}".format(i_start*tscale,data[i_start]))
+        if data[i_start]<max(peak_val*end_frac,4.0/chA_spe_size):
+            n_below_thresh += 1
+        else:
+            n_below_thresh = 0
+        if n_below_thresh >= min_below_thresh:
             end_pos=i_start
             break
-    
+    #print("end_pos: {0}".format(end_pos*tscale))
+    # Temporary:
+    if start_pos == -1:
+        start_pos = min_search
+        #print("Start pos not found")
+    if end_pos == -1:
+        end_pos = max_search
+        #print("End pos not found")
+
     return (start_pos, end_pos)
+    
 def merged_bounds(data, t_min, window, start_frac, end_frac):
     start_pos=-1
     end_pos=-1
@@ -118,7 +157,7 @@ mpl.rcParams['figure.autolayout']=True
 mpl.rcParams['figure.figsize']=[16.0,12.0]
 
 
-data_dir="../../101520/bkg_2.8g_3.0c_25mV_5_afterfill_1.2bar_5min/"
+data_dir="../../112020/bkg_2.5g_3.0c_25mV_1.7bar_nocirc_0.13bottle_5min_2nd/"
 event_window=25. # in us
 wsize=int(500*event_window) # samples per waveform # 12500 for 25 us
 max_evts=-1 #25000 # -1 means read in all entries; 25000 is roughly the max allowed in memory on the DAQ computer
@@ -282,7 +321,7 @@ for i in range(0, int(v_matrix.shape[0])):
 	# Look for the s2 using a moving average (sum) of the waveform over a wide window
 
     # Temporary! Changing just the S2-finding range to be AFTER the trigger (assuming we trigger on the S1)
-    small_s2_mode = True
+    small_s2_mode = False
     if small_s2_mode:
         s2_search_min = trigger_time+int(1.0/tscale)
         s2_search_max = int(22.0/tscale)
@@ -309,7 +348,7 @@ for i in range(0, int(v_matrix.shape[0])):
     bad_bounds=False
     if s2_found: # Found a pulse (maybe an s2)
         # print("s2 window time: ",s2_max_ind*tscale,"s2 area max: ",s2_max)
-        s2_start_pos, s2_end_pos=pulse_bounds(sum_data,s2_max_ind,s2_window,s2_start_frac,s2_end_frac) # had s2_max_ind-t_offset; why?
+        s2_start_pos, s2_end_pos=pulse_bounds(sum_data,s2_max_ind-t_offset,s2_window,s2_start_frac,s2_end_frac) # had s2_max_ind-t_offset; why?
         #print(s2_start_pos, s2_end_pos)
               
         if(s2_start_pos==s2_end_pos):
@@ -375,7 +414,7 @@ for i in range(0, int(v_matrix.shape[0])):
         #print("s1 area: ",s1_max)
         if s1_max>s1_thresh:
             #print("s1 window time: ",s1_max_ind*tscale,"s1 area max: ",s1_max)    
-            s1_start_pos, s1_end_pos = pulse_bounds(sum_data,s1_max_ind,s1_window,s1_start_frac,s1_end_frac) # had s1_max_ind-t_offset; why?
+            s1_start_pos, s1_end_pos = pulse_bounds(sum_data,s1_max_ind-t_offset,s1_window,s1_start_frac,s1_end_frac) # had s1_max_ind-t_offset; why?
             if s1_start_pos > -1 and s1_end_pos > s1_start_pos:
                 #print(s1_start_pos)
                 #print(s1_end_pos)
@@ -430,7 +469,7 @@ for i in range(0, int(v_matrix.shape[0])):
     s1_bottom = np.sum(np.array(s1_ch_area)[bottom_channels])
     s1_top = np.sum(np.array(s1_ch_area)[top_channels])
     s1_tba = (s1_top-s1_bottom)/(s1_top+s1_bottom)
-    if True and not inn=='q':
+    if True and not inn=='q':#and s2_found and not s1_found and s2_width>0.3 and s2_width<0.5 and s2_tba<0 and not inn=='q':
     #if s1_found and s2_found:
         fig=pl.figure(1,figsize=(30, 20))
         pl.rc('xtick', labelsize=25)
@@ -578,13 +617,16 @@ for j in range(0, n_channels-1):
 
 # Event selection for summary plots, i.e. analysis cuts
 s1_and_s2=s2_found_array*s1_found_array*(s2_width_array>0.2) # cut out events with unrealistically-short s2s
-s1_only_like=s2_found_array*np.logical_not(s1_found_array)*(s2_width_array<0.6)*(s2_tba<0)
-s2_like=s2_found_array*(s2_width_array>0.6)*(s2_tba>0.)
+s1_only_like=s2_found_array*np.logical_not(s1_found_array)*(s2_width_array<0.8)*(s2_tba<0)
+s2_like=s2_found_array*(s2_width_array>0.8)*(s2_tba>0.)
+s2_only_like=s2_found_array*np.logical_not(s1_found_array)*(s2_width_array>2.0)*(s2_tba>0)
 print("S2-like events (pulse found, long width): ",np.size(s2_area_array[s2_like]))
+print("S2-only-like events: ",np.sum(s2_only_like))
+print("S1-only-like events: ",np.sum(s1_only_like))
 long_drift = t_drift_array > 3
 save_plots=True
-cut_name="SmallS2Mode_S1S2_S2TBAcut_LgS2Area"
-plot_selection=s1_and_s2*(s2_tba>0.)*(s2_area_array>500.)#s2_found_array#*(s2_tba>0)*(s1_tba<0)*(s2_width_array>1)#s2_like##*(t_drift_array>6)#s2_found_array#
+cut_name="S1_only_like"
+plot_selection=s1_only_like#and_s2*(s2_tba>0.)#s2_found_array#*(s2_tba>0)*(s1_tba<0)*(s2_width_array>1)#s2_like##*(t_drift_array>6)#s2_found_array#
 print("events passing plot_selection cuts: ",np.size(s2_area_array[plot_selection]))
     
 #pl.figure(figsize=(30, 20))
