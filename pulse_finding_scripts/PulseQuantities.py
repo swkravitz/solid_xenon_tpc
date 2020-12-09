@@ -103,19 +103,19 @@ def GetPulseMeanAndRMS( p_start, p_end, waveforms_bls ):
 
 # function to calculate samples at 10%, 50% and 90% area points, integrating from the left
 # currently returns 2% area from left and right and 50% area from left
-def GetAreaFractionSamples( p_start, p_end, waveforms_bls ):
+def GetAreaFractionLoop( p_start, p_end, waveforms_bls ):
     
-    afs_2l = int(9999)
-    afs_2r = int(9999)
-    afs_50 = int(9999)
-    afs_1 = int(9999)
-    afs_25 = int(9999)
-    afs_75 = int(9999)
-    afs_99 = int(9999)
+    afs_2l = int(999999) 
+    afs_2r = int(999999)
+    afs_50 = int(999999)
+    afs_1 = int(999999)
+    afs_25 = int(999999)
+    afs_75 = int(999999)
+    afs_99 = int(999999)
     #afs_98 = int(9999)
     
     p_area = GetPulseArea( p_start, p_end, waveforms_bls )
-    if p_area < 0.:
+    """if p_area < 0.:
         afs_2l = int(-999)
         afs_2r = int(-999)
         #afs_10 = int(-999)
@@ -126,7 +126,7 @@ def GetAreaFractionSamples( p_start, p_end, waveforms_bls ):
         afs_99 = int(-999)
         #afs_90 = int(-999)
         #afs_98 = int(-999)
-        return afs_2l,afs_2r,afs_1,afs_25,afs_50,afs_75,afs_99
+        return afs_2l,afs_2r,afs_1,afs_25,afs_50,afs_75,afs_99"""
     
     #move through pulse sample-by-sample from left
     rolling_area = 0.
@@ -169,22 +169,22 @@ def GetAreaFractionSamples( p_start, p_end, waveforms_bls ):
             afs_2r = int(i)
             break
     
-    return afs_2l,afs_2r,afs_1,afs_25,afs_50,afs_75,afs_99
+    return afs_2l,afs_1,afs_25,afs_50,afs_75,afs_99
 
 # function to calculate samples at 10% and 50% max height point looking from left and the right
 def GetHeightFractionSamples( p_start, p_end, waveforms_bls ):
     
-    hfs_10l = int(9999) # looking from left
-    hfs_50l = int(9999) # looking from left
-    hfs_10r = int(-9999) # looking from right
-    hfs_50r = int(-9999) # looking from right
+    hfs_10l = int(999999) # looking from left
+    hfs_50l = int(999999) # looking from left
+    hfs_10r = int(-999999) # looking from right
+    hfs_50r = int(-999999) # looking from right
     
     p_max_height = GetPulseMaxHeight( p_start, p_end, waveforms_bls )
     if p_max_height < 0.:
-        hfs_10l = int(-999) # looking from left
-        hfs_50l = int(-999) # looking from left
-        hfs_10r = int(-999) # looking from right
-        hfs_50r = int(-999) # looking from right
+        hfs_10l = int(-99999) # looking from left
+        hfs_50l = int(-99999) # looking from left
+        hfs_10r = int(-99999) # looking from right
+        hfs_50r = int(-99999) # looking from right
         return hfs_10l, hfs_50l, hfs_10r, hfs_50r
     #print("from the left...")
     #move through pulse sample-by-sample from left
@@ -219,16 +219,27 @@ def GetHeightFractionSamples( p_start, p_end, waveforms_bls ):
     return hfs_10l, hfs_50l, hfs_10r, hfs_50r
 
 
-def GetAreaFractionCumulative(p_start, p_end, p_area, waveform_bls):
+def GetAreaFraction(p_start, p_end, waveform_bls):
 
-    p_afc = -999 
+    p_area = GetPulseArea( p_start, p_end, waveform_bls )
 
     if p_start != p_end:
         p_afc = np.cumsum( waveform_bls[p_start:p_end] )/p_area
+    else:
+        return -1,-1,-1,-1,-1,-1
+        
+
+    afs_1 = np.argmax(p_afc >= 0.01) + p_start
+    afs_2l = np.argmax(p_afc >= 0.02) + p_start
+    afs_25 = np.argmax(p_afc >= 0.25) + p_start
+    afs_50 = np.argmax(p_afc >= 0.50) + p_start
+    afs_75 = np.argmax(p_afc >= 0.75) + p_start
+    afs_99 = np.argmax(p_afc >= 0.99) + p_start
     
-    return p_afc
+    return afs_2l,afs_1,afs_25,afs_50,afs_75,afs_99
 
 
+############################################################
 
 def ClearWaveform( p_start, p_end, waveforms_bls ):
     

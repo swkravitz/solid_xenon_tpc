@@ -6,6 +6,7 @@ import time
 
 import PulseFinderScipy as pf
 import PulseQuantities as pq
+import PulseClassification as pc
 
 # set plotting style
 mpl.rcParams['font.size']=10
@@ -177,8 +178,6 @@ p_hfs_50r = np.zeros((n_events, max_pulses) )
 p_mean_time = np.zeros((n_events, max_pulses) )
 p_rms_time = np.zeros((n_events, max_pulses) )
 
-p_afc = np.zeros((n_events, max_pulses, 10000) )
-
 n_pulses = np.zeros(n_events, dtype=np.int)
 
 p_start_ch = np.zeros((n_channels-1, n_events, max_pulses), dtype=np.int)
@@ -188,6 +187,8 @@ p_area_ch_frac = np.zeros((n_channels-1, n_events, max_pulses) )
 p_area_top = np.zeros((n_events, max_pulses))
 p_area_bottom = np.zeros((n_events, max_pulses))
 p_area_tba = np.zeros((n_events, max_pulses))
+
+p_class = np.zeros((n_events, max_pulses), dtype=np.int)
 
 inn=""
 
@@ -201,6 +202,7 @@ for i in range(0, n_events):
     # Find pulse locations; other quantities for pf tuning/debugging
     start_times, end_times, peaks, data_conv, properties = pf.findPulses( v_bls_matrix_all_ch[-1,i,:], max_pulses )
 
+
     # Sort pulses by start times, not areas
     startinds = np.argsort(start_times)
     n_pulses[i] = len(start_times)
@@ -209,6 +211,8 @@ for i in range(0, n_events):
             continue
         p_start[i,m] = start_times[m]
         p_end[i,m] = end_times[m]
+
+
 
     # Individual channel pulse locations, in case you want this info
     # Can't just ":" the the first index in data, findPulses doesn't like it, so have to loop 
@@ -232,9 +236,8 @@ for i in range(0, n_events):
         p_width[i,pp] = p_end[i,pp] - p_start[i,pp]
         #(p_mean_time[i,pp], p_rms_time[i,pp]) = pq.GetPulseMeanAndRMS(p_start[i,pp], p_end[i,pp], v_bls_matrix_all_ch[-1,i,:])
 
-        # Area fractions samples & cumulative, height fractional samples
-        (p_afs_2l[i,pp], p_afs_2r[i,pp], p_afs_1[i,pp], p_afs_25[i,pp], p_afs_50[i,pp], p_afs_75[i,pp], p_afs_99[i,pp]) = pq.GetAreaFractionSamples(p_start[i,pp], p_end[i,pp], v_bls_matrix_all_ch[-1,i,:] )
-        p_afc[i,pp, 0:(p_end[i,pp] - p_start[i,pp]) ] = pq.GetAreaFractionCumulative(p_start[i,pp], p_end[i,pp], p_area[i,pp], v_bls_matrix_all_ch[-1,i,:] )
+        # Area and height fractions      
+        (p_afs_2l[i,pp], p_afs_1[i,pp], p_afs_25[i,pp], p_afs_50[i,pp], p_afs_75[i,pp], p_afs_99[i,pp]) = pq.GetAreaFraction(p_start[i,pp], p_end[i,pp], v_bls_matrix_all_ch[-1,i,:] )
         (p_hfs_10l[i,pp], p_hfs_50l[i,pp], p_hfs_10r[i,pp], p_hfs_50r[i,pp]) = pq.GetHeightFractionSamples(p_start[i,pp], p_end[i,pp], v_bls_matrix_all_ch[-1,i,:] )
     
         # Areas for individual channels and top bottom
@@ -243,7 +246,11 @@ for i in range(0, n_events):
         p_area_top[i,pp] = sum(p_area_ch_frac[0:3,i,pp])
         p_area_bottom[i,pp] = sum(p_area_ch_frac[4:7,i,pp])
         p_area_tba[i,pp] = (p_area_top[i,pp] - p_area_bottom[i,pp])/(p_area_top[i,pp] + p_area_bottom[i,pp])
-    
+
+        
+    # Pulse classifier, work in progress
+    p_class[i,:] = pc.ClassifyPulses(p_area_tba[i,:], p_afs_2l[i,:], p_afs_50[i,:], tscale)
+
 
     # =============================================================
     # draw the waveform and the pulse bounds found
@@ -260,16 +267,13 @@ for i in range(0, n_events):
         plot_event_ind = i
 
     # Condition to plot now includes this rise time calc, not necessary
-    toBoolUp = (p_afs_50[i,:int(n_pulses[i])]-p_afs_2l[i,:int(n_pulses[i])] )*tscale < 0.6
-    toBoolDown = (p_afs_50[i,:int(n_pulses[i])]-p_afs_2l[i,:int(n_pulses[i])] )*tscale > 0.2
-    toBoolAll = toBoolUp == toBoolDown
-    condition = np.sum(toBoolAll)
-
+    riseTimeCondition = ((p_afs_50[i,:n_pulses[i]]-p_afs_2l[i,:n_pulses[i]] )*tscale < 0.6)*((p_afs_50[i,:n_pulses[i]]-p_afs_2l[i,:n_pulses[i]] )*tscale > 0.2)
+    
     # Condition to skip the individual plotting
-    plotyn = False
+    plotyn = True #False
 
-    if True and not inn == 'q' and plot_event_ind == i and condition > 0 and plotyn:
-        
+    if True and not inn == 'q' and plot_event_ind == i and plotyn:
+
         fig = pl.figure(1,figsize=(10, 7))
         pl.rc('xtick', labelsize=10)
         pl.rc('ytick', labelsize=10)
@@ -308,9 +312,9 @@ for i in range(0, n_events):
         pl.grid(b=True,which='major',color='lightgray',linestyle='--')
         triggertime_us = (t[-1]*0.2)
         
-        colors = ['blue','green','red','purple']
+        colors = np.array(['blue','green','red','purple','black','magenta','darkorange'])
         for pulse in range(len(start_times)):
-            ax.axvspan( start_times[pulse]*tscale, end_times[pulse]*tscale, alpha=0.25, color=colors[pulse])
+            ax.axvspan( start_times[pulse]*tscale, end_times[pulse]*tscale, alpha=0.25, color=colors[p_class[i,pulse] ] )
         
         #ax.axhline( 0.276, 0, wsize, linestyle='--', lw=1, color='orange')
 
@@ -334,28 +338,39 @@ for i in range(0, n_events):
 
 # Removing empty pulses
 cleanPulses = p_area > 0
-cleanAreas = p_area[cleanPulses]
-cleanWidth = p_width[cleanPulses]
+
+cleanArea = p_area[cleanPulses]
 cleanMax = p_max_height[cleanPulses]
 cleanMin = p_min_height[cleanPulses]
+cleanWidth = p_width[cleanPulses]
 
+cleanAFS2l = p_afs_2l[cleanPulses]
+cleanAFS50 = p_afs_50[cleanPulses]
+
+cleanAreaCh = p_area_ch[:,cleanPulses]
+cleanAreaChFrac = p_area_ch_frac[:,cleanPulses]
+cleanAreaTop = p_area_top[cleanPulses]
+cleanAreaBottom = p_area_bottom[cleanPulses]
+cleanAreaTBA = p_area_tba[cleanPulses]
 
 
 # Quantities for plotting only events with n number of pulses, not just all of them
-# You should only use this for plotting purposes, as there are still empty pulses here.
+# May still contain empty pulses
 howMany = n_pulses < 1000 # How many pulses you do want
 nArea = p_area[howMany,:]
-nWidth = p_width[howMany,:]
 nMax = p_max_height[howMany,:]
 nmin = p_min_height[howMany,:]
+nWidth = p_width[howMany,:]
 
 na2l = p_afs_2l[howMany]
-na2r = p_afs_2r[howMany]
-na1 = p_afs_1[howMany]
-na25 = p_afs_25[howMany] 
 na50 = p_afs_50[howMany]
-na75 = p_afs_75[howMany]
-na99 = p_afs_99[howMany]
+
+
+# Quantities for plotting a specific class of pulses
+class1 = p_class == 1
+tba1 = p_area_tba[class1]
+afs2l1 = p_afs_2l[class1]
+afs501 = p_afs_50[class1]
 
 
 t1 = time.time()
@@ -367,46 +382,28 @@ print('time to complete: ',t1-t0)
 # now make plots of interesting pulse quantities
 
 
+
 pl.figure()
-pl.hist(p_area_tba.flatten(), 100 )
+pl.hist(cleanAreaTBA.flatten(), 100 )
 pl.xlabel("TBA")
-pl.show() 
+#pl.show() 
 
 pl.figure()
-pl.hist(tscale*(na50.flatten()-na2l.flatten() ), 100)
+pl.hist(tscale*(cleanAFS50.flatten()-cleanAFS2l.flatten() ), 100)
 pl.xlabel("50 - 2")
-pl.show()
+pl.yscale("log")
+#pl.show()
 
 pl.figure()
-pl.scatter(p_area.flatten(), tscale*(na50.flatten()-na2l.flatten() ), 1)
+pl.scatter(p_area_tba.flatten(), tscale*(p_afs_50.flatten() - p_afs_2l.flatten() ),  s = 1, c = colors[p_class.flatten()])
+pl.ylabel("50 - 2")
+pl.xlabel("TBA")
+
+pl.figure()
+pl.scatter(p_area.flatten(), tscale*(p_afs_50.flatten() - p_afs_2l.flatten() ),  s = 1, c = colors[p_class.flatten()])
 pl.ylabel("50 - 2")
 pl.xlabel("Area")
+pl.xscale("log")
 
-pl.figure()
-pl.scatter(p_area_bottom.flatten(), p_area_top.flatten(), 1)
-#pl.xlim([1e1,2e5])
-#pl.ylim([1e1,2e5])
-#pl.xscale("log")
-#pl.yscale("log")
-pl.xlabel("Bottom area")
-pl.ylabel("Top area")
+
 pl.show()
-
-pl.figure()
-pl.scatter(p_area_tba.flatten(), tscale*(na50.flatten()-na2l.flatten() ), 1)
-pl.ylabel("50 - 2")
-pl.xlabel("TBA")
-#pl.xlim([1,1e6])
-#pl.ylim([1,3e5])
-#pl.ylim([0.01, 10])
-#pl.xscale("log")
-#pl.yscale("log")
-pl.show()
-
-
-
-#pl.figure()
-#pl.scatter(p_afs_1.flatten(), p_afs_99.flatten(), 1)
-#pl.xlabel('1')
-#pl.ylabel('99')
-#pl.show()
