@@ -29,6 +29,11 @@ trigger_time = int(trigger_time_us/tscale)
 n_sipms = 8
 n_channels = n_sipms+1 # includes sum
 
+# define top, bottom channels
+n_top = int((n_channels-1)/2)
+top_channels=np.array(range(n_top),int)
+bottom_channels=np.array(range(n_top,2*n_top),int)
+
 # sphe sizes in mV*sample
 chA_spe_size = 29.02
 chB_spe_size = 30.61
@@ -46,7 +51,7 @@ chH_spe_size = 30.3
 #data_dir="../data/fewevts/"
 #data_dir="../data/po_5min/"
 #data_dir = "C:/Users/ryanm/Documents/Research/Data/bkg_3.5g_3.9c_27mV_6_postrecover_5min/"
-data_dir = "C:/Users/ryanm/Documents/Research/Data/bkg_2.8g_3.2c_25mV_1_1.6_circ_0.16bottle_5min/"
+data_dir = "C:/Users/swkra/Desktop/Jupyter temp/data-202012/120820/th_4.8g_5.0c_25mV_fastfill_nocirc/"#"C:/Users/ryanm/Documents/Research/Data/bkg_2.8g_3.2c_25mV_1_1.6_circ_0.16bottle_5min/"
 #"C:/Users/swkra/Desktop/Jupyter temp/data-202009/091720/bkg_3.5g_3.9c_27mV_7_postrecover2_5min/"
 
 max_evts = 1000  # 25000 # -1 means read in all entries; 25000 is roughly the max allowed in memory on the DAQ computer
@@ -196,6 +201,9 @@ inn=""
 v_bls_matrix_all_ch_cpy = v_bls_matrix_all_ch.copy() # Do we need this? Not zeroing out anymore...
 print("Running pulse finder on {:d} events...".format(n_events))
 
+# use for coloring pulses
+pulse_class_colors = np.array(['blue', 'green', 'red', 'purple', 'black', 'magenta', 'darkorange'])
+
 for i in range(0, n_events):
     if i%100==0: print("Event #",i)
     
@@ -226,8 +234,8 @@ for i in range(0, n_events):
     #        p_end_ch[j,i,k] = end_times_ch[k]
         
 
-    # Calculate interesting quantities
-    for pp in range(max_pulses):
+    # Calculate interesting quantities, only for pulses that were found
+    for pp in range(n_pulses[i]):
 
         # Area, max & min heights, width, pulse mean & rms
         p_area[i,pp] = pq.GetPulseArea(p_start[i,pp], p_end[i,pp], v_bls_matrix_all_ch[-1,i,:] )
@@ -243,8 +251,8 @@ for i in range(0, n_events):
         # Areas for individual channels and top bottom
         p_area_ch[:,i,pp] = pq.GetPulseAreaChannel(p_start[i,pp], p_end[i,pp], v_bls_matrix_all_ch[:,i,:] )
         p_area_ch_frac[:,i,pp] = p_area_ch[:,i,pp]/p_area[i,pp]
-        p_area_top[i,pp] = sum(p_area_ch_frac[0:3,i,pp])
-        p_area_bottom[i,pp] = sum(p_area_ch_frac[4:7,i,pp])
+        p_area_top[i,pp] = sum(p_area_ch[top_channels,i,pp])
+        p_area_bottom[i,pp] = sum(p_area_ch[bottom_channels,i,pp])
         p_area_tba[i,pp] = (p_area_top[i,pp] - p_area_bottom[i,pp])/(p_area_top[i,pp] + p_area_bottom[i,pp])
 
         
@@ -270,9 +278,9 @@ for i in range(0, n_events):
     riseTimeCondition = ((p_afs_50[i,:n_pulses[i]]-p_afs_2l[i,:n_pulses[i]] )*tscale < 0.6)*((p_afs_50[i,:n_pulses[i]]-p_afs_2l[i,:n_pulses[i]] )*tscale > 0.2)
     
     # Condition to skip the individual plotting
-    plotyn = True #False
+    plotyn = True#False#
 
-    if True and not inn == 'q' and plot_event_ind == i and plotyn:
+    if not inn == 'q' and plot_event_ind == i and plotyn:
 
         fig = pl.figure(1,figsize=(10, 7))
         pl.rc('xtick', labelsize=10)
@@ -304,17 +312,16 @@ for i in range(0, n_events):
         pl.plot( x*tscale, v_bls_matrix_all_ch[-1,i,:],'blue' )
         #pl.xlim([0,wsize])
         pl.xlim([0,event_window])
-        pl.ylim( [-5, 1.01*np.max(v_bls_matrix_all_ch[-1,i,:])])
+        pl.ylim( [-1, 1.01*np.max(v_bls_matrix_all_ch[-1,i,:])])
         pl.xlabel('Time (us)')
         #pl.xlabel('Samples')
         pl.ylabel('phd/sample')
         pl.title("Sum, event "+ str(i))
         pl.grid(b=True,which='major',color='lightgray',linestyle='--')
         triggertime_us = (t[-1]*0.2)
-        
-        colors = np.array(['blue','green','red','purple','black','magenta','darkorange'])
+
         for pulse in range(len(start_times)):
-            ax.axvspan( start_times[pulse]*tscale, end_times[pulse]*tscale, alpha=0.25, color=colors[p_class[i,pulse] ] )
+            ax.axvspan(start_times[pulse] * tscale, end_times[pulse] * tscale, alpha=0.25, color=pulse_class_colors[p_class[i, pulse]])
         
         #ax.axhline( 0.276, 0, wsize, linestyle='--', lw=1, color='orange')
 
@@ -336,22 +343,30 @@ for i in range(0, n_events):
 # end of pulse finding and plotting event loop
 
 
-# Removing empty pulses
-cleanPulses = p_area > 0
+# Define some standard cuts for plotting
+cut_dict = {}
+cut_dict['ValidPulse'] = p_area > 0
+cut_dict['PulseClass0'] = p_class == 0
 
-cleanArea = p_area[cleanPulses]
-cleanMax = p_max_height[cleanPulses]
-cleanMin = p_min_height[cleanPulses]
-cleanWidth = p_width[cleanPulses]
+# Pick which cut from cut_dict to apply here and whether to save plots
+save_pulse_plots=True
+pulse_cut_name = 'ValidPulse'
+pulse_cut = cut_dict[pulse_cut_name]
 
-cleanAFS2l = p_afs_2l[cleanPulses]
-cleanAFS50 = p_afs_50[cleanPulses]
+cleanArea = p_area[pulse_cut].flatten()
+cleanMax = p_max_height[pulse_cut].flatten()
+cleanMin = p_min_height[pulse_cut].flatten()
+cleanWidth = p_width[pulse_cut].flatten()
+cleanPulseClass = p_class[pulse_cut].flatten()
 
-cleanAreaCh = p_area_ch[:,cleanPulses]
-cleanAreaChFrac = p_area_ch_frac[:,cleanPulses]
-cleanAreaTop = p_area_top[cleanPulses]
-cleanAreaBottom = p_area_bottom[cleanPulses]
-cleanAreaTBA = p_area_tba[cleanPulses]
+cleanAFS2l = p_afs_2l[pulse_cut].flatten()
+cleanAFS50 = p_afs_50[pulse_cut].flatten()
+
+cleanAreaCh = p_area_ch[:, pulse_cut].flatten()
+cleanAreaChFrac = p_area_ch_frac[:, pulse_cut].flatten()
+cleanAreaTop = p_area_top[pulse_cut].flatten()
+cleanAreaBottom = p_area_bottom[pulse_cut].flatten()
+cleanAreaTBA = p_area_tba[pulse_cut].flatten()
 
 
 # Quantities for plotting only events with n number of pulses, not just all of them
@@ -382,28 +397,43 @@ print('time to complete: ',t1-t0)
 # now make plots of interesting pulse quantities
 
 
-
 pl.figure()
-pl.hist(cleanAreaTBA.flatten(), 100 )
+pl.hist(cleanAreaTBA, 100 )
 pl.xlabel("TBA")
+if save_pulse_plots: pl.savefig(data_dir+"TBA_"+pulse_cut_name+".png")
 #pl.show() 
 
 pl.figure()
-pl.hist(tscale*(cleanAFS50.flatten()-cleanAFS2l.flatten() ), 100)
-pl.xlabel("50 - 2")
 pl.yscale("log")
+pl.hist(tscale*(cleanAFS50-cleanAFS2l ), 100)
+pl.xlabel("Rise time, 50-2 (us)")
+if save_pulse_plots: pl.savefig(data_dir+"RiseTime_"+pulse_cut_name+".png")
 #pl.show()
 
 pl.figure()
-pl.scatter(p_area_tba.flatten(), tscale*(p_afs_50.flatten() - p_afs_2l.flatten() ),  s = 1, c = colors[p_class.flatten()])
-pl.ylabel("50 - 2")
-pl.xlabel("TBA")
+#pl.yscale("log")
+pl.hist(np.log10(cleanArea), 100)
+pl.xlabel("log10 Pulse area (phd)")
+if save_pulse_plots: pl.savefig(data_dir+"log10PulseArea_"+pulse_cut_name+".png")
 
 pl.figure()
-pl.scatter(p_area.flatten(), tscale*(p_afs_50.flatten() - p_afs_2l.flatten() ),  s = 1, c = colors[p_class.flatten()])
-pl.ylabel("50 - 2")
-pl.xlabel("Area")
-pl.xscale("log")
+pl.yscale("log")
+pl.hist(cleanPulseClass )
+pl.xlabel("Pulse Class")
+if save_pulse_plots: pl.savefig(data_dir+"PulseClass_"+pulse_cut_name+".png")
 
+pl.figure()
+pl.scatter(cleanAreaTBA, tscale*(cleanAFS50-cleanAFS2l ), s = 1, c = pulse_class_colors[cleanPulseClass])
+pl.ylabel("Rise time, 50-2 (us)")
+pl.xlabel("TBA")
+if save_pulse_plots: pl.savefig(data_dir+"RiseTime_vs_TBA_"+pulse_cut_name+".png")
+
+pl.figure()
+pl.xscale("log")
+pl.scatter(cleanArea, tscale*(cleanAFS50-cleanAFS2l ), s = 1, c = pulse_class_colors[cleanPulseClass])
+pl.ylabel("Rise time, 50-2 (us)")
+pl.xlabel("Pulse area (phd)")
+#pl.xlim(0.7*min(p_area.flatten()), 1.5*max(p_area.flatten()))
+if save_pulse_plots: pl.savefig(data_dir+"RiseTime_vs_PulseArea_"+pulse_cut_name+".png")
 
 pl.show()

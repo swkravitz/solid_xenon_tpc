@@ -43,16 +43,33 @@ def pulse_bounds(data, t_min, window, start_frac, end_frac):
     min_search = np.maximum(0, t_min)
     max_search = np.minimum(len(data) - 1, t_min + window)
     peak_val = np.max(data[min_search:max_search])
+    peak_pos=np.argmax(data[min_search:max_search])+min_search
     # TODO: instead of a for loop, compare full array against max(...), take first, last values from np.where (add min_search!)
-    for i_start in range(min_search, max_search):
-        if data[i_start] > max(peak_val * start_frac, 8.0 / chA_spe_size):
-            start_pos = i_start
-            break
-    # end_frac: pulse ends at this fraction of peak height above baseline
-    for i_start in range(max_search, min_search, -1):
-        if data[i_start] > max(peak_val * end_frac, 8.0 / chA_spe_size):
-            end_pos = i_start
-            break
+    start_thresh = max(peak_val * start_frac, 2.0 / chA_spe_size)
+    below_start_thresh = data[min_search:peak_pos] <= start_thresh
+    # find last instance before peak below threshold
+    if np.any(below_start_thresh):
+        start_pos = np.where(below_start_thresh)[0][-1] + min_search
+    else:
+        start_pos = min_search # if no points are below threshold, use window start
+
+    # for i_start in range(min_search, max_search):
+    #     if data[i_start] > max(peak_val * start_frac, 8.0 / chA_spe_size):
+    #         start_pos = i_start
+    #         break
+
+    end_thresh = max(peak_val * end_frac, 2.0 / chA_spe_size)
+    below_end_thresh = data[peak_pos:max_search] <= end_thresh
+    # find first instance after peak below threshold
+    if np.any(below_end_thresh):
+        end_pos = np.where(below_end_thresh)[0][0] + peak_pos
+    else:
+        end_pos = max_search # if no points are below threshold, use window end
+
+    # for i_start in range(max_search, min_search, -1):
+    #     if data[i_start] > max(peak_val * end_frac, 8.0 / chA_spe_size):
+    #         end_pos = i_start
+    #         break
 
     return (start_pos, end_pos)
 
@@ -69,8 +86,11 @@ def pulse_bounds(data, t_min, window, start_frac, end_frac):
 def findPulses(waveform_bls, max_pulses):
 
     # pulse finder parameters for tuning
-    pulse_window = int(7.0 / tscale)
+    pulse_window = int(12.0 / tscale) # was 7 us; any reason this can't just always go to next pulse or end of wfm?
     conv_width = int(0.3 / tscale) # in samples
+    min_height = 0.10 # phd/sample
+    min_dist = int(0.5 / tscale) # in samples
+    bounds_conv_width = 5 # in samples
     pulse_start_frac = 0.01  # pulse starts at this fraction of peak height above baseline
     pulse_end_frac = 0.01  # pulse starts at this fraction of peak height above baseline
 
@@ -79,8 +99,9 @@ def findPulses(waveform_bls, max_pulses):
     #
     t0 = time.time()
     data_conv = wfm_convolve(waveform_bls, conv_width, avg=True)
-    peaks, properties = find_peaks(data_conv, distance=int(0.5 / tscale), height=0.8,
+    peaks, properties = find_peaks(data_conv, distance=min_dist, height=min_height,
                                    width=int(0.01 / tscale), prominence=0.1)  # could restrict search if desired
+    if len(peaks)<1: return [],[],[],[],[]
     peak_conv_heights = data_conv[peaks]
 
     # only keep the largest max_pulses peaks
@@ -123,7 +144,7 @@ def findPulses(waveform_bls, max_pulses):
             window_ends.append(peaks[peak_ind] + int(pulse_window / 2))  # look forward half the
         else:
             # If the next pulse is overlapping, set the pulse boundary as the minimum between the two
-            if time_diffs[peak_ind] < int(pulse_window / 2):
+            if time_diffs[peak_ind] < pulse_window:
                 valley_time = np.argmin(waveform_bls[peaks[peak_ind]:peaks[peak_ind + 1]]) + peaks[peak_ind]
                 window_ends.append(valley_time)
                 prev_end = valley_time
@@ -137,10 +158,11 @@ def findPulses(waveform_bls, max_pulses):
     # Find peak start, end times
     pulse_start_times = []
     pulse_end_times = []
+    data_bounds_conv = wfm_convolve(waveform_bls, bounds_conv_width, avg=True) # use somewhat-smoothed wfm to find bounds
     for peak_ind in range(len(peaks)):
         #start_time, end_time = pulse_bounds_area(waveform_bls, window_starts[peak_ind], window_ends[peak_ind]-window_starts[peak_ind], pulse_start_frac,
         #                                        pulse_end_frac)
-        start_time, end_time = pulse_bounds(waveform_bls, window_starts[peak_ind], window_ends[peak_ind]-window_starts[peak_ind], pulse_start_frac,
+        start_time, end_time = pulse_bounds(data_bounds_conv, window_starts[peak_ind], window_ends[peak_ind]-window_starts[peak_ind], pulse_start_frac,
                                                 pulse_end_frac)
         pulse_start_times.append(start_time)
         pulse_end_times.append(end_time)
