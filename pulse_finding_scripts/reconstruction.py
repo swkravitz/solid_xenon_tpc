@@ -51,10 +51,12 @@ chH_spe_size = 30.3
 #data_dir="../data/fewevts/"
 #data_dir="../data/po_5min/"
 #data_dir = "C:/Users/ryanm/Documents/Research/Data/bkg_3.5g_3.9c_27mV_6_postrecover_5min/"
-data_dir = "C:/Users/swkra/Desktop/Jupyter temp/data-202012/120820/th_4.8g_5.0c_25mV_fastfill_nocirc/"#"C:/Users/ryanm/Documents/Research/Data/bkg_2.8g_3.2c_25mV_1_1.6_circ_0.16bottle_5min/"
+#data_dir = "C:/Users/swkra/Desktop/Jupyter temp/data-202012/120820/th_4.8g_5.0c_25mV_fastfill_nocirc/"
+#data_dir  = "C:/Users/ryanm/Documents/Research/Data/bkg_2.8g_3.2c_25mV_1_1.6_circ_0.16bottle_5min/"
+data_dir = "C:/Users/ryanm/Documents/Research/Data/Flow_Th_with_Ba133_0g_0c_25mV_1.5bar_nocirc_5min/"
 #"C:/Users/swkra/Desktop/Jupyter temp/data-202009/091720/bkg_3.5g_3.9c_27mV_7_postrecover2_5min/"
 
-max_evts = 1000  # 25000 # -1 means read in all entries; 25000 is roughly the max allowed in memory on the DAQ computer
+max_evts = 5000  # 25000 # -1 means read in all entries; 25000 is roughly the max allowed in memory on the DAQ computer
 max_pts = -1  # do not change
 if max_evts > 0:
     max_pts = wsize * max_evts
@@ -195,6 +197,15 @@ p_area_tba = np.zeros((n_events, max_pulses))
 
 p_class = np.zeros((n_events, max_pulses), dtype=np.int)
 
+n_s1 = np.zeros(n_events, dtype=np.int)
+n_s2 = np.zeros(n_events, dtype=np.int)
+s1_area = np.zeros(n_events)
+s2_area = np.zeros(n_events)
+drift_Time = np.zeros(n_events)
+
+
+dt = np.zeros(n_events)
+
 inn=""
 
 #make copy of waveforms:
@@ -259,6 +270,19 @@ for i in range(0, n_events):
     # Pulse classifier, work in progress
     p_class[i,:] = pc.ClassifyPulses(p_area_tba[i,:], p_afs_2l[i,:], p_afs_50[i,:], tscale)
 
+    # Event level analysis. Look at events with both S1 and S2.
+    index_s1 = (p_class[i,:] == 1) + (p_class[i,:] == 2) # S1's
+    index_s2 = (p_class[i,:] == 5) + (p_class[i,:] == 6) # S2's
+    n_s1[i] = np.sum(index_s1)
+    n_s2[i] = np.sum(index_s2)
+
+    if n_s1[i] > 0:
+        s1_area[i] = sum(p_area[i,index_s1])
+    if n_s2[i] > 0:
+        s2_area[i] = sum(p_area[i,index_s2])
+    if n_s1[i] == 1 and n_s2[i] == 1:
+        drift_Time[i] = p_start[i, np.argmax(index_s2)] - p_end[i, np.argmax(index_s1)]
+
 
     # =============================================================
     # draw the waveform and the pulse bounds found
@@ -278,9 +302,17 @@ for i in range(0, n_events):
     riseTimeCondition = ((p_afs_50[i,:n_pulses[i]]-p_afs_2l[i,:n_pulses[i]] )*tscale < 0.6)*((p_afs_50[i,:n_pulses[i]]-p_afs_2l[i,:n_pulses[i]] )*tscale > 0.2)
     
     # Condition to skip the individual plotting
-    plotyn = True#False#
+    plotyn = True#False
 
-    if not inn == 'q' and plot_event_ind == i and plotyn:
+    # Pulse area condition
+    areaRange = np.sum((p_area[i,:] < 50)*(p_area[i,:] > 5))
+    if areaRange:
+        dt[i] = abs(p_start[i,1] - p_start[i,0])
+
+    # Both S1 and S2 condition
+    s1s2 = (n_s1[i] == 1)*(n_s2[i] == 1)
+
+    if not inn == 'q' and plot_event_ind == i and plotyn and areaRange > 0: #and s1s2: # and areaRange > 0:
 
         fig = pl.figure(1,figsize=(10, 7))
         pl.rc('xtick', labelsize=10)
@@ -387,6 +419,14 @@ tba1 = p_area_tba[class1]
 afs2l1 = p_afs_2l[class1]
 afs501 = p_afs_50[class1]
 
+# Event level quantities 
+event_cut_dict = {} # For future use
+
+cleanS1 = s1_area[(s1_area > 0)]
+cleanS2 = s2_area[(s2_area > 0)]
+cleanDT = drift_Time[(drift_Time > 0)] 
+
+
 
 t1 = time.time()
 print('time to complete: ',t1-t0)
@@ -435,5 +475,31 @@ pl.ylabel("Rise time, 50-2 (us)")
 pl.xlabel("Pulse area (phd)")
 #pl.xlim(0.7*min(p_area.flatten()), 1.5*max(p_area.flatten()))
 if save_pulse_plots: pl.savefig(data_dir+"RiseTime_vs_PulseArea_"+pulse_cut_name+".png")
+
+pl.figure()
+pl.hist(np.log(cleanS1.flatten()), 100)
+pl.xlabel("Log S1 area")
+
+pl.figure()
+pl.hist(np.log(cleanS2.flatten()), 100)
+pl.xlabel("Log S2 area")
+
+pl.figure()
+pl.hist(cleanS1.flatten(), 1000)
+pl.xlabel("S1 area")
+
+pl.figure()
+pl.hist(cleanS2.flatten(), 1000)
+pl.xlabel("S2 area")
+
+pl.figure()
+pl.hist(tscale*cleanDT.flatten(), 100)
+pl.xlabel("Drift time")
+
+cleandt = dt[dt > 0]
+
+pl.figure()
+pl.hist(tscale*cleandt.flatten(), 100)
+pl.xlabel("dt")
 
 pl.show()
