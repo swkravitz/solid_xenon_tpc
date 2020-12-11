@@ -281,7 +281,7 @@ for i in range(0, n_events):
     if n_s2[i] > 0:
         s2_area[i] = sum(p_area[i,index_s2])
     if n_s1[i] == 1 and n_s2[i] == 1:
-        drift_Time[i] = p_start[i, np.argmax(index_s2)] - p_end[i, np.argmax(index_s1)]
+        drift_Time[i] = p_start[i, np.argmax(index_s2)] - p_start[i, np.argmax(index_s1)]
 
 
     # =============================================================
