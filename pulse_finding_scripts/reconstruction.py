@@ -50,10 +50,10 @@ chH_spe_size = 30.3
 #data_dir="../data/bkg_3.5g_3.9c_27mV_1_5min/"
 #data_dir="../data/fewevts/"
 #data_dir="../data/po_5min/"
-#data_dir = "C:/Users/ryanm/Documents/Research/Data/bkg_3.5g_3.9c_27mV_6_postrecover_5min/"
+#data_dir = "C:/Users/ryanm/Documents/Research/Data/bkg_3.5g_3.9c_27mV_6_postrecover_5min/" # Old data
 #data_dir = "C:/Users/swkra/Desktop/Jupyter temp/data-202012/120820/th_4.8g_5.0c_25mV_fastfill_nocirc/"
-#data_dir  = "C:/Users/ryanm/Documents/Research/Data/bkg_2.8g_3.2c_25mV_1_1.6_circ_0.16bottle_5min/"
-data_dir = "C:/Users/ryanm/Documents/Research/Data/Flow_Th_with_Ba133_0g_0c_25mV_1.5bar_nocirc_5min/"
+data_dir  = "C:/Users/ryanm/Documents/Research/Data/bkg_2.8g_3.2c_25mV_1_1.6_circ_0.16bottle_5min/" # Weird but workable data
+#data_dir = "C:/Users/ryanm/Documents/Research/Data/Flow_Th_with_Ba133_0g_0c_25mV_1.5bar_nocirc_5min/" # Weird double s1 data
 #"C:/Users/swkra/Desktop/Jupyter temp/data-202009/091720/bkg_3.5g_3.9c_27mV_7_postrecover2_5min/"
 
 max_evts = 5000  # 25000 # -1 means read in all entries; 25000 is roughly the max allowed in memory on the DAQ computer
@@ -202,7 +202,7 @@ n_s2 = np.zeros(n_events, dtype=np.int)
 s1_area = np.zeros(n_events)
 s2_area = np.zeros(n_events)
 drift_Time = np.zeros(n_events)
-
+s1_before_s2 = np.zeros(n_events)
 
 dt = np.zeros(n_events)
 
@@ -275,13 +275,17 @@ for i in range(0, n_events):
     index_s2 = (p_class[i,:] == 5) + (p_class[i,:] == 6) # S2's
     n_s1[i] = np.sum(index_s1)
     n_s2[i] = np.sum(index_s2)
-
+    
     if n_s1[i] > 0:
         s1_area[i] = sum(p_area[i,index_s1])
     if n_s2[i] > 0:
         s2_area[i] = sum(p_area[i,index_s2])
-    if n_s1[i] == 1 and n_s2[i] == 1:
-        drift_Time[i] = p_start[i, np.argmax(index_s2)] - p_start[i, np.argmax(index_s1)]
+    if n_s1[i] == 1:
+        if n_s2[i] == 1:
+            drift_Time[i] = p_start[i, np.argmax(index_s2)] - p_start[i, np.argmax(index_s1)]
+        if n_s2[i] > 1:
+            s1_before_s2[i] = np.argmax(index_s1) < np.argmax(index_s2) 
+        
 
 
     # =============================================================
@@ -302,17 +306,17 @@ for i in range(0, n_events):
     riseTimeCondition = ((p_afs_50[i,:n_pulses[i]]-p_afs_2l[i,:n_pulses[i]] )*tscale < 0.6)*((p_afs_50[i,:n_pulses[i]]-p_afs_2l[i,:n_pulses[i]] )*tscale > 0.2)
     
     # Condition to skip the individual plotting
-    plotyn = True#False
+    plotyn = False
 
     # Pulse area condition
     areaRange = np.sum((p_area[i,:] < 50)*(p_area[i,:] > 5))
     if areaRange:
-        dt[i] = abs(p_start[i,1] - p_start[i,0])
+        dt[i] = abs(p_start[i,1] - p_start[i,0]) # For weird double s1 data
 
     # Both S1 and S2 condition
     s1s2 = (n_s1[i] == 1)*(n_s2[i] == 1)
 
-    if not inn == 'q' and plot_event_ind == i and plotyn and areaRange > 0: #and s1s2: # and areaRange > 0:
+    if not inn == 'q' and plot_event_ind == i and plotyn:
 
         fig = pl.figure(1,figsize=(10, 7))
         pl.rc('xtick', labelsize=10)
@@ -420,11 +424,15 @@ afs2l1 = p_afs_2l[class1]
 afs501 = p_afs_50[class1]
 
 # Event level quantities 
-event_cut_dict = {} # For future use
+event_cut_dict = {}
+event_cut_dict["SS"] = drift_Time > 0 
+event_cut_dict["MS"] = (n_s1 == 1)*(n_s2 > 1)*s1_before_s2
 
-cleanS1 = s1_area[(s1_area > 0)]
-cleanS2 = s2_area[(s2_area > 0)]
-cleanDT = drift_Time[(drift_Time > 0)] 
+event_cut_name = "SS"
+event_cut = event_cut_dict[event_cut_name] 
+cleanS1 = s1_area[event_cut]
+cleanS2 = s2_area[event_cut]
+cleanDT = drift_Time[event_cut] 
 
 
 
@@ -437,7 +445,7 @@ print('time to complete: ',t1-t0)
 # now make plots of interesting pulse quantities
 
 
-pl.figure()
+"""pl.figure()
 pl.hist(cleanAreaTBA, 100 )
 pl.xlabel("TBA")
 if save_pulse_plots: pl.savefig(data_dir+"TBA_"+pulse_cut_name+".png")
@@ -474,7 +482,7 @@ pl.scatter(cleanArea, tscale*(cleanAFS50-cleanAFS2l ), s = 1, c = pulse_class_co
 pl.ylabel("Rise time, 50-2 (us)")
 pl.xlabel("Pulse area (phd)")
 #pl.xlim(0.7*min(p_area.flatten()), 1.5*max(p_area.flatten()))
-if save_pulse_plots: pl.savefig(data_dir+"RiseTime_vs_PulseArea_"+pulse_cut_name+".png")
+if save_pulse_plots: pl.savefig(data_dir+"RiseTime_vs_PulseArea_"+pulse_cut_name+".png")"""
 
 pl.figure()
 pl.hist(np.log(cleanS1.flatten()), 100)
@@ -485,21 +493,20 @@ pl.hist(np.log(cleanS2.flatten()), 100)
 pl.xlabel("Log S2 area")
 
 pl.figure()
-pl.hist(cleanS1.flatten(), 1000)
+pl.hist(cleanS1.flatten(), 500)
 pl.xlabel("S1 area")
 
 pl.figure()
-pl.hist(cleanS2.flatten(), 1000)
+pl.hist(cleanS2.flatten(), 500)
 pl.xlabel("S2 area")
 
 pl.figure()
 pl.hist(tscale*cleanDT.flatten(), 100)
 pl.xlabel("Drift time")
 
-cleandt = dt[dt > 0]
-
-pl.figure()
-pl.hist(tscale*cleandt.flatten(), 100)
-pl.xlabel("dt")
+#cleandt = dt[dt > 0]
+#pl.figure()
+#pl.hist(tscale*cleandt.flatten(), 100)
+#pl.xlabel("dt")
 
 pl.show()
