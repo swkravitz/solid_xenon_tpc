@@ -51,51 +51,56 @@ chH_spe_size = 30.3
 #data_dir="../data/fewevts/"
 #data_dir="../data/po_5min/"
 #data_dir = "C:/Users/ryanm/Documents/Research/Data/bkg_3.5g_3.9c_27mV_6_postrecover_5min/" # Old data
-#data_dir = "C:/Users/swkra/Desktop/Jupyter temp/data-202012/120820/th_4.8g_5.0c_25mV_fastfill_nocirc/"
+data_dir = "C:/Users/swkra/Desktop/Jupyter temp/data-202012/120920/Flow_Th_with_Ba133_0g_0c_25mV_1.5bar_circ_5min/"
 #data_dir  = "C:/Users/ryanm/Documents/Research/Data/bkg_2.8g_3.2c_25mV_1_1.6_circ_0.16bottle_5min/" # Weird but workable data
-data_dir = "C:/Users/ryanm/Documents/Research/Data/Flow_Th_with_Ba133_0g_0c_25mV_1.5bar_nocirc_5min/" # Weird double s1 data
+#data_dir = "C:/Users/ryanm/Documents/Research/Data/Flow_Th_with_Ba133_0g_0c_25mV_1.5bar_nocirc_5min/" # Weird double s1 data
 #"C:/Users/swkra/Desktop/Jupyter temp/data-202009/091720/bkg_3.5g_3.9c_27mV_7_postrecover2_5min/"
 
-max_evts = 5000  # 25000 # -1 means read in all entries; 25000 is roughly the max allowed in memory on the DAQ computer
+t_start = time.time()
+
+max_evts = 10000#5000  # 25000 # -1 means read in all entries; 25000 is roughly the max allowed in memory on the DAQ computer
 max_pts = -1  # do not change
 if max_evts > 0:
     max_pts = wsize * max_evts
-channel_0 = np.fromfile(data_dir + "wave0.dat", dtype="int16", count=max_pts)
-channel_1 = np.fromfile(data_dir + "wave1.dat", dtype="int16", count=max_pts)
-channel_2 = np.fromfile(data_dir + "wave2.dat", dtype="int16", count=max_pts)
-channel_3 = np.fromfile(data_dir + "wave3.dat", dtype="int16", count=max_pts)
-channel_4 = np.fromfile(data_dir + "wave4.dat", dtype="int16", count=max_pts)
-channel_5 = np.fromfile(data_dir + "wave5.dat", dtype="int16", count=max_pts)
-channel_6 = np.fromfile(data_dir + "wave6.dat", dtype="int16", count=max_pts)
-channel_7 = np.fromfile(data_dir + "wave7.dat", dtype="int16", count=max_pts)
+load_dtype = "int16"
+channel_0 = np.fromfile(data_dir + "wave0.dat", dtype=load_dtype, count=max_pts)
+channel_1 = np.fromfile(data_dir + "wave1.dat", dtype=load_dtype, count=max_pts)
+channel_2 = np.fromfile(data_dir + "wave2.dat", dtype=load_dtype, count=max_pts)
+channel_3 = np.fromfile(data_dir + "wave3.dat", dtype=load_dtype, count=max_pts)
+channel_4 = np.fromfile(data_dir + "wave4.dat", dtype=load_dtype, count=max_pts)
+channel_5 = np.fromfile(data_dir + "wave5.dat", dtype=load_dtype, count=max_pts)
+channel_6 = np.fromfile(data_dir + "wave6.dat", dtype=load_dtype, count=max_pts)
+channel_7 = np.fromfile(data_dir + "wave7.dat", dtype=load_dtype, count=max_pts)
 
-t0 = time.time()
+t_end_load = time.time()
+print("Time to load files: ", t_end_load-t_start)
 
 # scale waveforms to get units of mV/sample
 # then for each channel ensure we 
 # have an integer number of events
-V = vscale*channel_0/chA_spe_size
+array_dtype = "float32" # using float32 reduces memory for big files, otherwise implicitly converts to float64
+V = vscale*channel_0.astype(array_dtype)/chA_spe_size
 V = V[:int(len(V)/wsize)*wsize]
 
-V_1 = vscale*channel_1/chB_spe_size
+V_1 = vscale*channel_1.astype(array_dtype)/chB_spe_size
 V_1 = V_1[:int(len(V)/wsize)*wsize]
 
-V_2 = vscale*channel_2/chC_spe_size
+V_2 = vscale*channel_2.astype(array_dtype)/chC_spe_size
 V_2 = V_2[:int(len(V)/wsize)*wsize]
 
-V_3 = vscale*channel_3/chD_spe_size
+V_3 = vscale*channel_3.astype(array_dtype)/chD_spe_size
 V_3 = V_3[:int(len(V)/wsize)*wsize]
 
-V_4 = vscale*channel_4/chE_spe_size
+V_4 = vscale*channel_4.astype(array_dtype)/chE_spe_size
 V_4 = V_4[:int(len(V)/wsize)*wsize]
 
-V_5 = vscale*channel_5/chF_spe_size
+V_5 = vscale*channel_5.astype(array_dtype)/chF_spe_size
 V_5 = V_5[:int(len(V)/wsize)*wsize]
 
-V_6 = vscale*channel_6/chG_spe_size
+V_6 = vscale*channel_6.astype(array_dtype)/chG_spe_size
 V_6 = V_6[:int(len(V)/wsize)*wsize]
 
-V_7 = vscale*channel_7/chH_spe_size
+V_7 = vscale*channel_7.astype(array_dtype)/chH_spe_size
 V_7 = V_7[:int(len(V)/wsize)*wsize]
 
 # reshape to make each channel's matrix of events
@@ -128,7 +133,10 @@ baseline_start = int(0./tscale)
 baseline_end = int(2./tscale)
 
 # baseline subtracted (bls) waveforms saved in this matrix:
-v_bls_matrix_all_ch = np.zeros( np.shape(v_matrix_all_ch) ) # dims are (chan #, evt #, sample #)
+v_bls_matrix_all_ch = np.zeros( np.shape(v_matrix_all_ch), dtype=array_dtype) # dims are (chan #, evt #, sample #)
+
+t_end_wfm_fill = time.time()
+print("Time to fill all waveform arrays: ", t_end_wfm_fill - t_end_load)
 
 print("Events to process: ",n_events)
 for i in range(0, n_events):
@@ -210,8 +218,6 @@ big_weird_areas = np.zeros(n_events)
 
 inn=""
 
-#make copy of waveforms:
-v_bls_matrix_all_ch_cpy = v_bls_matrix_all_ch.copy() # Do we need this? Not zeroing out anymore...
 print("Running pulse finder on {:d} events...".format(n_events))
 
 # use for coloring pulses
@@ -308,7 +314,7 @@ for i in range(0, n_events):
     riseTimeCondition = ((p_afs_50[i,:n_pulses[i]]-p_afs_2l[i,:n_pulses[i]] )*tscale < 0.6)*((p_afs_50[i,:n_pulses[i]]-p_afs_2l[i,:n_pulses[i]] )*tscale > 0.2)
     
     # Condition to skip the individual plotting
-    plotyn = True
+    plotyn = False
 
     # Pulse area condition
     areaRange = np.sum((p_area[i,:] < 50)*(p_area[i,:] > 5))
@@ -322,7 +328,7 @@ for i in range(0, n_events):
     # Both S1 and S2 condition
     s1s2 = (n_s1[i] == 1)*(n_s2[i] == 1)
 
-    if not inn == 'q' and plot_event_ind == i and plotyn and areaRange:
+    if not inn == 'q' and plot_event_ind == i and plotyn:
 
         fig = pl.figure(1,figsize=(10, 7))
         pl.rc('xtick', labelsize=10)
@@ -441,8 +447,9 @@ cleanS2 = s2_area[event_cut]
 cleanDT = drift_Time[event_cut] 
 
 
-t1 = time.time()
-print('time to complete: ',t1-t0)
+
+t_end_recon = time.time()
+print('time to reconstruct: ', t_end_recon - t_end_wfm_fill)
 
 
 # =============================================================
@@ -450,7 +457,7 @@ print('time to complete: ',t1-t0)
 # now make plots of interesting pulse quantities
 
 
-"""pl.figure()
+pl.figure()
 pl.hist(cleanAreaTBA, 100 )
 pl.xlabel("TBA")
 if save_pulse_plots: pl.savefig(data_dir+"TBA_"+pulse_cut_name+".png")
@@ -487,7 +494,7 @@ pl.scatter(cleanArea, tscale*(cleanAFS50-cleanAFS2l ), s = 1, c = pulse_class_co
 pl.ylabel("Rise time, 50-2 (us)")
 pl.xlabel("Pulse area (phd)")
 #pl.xlim(0.7*min(p_area.flatten()), 1.5*max(p_area.flatten()))
-if save_pulse_plots: pl.savefig(data_dir+"RiseTime_vs_PulseArea_"+pulse_cut_name+".png")"""
+if save_pulse_plots: pl.savefig(data_dir+"RiseTime_vs_PulseArea_"+pulse_cut_name+".png")
 
 pl.figure()
 pl.hist(np.log10(cleanS1.flatten()), 100)
@@ -513,6 +520,8 @@ pl.ylabel("log10 S2 area")
 pl.figure()
 pl.hist(tscale*cleanDT.flatten(), 100)
 pl.xlabel("Drift time (us)")
+
+
 
 #cleandt = dt[dt > 0]
 #pl.figure()
