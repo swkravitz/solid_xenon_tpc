@@ -486,23 +486,30 @@ if save_pulse_plots: pl.savefig(data_dir+"RiseTime_vs_PulseArea_"+pulse_cut_name
 
 pl.figure()
 pl.hist(np.log10(cleanS1.flatten()), 100)
-pl.xlabel("Log S1 area")
+pl.xlabel("log10 S1 area")
 
 pl.figure()
 pl.hist(np.log10(cleanS2.flatten()), 100)
-pl.xlabel("Log S2 area")
+pl.xlabel("log10 S2 area")
 
 pl.figure()
 pl.hist(cleanS1.flatten(), 500)
-pl.xlabel("S1 area")
+pl.xlabel("S1 area (phd)")
 
 pl.figure()
 pl.hist(cleanS2.flatten(), 500)
-pl.xlabel("S2 area")
+pl.xlabel("S2 area (phd)")
+
+pl.figure()
+pl.scatter(cleanS1.flatten(), np.log10(cleanS2.flatten() ), s = 1 )
+pl.xlabel("S1 area (phd)")
+pl.ylabel("log10 S2 area")
 
 pl.figure()
 pl.hist(tscale*cleanDT.flatten(), 100)
-pl.xlabel("Drift time")
+pl.xlabel("Drift time (us)")
+
+
 
 #cleandt = dt[dt > 0]
 #pl.figure()
