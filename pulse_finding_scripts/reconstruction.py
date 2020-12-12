@@ -52,8 +52,8 @@ chH_spe_size = 30.3
 #data_dir="../data/po_5min/"
 #data_dir = "C:/Users/ryanm/Documents/Research/Data/bkg_3.5g_3.9c_27mV_6_postrecover_5min/" # Old data
 #data_dir = "C:/Users/swkra/Desktop/Jupyter temp/data-202012/120820/th_4.8g_5.0c_25mV_fastfill_nocirc/"
-data_dir  = "C:/Users/ryanm/Documents/Research/Data/bkg_2.8g_3.2c_25mV_1_1.6_circ_0.16bottle_5min/" # Weird but workable data
-#data_dir = "C:/Users/ryanm/Documents/Research/Data/Flow_Th_with_Ba133_0g_0c_25mV_1.5bar_nocirc_5min/" # Weird double s1 data
+#data_dir  = "C:/Users/ryanm/Documents/Research/Data/bkg_2.8g_3.2c_25mV_1_1.6_circ_0.16bottle_5min/" # Weird but workable data
+data_dir = "C:/Users/ryanm/Documents/Research/Data/Flow_Th_with_Ba133_0g_0c_25mV_1.5bar_nocirc_5min/" # Weird double s1 data
 #"C:/Users/swkra/Desktop/Jupyter temp/data-202009/091720/bkg_3.5g_3.9c_27mV_7_postrecover2_5min/"
 
 max_evts = 5000  # 25000 # -1 means read in all entries; 25000 is roughly the max allowed in memory on the DAQ computer
@@ -205,6 +205,8 @@ drift_Time = np.zeros(n_events)
 s1_before_s2 = np.zeros(n_events)
 
 dt = np.zeros(n_events)
+small_weird_areas = np.zeros(n_events)
+big_weird_areas = np.zeros(n_events)
 
 inn=""
 
@@ -306,17 +308,21 @@ for i in range(0, n_events):
     riseTimeCondition = ((p_afs_50[i,:n_pulses[i]]-p_afs_2l[i,:n_pulses[i]] )*tscale < 0.6)*((p_afs_50[i,:n_pulses[i]]-p_afs_2l[i,:n_pulses[i]] )*tscale > 0.2)
     
     # Condition to skip the individual plotting
-    plotyn = False
+    plotyn = True
 
     # Pulse area condition
     areaRange = np.sum((p_area[i,:] < 50)*(p_area[i,:] > 5))
-    if areaRange:
+    if areaRange > 0:
         dt[i] = abs(p_start[i,1] - p_start[i,0]) # For weird double s1 data
+        weird_areas =[p_area[i,0], p_area[i,1] ]
+        small_weird_areas[i] = min(weird_areas)
+        big_weird_areas[i] = max(weird_areas)
+
 
     # Both S1 and S2 condition
     s1s2 = (n_s1[i] == 1)*(n_s2[i] == 1)
 
-    if not inn == 'q' and plot_event_ind == i and plotyn:
+    if not inn == 'q' and plot_event_ind == i and plotyn and areaRange:
 
         fig = pl.figure(1,figsize=(10, 7))
         pl.rc('xtick', labelsize=10)
@@ -435,7 +441,6 @@ cleanS2 = s2_area[event_cut]
 cleanDT = drift_Time[event_cut] 
 
 
-
 t1 = time.time()
 print('time to complete: ',t1-t0)
 
@@ -509,11 +514,14 @@ pl.figure()
 pl.hist(tscale*cleanDT.flatten(), 100)
 pl.xlabel("Drift time (us)")
 
-
-
 #cleandt = dt[dt > 0]
 #pl.figure()
 #pl.hist(tscale*cleandt.flatten(), 100)
 #pl.xlabel("dt")
+
+pl.figure()
+pl.scatter(small_weird_areas, big_weird_areas, 7)
+pl.xlabel("Small Pulse Area (phd)")
+pl.ylabel("Big Pulse Area (phd)")
 
 pl.show()
