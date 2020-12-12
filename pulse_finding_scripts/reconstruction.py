@@ -485,11 +485,11 @@ pl.xlabel("Pulse area (phd)")
 if save_pulse_plots: pl.savefig(data_dir+"RiseTime_vs_PulseArea_"+pulse_cut_name+".png")"""
 
 pl.figure()
-pl.hist(np.log(cleanS1.flatten()), 100)
+pl.hist(np.log10(cleanS1.flatten()), 100)
 pl.xlabel("Log S1 area")
 
 pl.figure()
-pl.hist(np.log(cleanS2.flatten()), 100)
+pl.hist(np.log10(cleanS2.flatten()), 100)
 pl.xlabel("Log S2 area")
 
 pl.figure()
