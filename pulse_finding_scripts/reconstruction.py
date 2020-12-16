@@ -50,11 +50,12 @@ chH_spe_size = 30.3*1.8 # scale factor (1.6-2.2) empirical as of Dec 9, 2020
 #data_dir="../data/bkg_3.5g_3.9c_27mV_1_5min/"
 #data_dir = "C:/Users/ryanm/Documents/Research/Data/bkg_3.5g_3.9c_27mV_6_postrecover_5min/" # Old data
 #data_dir = "C:/Users/swkra/Desktop/Jupyter temp/data-202012/120920/Flow_Th_with_Ba133_0g_0c_25mV_1.5bar_nocirc_5min/"
-data_dir = "../data/Flow_Th_with_Ba133_0g_0c_25mV_1.5bar_nocirc_5min/"
+#data_dir = "../data/Flow_Th_with_Ba133_0g_0c_25mV_1.5bar_nocirc_5min/"
+data_dir = "../data/Flow_Th_with_Ba133_4.8g_5.0c_25mV_1.5bar_nocirc_5min/"
 
 t_start = time.time()
 
-max_evts = 1000#5000  # 25000 # -1 means read in all entries; 25000 is roughly the max allowed in memory on the DAQ computer
+max_evts = 1000 #5000  # 25000 # -1 means read in all entries; 25000 is roughly the max allowed in memory on the DAQ computer
 max_pts = -1  # do not change
 if max_evts > 0:
     max_pts = wsize * max_evts
@@ -218,6 +219,7 @@ print("Running pulse finder on {:d} events...".format(n_events))
 
 # use for coloring pulses
 pulse_class_colors = np.array(['blue', 'green', 'red', 'purple', 'black', 'magenta', 'darkorange'])
+pulse_class_labels = np.array(['S1-like 1', 'S1-like 2', 'leading S1-like', 'meh?', 'also meh?', 'S2-like', 'S2-like'])
 
 for i in range(0, n_events):
     if i%500==0: print("Event #",i)
@@ -465,7 +467,7 @@ print('time to reconstruct: ', t_end_recon - t_end_wfm_fill)
 
 # Plots of all pulses combined (after cuts)
 pl.figure()
-pl.hist(cleanAreaTBA, 100 )
+pl.hist(cleanAreaTBA, bins=100, range=(-1,1) )
 pl.axvline(x=np.mean(cleanAreaTBA), ls='--', color='r')
 pl.xlabel("TBA")
 if save_pulse_plots: pl.savefig(data_dir+"TBA_"+pulse_cut_name+".png")
@@ -494,14 +496,15 @@ if save_pulse_plots: pl.savefig(data_dir+"PulseClass_"+pulse_cut_name+".png")
 
 
 pl.figure()
-pl.scatter(cleanAreaTBA, cleanRiseTime, s = 1, c = pulse_class_colors[cleanPulseClass])
+pl.scatter(cleanAreaTBA, cleanRiseTime, s = 1.2, c = pulse_class_colors[cleanPulseClass])
+pl.xlim(-1,1)
 pl.ylabel("Rise time, 50-2 (us)")
 pl.xlabel("TBA")
 if save_pulse_plots: pl.savefig(data_dir+"RiseTime_vs_TBA_"+pulse_cut_name+".png")
 
 pl.figure()
 pl.xscale("log")
-pl.scatter(cleanArea, cleanRiseTime, s = 1, c = pulse_class_colors[cleanPulseClass])
+pl.scatter(cleanArea, cleanRiseTime, s = 1.2, c = pulse_class_colors[cleanPulseClass])
 pl.ylabel("Rise time, 50-2 (us)")
 pl.xlabel("Pulse area (phd)")
 #pl.xlim(0.7*min(p_area.flatten()), 1.5*max(p_area.flatten()))
@@ -532,13 +535,13 @@ for j in range(0, n_channels-1):
 if save_S1S2_plots: pl.savefig(data_dir+"S2_ch_area_frac_"+pulse_cut_name+".png")
 
 pl.figure()
-pl.hist(cleanS1TBA, 100 )
+pl.hist(cleanS1TBA, bins=100, range=(-1,1) )
 pl.axvline(x=np.mean(cleanS1TBA), ls='--', color='r')
 pl.xlabel("S1 TBA")
 if save_S1S2_plots: pl.savefig(data_dir+"S1TBA_"+pulse_cut_name+".png")
 
 pl.figure()
-pl.hist(cleanS2TBA, 100 )
+pl.hist(cleanS2TBA, bins=100, range=(-1,1) )
 pl.axvline(x=np.mean(cleanS2TBA), ls='--', color='r')
 pl.xlabel("S2 TBA")
 if save_S1S2_plots: pl.savefig(data_dir+"S2TBA_"+pulse_cut_name+".png")
