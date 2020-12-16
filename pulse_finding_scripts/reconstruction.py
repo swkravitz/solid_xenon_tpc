@@ -48,17 +48,13 @@ chH_spe_size = 30.3*1.8 # scale factor (1.6-2.2) empirical as of Dec 9, 2020
 #load in raw data
 #data_dir="../data/bkg_3.5g_3.9c_27mV_7_postrecover2_5min/"
 #data_dir="../data/bkg_3.5g_3.9c_27mV_1_5min/"
-#data_dir="../data/fewevts/"
-#data_dir="../data/po_5min/"
 #data_dir = "C:/Users/ryanm/Documents/Research/Data/bkg_3.5g_3.9c_27mV_6_postrecover_5min/" # Old data
-data_dir = "C:/Users/swkra/Desktop/Jupyter temp/data-202012/120920/Flow_Th_with_Ba133_0g_0c_25mV_1.5bar_nocirc_5min/"
-#data_dir  = "C:/Users/ryanm/Documents/Research/Data/bkg_2.8g_3.2c_25mV_1_1.6_circ_0.16bottle_5min/" # Weird but workable data
-#data_dir = "C:/Users/ryanm/Documents/Research/Data/Flow_Th_with_Ba133_0g_0c_25mV_1.5bar_nocirc_5min/" # Weird double s1 data
-#"C:/Users/swkra/Desktop/Jupyter temp/data-202009/091720/bkg_3.5g_3.9c_27mV_7_postrecover2_5min/"
+#data_dir = "C:/Users/swkra/Desktop/Jupyter temp/data-202012/120920/Flow_Th_with_Ba133_0g_0c_25mV_1.5bar_nocirc_5min/"
+data_dir = "../data/Flow_Th_with_Ba133_0g_0c_25mV_1.5bar_nocirc_5min/"
 
 t_start = time.time()
 
-max_evts = 10000#5000  # 25000 # -1 means read in all entries; 25000 is roughly the max allowed in memory on the DAQ computer
+max_evts = 1000#5000  # 25000 # -1 means read in all entries; 25000 is roughly the max allowed in memory on the DAQ computer
 max_pts = -1  # do not change
 if max_evts > 0:
     max_pts = wsize * max_evts
@@ -314,7 +310,7 @@ for i in range(0, n_events):
     riseTimeCondition = ((p_afs_50[i,:n_pulses[i]]-p_afs_2l[i,:n_pulses[i]] )*tscale < 0.6)*((p_afs_50[i,:n_pulses[i]]-p_afs_2l[i,:n_pulses[i]] )*tscale > 0.2)
     
     # Condition to skip the individual plotting
-    plotyn = False
+    plotyn = True
 
     # Pulse area condition
     areaRange = np.sum((p_area[i,:] < 50)*(p_area[i,:] > 5))
@@ -370,7 +366,7 @@ for i in range(0, n_events):
 
         for pulse in range(len(start_times)):
             ax.axvspan(start_times[pulse] * tscale, end_times[pulse] * tscale, alpha=0.25, color=pulse_class_colors[p_class[i, pulse]])
-        
+            ax.text((end_times[pulse])*tscale,0.9*ax.get_ylim()[1],'{:.1f} phd'.format(p_area[i, pulse]),fontsize=9,color=pulse_class_colors[p_class[i, pulse]])
         #ax.axhline( 0.276, 0, wsize, linestyle='--', lw=1, color='orange')
 
         # Debugging of pulse finder
