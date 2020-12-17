@@ -43,6 +43,7 @@ chE_spe_size = 30.4
 chF_spe_size = 30.44
 chG_spe_size = 30.84
 chH_spe_size = 30.3*1.8 # scale factor (1.6-2.2) empirical as of Dec 9, 2020
+spe_sizes = [chA_spe_size, chB_spe_size, chC_spe_size, chD_spe_size, chE_spe_size, chF_spe_size, chG_spe_size, chH_spe_size]
 # ==================================================================
 
 #load in raw data
@@ -51,7 +52,8 @@ chH_spe_size = 30.3*1.8 # scale factor (1.6-2.2) empirical as of Dec 9, 2020
 #data_dir="../data/fewevts/"
 #data_dir="../data/po_5min/"
 #data_dir = "C:/Users/ryanm/Documents/Research/Data/bkg_3.5g_3.9c_27mV_6_postrecover_5min/" # Old data
-data_dir = "C:/Users/swkra/Desktop/Jupyter temp/data-202012/120920/Flow_Th_with_Ba133_0g_0c_25mV_1.5bar_nocirc_5min/"
+#data_dir = "C:/Users/swkra/Desktop/Jupyter temp/data-201909/091219/"
+data_dir = "C:/Users/swkra/Desktop/Jupyter temp/data-202012/121120/Flow_Th_with_Ba133_4.8g_5.0c_25mV_1.5bar_circ_extra_fill_5min/"
 #data_dir  = "C:/Users/ryanm/Documents/Research/Data/bkg_2.8g_3.2c_25mV_1_1.6_circ_0.16bottle_5min/" # Weird but workable data
 #data_dir = "C:/Users/ryanm/Documents/Research/Data/Flow_Th_with_Ba133_0g_0c_25mV_1.5bar_nocirc_5min/" # Weird double s1 data
 #"C:/Users/swkra/Desktop/Jupyter temp/data-202009/091720/bkg_3.5g_3.9c_27mV_7_postrecover2_5min/"
@@ -63,14 +65,9 @@ max_pts = -1  # do not change
 if max_evts > 0:
     max_pts = wsize * max_evts
 load_dtype = "int16"
-channel_0 = np.fromfile(data_dir + "wave0.dat", dtype=load_dtype, count=max_pts)
-channel_1 = np.fromfile(data_dir + "wave1.dat", dtype=load_dtype, count=max_pts)
-channel_2 = np.fromfile(data_dir + "wave2.dat", dtype=load_dtype, count=max_pts)
-channel_3 = np.fromfile(data_dir + "wave3.dat", dtype=load_dtype, count=max_pts)
-channel_4 = np.fromfile(data_dir + "wave4.dat", dtype=load_dtype, count=max_pts)
-channel_5 = np.fromfile(data_dir + "wave5.dat", dtype=load_dtype, count=max_pts)
-channel_6 = np.fromfile(data_dir + "wave6.dat", dtype=load_dtype, count=max_pts)
-channel_7 = np.fromfile(data_dir + "wave7.dat", dtype=load_dtype, count=max_pts)
+ch_data = []
+for ch_ind in range(n_sipms):
+    ch_data.append(np.fromfile(data_dir + "wave"+str(ch_ind)+".dat", dtype=load_dtype, count=max_pts))
 
 t_end_load = time.time()
 print("Time to load files: ", t_end_load-t_start)
@@ -79,45 +76,17 @@ print("Time to load files: ", t_end_load-t_start)
 # then for each channel ensure we 
 # have an integer number of events
 array_dtype = "float32" # using float32 reduces memory for big files, otherwise implicitly converts to float64
-V = vscale*channel_0.astype(array_dtype)/chA_spe_size
-V = V[:int(len(V)/wsize)*wsize]
 
-V_1 = vscale*channel_1.astype(array_dtype)/chB_spe_size
-V_1 = V_1[:int(len(V)/wsize)*wsize]
-
-V_2 = vscale*channel_2.astype(array_dtype)/chC_spe_size
-V_2 = V_2[:int(len(V)/wsize)*wsize]
-
-V_3 = vscale*channel_3.astype(array_dtype)/chD_spe_size
-V_3 = V_3[:int(len(V)/wsize)*wsize]
-
-V_4 = vscale*channel_4.astype(array_dtype)/chE_spe_size
-V_4 = V_4[:int(len(V)/wsize)*wsize]
-
-V_5 = vscale*channel_5.astype(array_dtype)/chF_spe_size
-V_5 = V_5[:int(len(V)/wsize)*wsize]
-
-V_6 = vscale*channel_6.astype(array_dtype)/chG_spe_size
-V_6 = V_6[:int(len(V)/wsize)*wsize]
-
-V_7 = vscale*channel_7.astype(array_dtype)/chH_spe_size
-V_7 = V_7[:int(len(V)/wsize)*wsize]
-
-# reshape to make each channel's matrix of events
-v_matrix = V.reshape(int(V.size/wsize),wsize)
-v1_matrix = V_1.reshape(int(V.size/wsize),wsize)
-v2_matrix = V_2.reshape(int(V.size/wsize),wsize)
-v3_matrix = V_3.reshape(int(V.size/wsize),wsize)
-v4_matrix = V_4.reshape(int(V.size/wsize),wsize)
-v5_matrix = V_5.reshape(int(V.size/wsize),wsize)
-v6_matrix = V_6.reshape(int(V.size/wsize),wsize)
-v7_matrix = V_7.reshape(int(V.size/wsize),wsize)
-
-# sum waveform:
-vsum_matrix = v_matrix+v1_matrix+v2_matrix+v3_matrix+v4_matrix+v5_matrix+v6_matrix+v7_matrix
-
-# matrix of all channels including the sum waveform:
-v_matrix_all_ch = [v_matrix,v1_matrix,v2_matrix,v3_matrix,v4_matrix,v5_matrix,v6_matrix,v7_matrix,vsum_matrix]
+# matrix of all channels including the sum waveform
+v_matrix_all_ch = []
+for ch_ind in range(n_sipms):
+    V = vscale * ch_data[ch_ind].astype(array_dtype) / chA_spe_size
+    V = V[:int(len(V) / wsize) * wsize]
+    V = V.reshape(int(V.size / wsize), wsize) # reshape to make each channel's matrix of events
+    v_matrix_all_ch.append(V)
+    if ch_ind==0: v_sum = V
+    else: v_sum += V
+v_matrix_all_ch.append(v_sum)
 
 # create a time axis in units of µs:
 x = np.arange(0, wsize, 1)
@@ -125,7 +94,7 @@ t = tscale*x
 t_matrix = np.repeat(t[np.newaxis,:], V.size/wsize, 0)
 
 # Note: if max_evts != -1, we won't load in all events in the dataset
-n_events = int(v_matrix.shape[0])
+n_events = int(v_matrix_all_ch[0].shape[0])
     
 # perform baseline subtraction:
 # for now, using first 2 µs of event
@@ -197,7 +166,7 @@ p_area_ch_frac = np.zeros((n_events, max_pulses, n_channels-1) )
 
 p_area_top = np.zeros((n_events, max_pulses))
 p_area_bottom = np.zeros((n_events, max_pulses))
-p_area_tba = np.zeros((n_events, max_pulses))
+p_tba = np.zeros((n_events, max_pulses))
 
 p_class = np.zeros((n_events, max_pulses), dtype=np.int)
 
@@ -272,11 +241,11 @@ for i in range(0, n_events):
         p_area_ch_frac[i,pp,:] = p_area_ch[i,pp,:]/p_area[i,pp]
         p_area_top[i,pp] = sum(p_area_ch[i,pp,top_channels])
         p_area_bottom[i,pp] = sum(p_area_ch[i,pp,bottom_channels])
-        p_area_tba[i,pp] = (p_area_top[i,pp] - p_area_bottom[i,pp])/(p_area_top[i,pp] + p_area_bottom[i,pp])
+        p_tba[i, pp] = (p_area_top[i, pp] - p_area_bottom[i, pp]) / (p_area_top[i, pp] + p_area_bottom[i, pp])
 
         
     # Pulse classifier, work in progress
-    p_class[i,:] = pc.ClassifyPulses(p_area_tba[i,:], p_afs_2l[i,:], p_afs_50[i,:], tscale)
+    p_class[i,:] = pc.ClassifyPulses(p_tba[i, :], (p_afs_50[i, :]-p_afs_2l[i, :])*tscale, n_pulses[i])
 
     # Event level analysis. Look at events with both S1 and S2.
     index_s1 = (p_class[i,:] == 1) + (p_class[i,:] == 2) # S1's
@@ -290,7 +259,7 @@ for i in range(0, n_events):
         sum_s2_area[i] = sum(p_area[i, index_s2])
     if n_s1[i] == 1:
         if n_s2[i] == 1:
-            drift_Time[i] = p_start[i, np.argmax(index_s2)] - p_start[i, np.argmax(index_s1)]
+            drift_Time[i] = tscale*(p_start[i, np.argmax(index_s2)] - p_start[i, np.argmax(index_s1)])
         if n_s2[i] > 1:
             s1_before_s2[i] = np.argmax(index_s1) < np.argmax(index_s2) 
         
@@ -314,7 +283,7 @@ for i in range(0, n_events):
     riseTimeCondition = ((p_afs_50[i,:n_pulses[i]]-p_afs_2l[i,:n_pulses[i]] )*tscale < 0.6)*((p_afs_50[i,:n_pulses[i]]-p_afs_2l[i,:n_pulses[i]] )*tscale > 0.2)
     
     # Condition to skip the individual plotting
-    plotyn = False
+    plotyn = True#False
 
     # Pulse area condition
     areaRange = np.sum((p_area[i,:] < 50)*(p_area[i,:] > 5))
@@ -339,11 +308,17 @@ for i in range(0, n_events):
         pl.grid(b=True,which='major',color='lightgray',linestyle='--')
         ch_labels = ['A','B','C','D','E','F','G','H']
         ch_colors = [pl.cm.tab10(ii) for ii in range(n_channels)]
+        for pulse in range(len(start_times)): # fill found pulse regions for top
+            ax.axvspan(start_times[pulse] * tscale, end_times[pulse] * tscale, alpha=0.25,
+                       color=pulse_class_colors[p_class[i, pulse]])
         for i_chan in range(n_channels-1):
             if i_chan == (n_channels-1)/2:
                 ax = pl.subplot2grid((2,2),(0,1))
                 pl.title("Bottom array, event "+str(i))
                 pl.grid(b=True,which='major',color='lightgray',linestyle='--')
+                for pulse in range(len(start_times)):  # fill found pulse regions for bottom
+                    ax.axvspan(start_times[pulse] * tscale, end_times[pulse] * tscale, alpha=0.25,
+                               color=pulse_class_colors[p_class[i, pulse]])
             
             pl.plot(t_matrix[i,:],v_bls_matrix_all_ch[i_chan,i,:],color=ch_colors[i_chan],label=ch_labels[i_chan])
             #pl.plot( x, v_bls_matrix_all_ch[i_chan,i,:],color=ch_colors[i_chan],label=ch_labels[i_chan] )
@@ -397,6 +372,7 @@ cut_dict['ValidPulse'] = p_area > 0
 cut_dict['PulseClass0'] = p_class == 0
 cut_dict['S1'] = (p_class == 1) + (p_class == 2)
 cut_dict['S2'] = (p_class == 5) + (p_class == 6)
+SS_cut = drift_Time > 0
 
 # Pick which cut from cut_dict to apply here and whether to save plots
 save_pulse_plots=True # One entry per pulse
@@ -404,6 +380,8 @@ save_S1S2_plots=True # One entry per S1 (S2) pulse
 save_event_plots=True # One entry per event
 pulse_cut_name = 'ValidPulse'
 pulse_cut = cut_dict[pulse_cut_name]
+#pulse_cut_name = 'ValidPulse_SS_Evt'
+#pulse_cut = pulse_cut*SS_cut[:,np.newaxis] # add second dimension to allow broadcasting
 
 cleanArea = p_area[pulse_cut].flatten()
 cleanMax = p_max_height[pulse_cut].flatten()
@@ -419,21 +397,20 @@ cleanAreaCh = p_area_ch[pulse_cut] # pulse_cut gets broadcast to the right shape
 cleanAreaChFrac = p_area_ch_frac[pulse_cut]
 cleanAreaTop = p_area_top[pulse_cut].flatten()
 cleanAreaBottom = p_area_bottom[pulse_cut].flatten()
-cleanAreaTBA = p_area_tba[pulse_cut].flatten()
+cleanTBA = p_tba[pulse_cut].flatten()
+# Note: TBA can be <-1 or >+1 if one of top or bottom areas is <0 (can still be a valid pulse since total area >0)
 
 s1_cut = pulse_cut*cut_dict['S1']
 cleanS1Area = p_area[s1_cut].flatten()
 cleanS1RiseTime = tscale*(p_afs_50[s1_cut]-p_afs_2l[s1_cut] ).flatten()
 cleanS1AreaChFrac = p_area_ch_frac[s1_cut]
-#cleanS1AreaChFrac = p_area_ch_frac[:, s1_cut].reshape(n_channels-1, -1)
-cleanS1TBA = p_area_tba[s1_cut].flatten()
+cleanS1TBA = p_tba[s1_cut].flatten()
 
 s2_cut = pulse_cut*cut_dict['S2']
 cleanS2Area = p_area[s2_cut].flatten()
 cleanS2RiseTime = tscale*(p_afs_50[s2_cut]-p_afs_2l[s2_cut] ).flatten()
 cleanS2AreaChFrac = p_area_ch_frac[s2_cut]
-#cleanS2AreaChFrac = p_area_ch_frac[:, s2_cut].reshape(n_channels-1, -1)
-cleanS2TBA = p_area_tba[s2_cut].flatten()
+cleanS2TBA = p_tba[s2_cut].flatten()
 
 # Quantities for plotting only events with n number of pulses, not just all of them
 # May still contain empty pulses
@@ -456,7 +433,7 @@ event_cut_name = "SS"
 event_cut = event_cut_dict[event_cut_name] 
 cleanSumS1 = sum_s1_area[event_cut]
 cleanSumS2 = sum_s2_area[event_cut]
-cleanDT = tscale*drift_Time[event_cut]
+cleanDT = drift_Time[event_cut]
 
 
 t_end_recon = time.time()
@@ -467,10 +444,12 @@ print('time to reconstruct: ', t_end_recon - t_end_wfm_fill)
 # =============================================================
 # now make plots of interesting pulse quantities
 
+
+
 # Plots of all pulses combined (after cuts)
 pl.figure()
-pl.hist(cleanAreaTBA, 100 )
-pl.axvline(x=np.mean(cleanAreaTBA), ls='--', color='r')
+pl.hist(cleanTBA, bins=100, range=(-1.01, 1.01))
+pl.axvline(x=np.mean(cleanTBA), ls='--', color='r')
 pl.xlabel("TBA")
 if save_pulse_plots: pl.savefig(data_dir+"TBA_"+pulse_cut_name+".png")
 #pl.show() 
@@ -498,7 +477,9 @@ if save_pulse_plots: pl.savefig(data_dir+"PulseClass_"+pulse_cut_name+".png")
 
 
 pl.figure()
-pl.scatter(cleanAreaTBA, cleanRiseTime, s = 1, c = pulse_class_colors[cleanPulseClass])
+pl.scatter(cleanTBA, cleanRiseTime, s = 1, c = pulse_class_colors[cleanPulseClass])
+pl.xlim(-1.01,1.01)
+pl.ylim(-0.05,4)
 pl.ylabel("Rise time, 50-2 (us)")
 pl.xlabel("TBA")
 if save_pulse_plots: pl.savefig(data_dir+"RiseTime_vs_TBA_"+pulse_cut_name+".png")
@@ -506,6 +487,8 @@ if save_pulse_plots: pl.savefig(data_dir+"RiseTime_vs_TBA_"+pulse_cut_name+".png
 pl.figure()
 pl.xscale("log")
 pl.scatter(cleanArea, cleanRiseTime, s = 1, c = pulse_class_colors[cleanPulseClass])
+pl.xlim(5,10**6)
+pl.ylim(-0.05,4)
 pl.ylabel("Rise time, 50-2 (us)")
 pl.xlabel("Pulse area (phd)")
 #pl.xlim(0.7*min(p_area.flatten()), 1.5*max(p_area.flatten()))
@@ -536,13 +519,13 @@ for j in range(0, n_channels-1):
 if save_S1S2_plots: pl.savefig(data_dir+"S2_ch_area_frac_"+pulse_cut_name+".png")
 
 pl.figure()
-pl.hist(cleanS1TBA, 100 )
+pl.hist(cleanS1TBA, bins=100, range=(-1.01,1.01) )
 pl.axvline(x=np.mean(cleanS1TBA), ls='--', color='r')
 pl.xlabel("S1 TBA")
 if save_S1S2_plots: pl.savefig(data_dir+"S1TBA_"+pulse_cut_name+".png")
 
 pl.figure()
-pl.hist(cleanS2TBA, 100 )
+pl.hist(cleanS2TBA, bins=100, range=(-1.01,1.01) )
 pl.axvline(x=np.mean(cleanS2TBA), ls='--', color='r')
 pl.xlabel("S2 TBA")
 if save_S1S2_plots: pl.savefig(data_dir+"S2TBA_"+pulse_cut_name+".png")
@@ -578,8 +561,20 @@ pl.xlabel("Sum S1 area (phd)")
 pl.ylabel("log10 Sum S2 area")
 if save_event_plots: pl.savefig(data_dir+"log10_SumS2_vs_SumS1_"+event_cut_name +".png")
 
+pl.figure()
+pl.hist(np.log10(cleanSumS1), 100)
+pl.axvline(x=np.mean(np.log10(cleanSumS1)), ls='--', color='r')
+pl.xlabel("log10 Sum S1 area (phd)")
+if save_event_plots: pl.savefig(data_dir+"log10_SumS1_"+event_cut_name +".png")
+
+pl.figure()
+pl.hist(np.log10(cleanSumS2), 100)
+pl.axvline(x=np.mean(np.log10(cleanSumS2)), ls='--', color='r')
+pl.xlabel("log10 Sum S2 area (phd)")
+if save_event_plots: pl.savefig(data_dir+"log10_SumS2_"+event_cut_name +".png")
+
 pl.figure() # Only ever plot this for SS events?
-pl.hist(cleanDT, 100)
+pl.hist(cleanDT, bins=50, range=(0,10))
 pl.axvline(x=np.mean(cleanDT), ls='--', color='r')
 pl.xlabel("Drift time (us)")
 if save_event_plots: pl.savefig(data_dir+"DriftTime_"+event_cut_name +".png")
@@ -589,7 +584,7 @@ pl.scatter(cleanDT, cleanSumS2)
 pl.xlabel("Drift time (us)")
 pl.ylabel("Sum S2 area")
 # Calculate mean vs drift bin
-drift_bins=np.linspace(0,10,100)
+drift_bins=np.linspace(0,13,50)
 drift_ind=np.digitize(cleanDT, bins=drift_bins)
 s2_medians=np.zeros(np.shape(drift_bins))
 s2_std_err=np.ones(np.shape(drift_bins))*0#10000

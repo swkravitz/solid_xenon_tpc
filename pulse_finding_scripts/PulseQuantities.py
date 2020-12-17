@@ -18,9 +18,10 @@ def GetPulseArea( p_start, p_end, waveforms_bls ):
 def GetPulseAreaChannel(p_start, p_end, waveform_bls):
     # This one needs improving...
     area = []
-    for i in range(8):
+    n_sipms = np.shape(waveform_bls)[0]-1
+    for i in range(n_sipms):
         area.append(sum(waveform_bls[i, p_start:p_end] ) )
-    while len(area) < 8:
+    while len(area) < n_sipms:
         area.append(0)
 
     return area
