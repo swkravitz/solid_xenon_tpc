@@ -80,11 +80,11 @@ array_dtype = "float32" # using float32 reduces memory for big files, otherwise 
 # matrix of all channels including the sum waveform
 v_matrix_all_ch = []
 for ch_ind in range(n_sipms):
-    V = vscale * ch_data[ch_ind].astype(array_dtype) / chA_spe_size
+    V = vscale * ch_data[ch_ind].astype(array_dtype) / spe_sizes[ch_ind]
     V = V[:int(len(V) / wsize) * wsize]
     V = V.reshape(int(V.size / wsize), wsize) # reshape to make each channel's matrix of events
     v_matrix_all_ch.append(V)
-    if ch_ind==0: v_sum = V
+    if ch_ind==0: v_sum = np.copy(V)
     else: v_sum += V
 v_matrix_all_ch.append(v_sum)
 
@@ -191,6 +191,10 @@ print("Running pulse finder on {:d} events...".format(n_events))
 
 # use for coloring pulses
 pulse_class_colors = np.array(['blue', 'green', 'red', 'purple', 'black', 'magenta', 'darkorange'])
+pulse_class_labels = np.array(['Other', 'S1-like 1', 'S1-like 2', 'Merged S1/S2', 'Merged S1/S2', 'S2-like normal', 'Gas-like S1/S2'])
+pc_legend_handles=[]
+for class_ind in range(len(pulse_class_labels)):
+    pc_legend_handles.append(mpl.patches.Patch(color=pulse_class_colors[class_ind], label=str(class_ind)+": "+pulse_class_labels[class_ind]))
 
 for i in range(0, n_events):
     if i%500==0: print("Event #",i)
@@ -341,10 +345,12 @@ for i in range(0, n_events):
         pl.ylabel('phd/sample')
         pl.title("Sum, event "+ str(i))
         pl.grid(b=True,which='major',color='lightgray',linestyle='--')
-        triggertime_us = (t[-1]*0.2)
+        pl.legend(handles=pc_legend_handles)
 
         for pulse in range(len(start_times)):
             ax.axvspan(start_times[pulse] * tscale, end_times[pulse] * tscale, alpha=0.25, color=pulse_class_colors[p_class[i, pulse]])
+            ax.text((end_times[pulse]) * tscale, 0.9 * ax.get_ylim()[1], '{:.1f} phd'.format(p_area[i, pulse]),
+                    fontsize=9, color=pulse_class_colors[p_class[i, pulse]])
         
         #ax.axhline( 0.276, 0, wsize, linestyle='--', lw=1, color='orange')
 
@@ -472,25 +478,28 @@ if save_pulse_plots: pl.savefig(data_dir+"log10PulseArea_"+pulse_cut_name+".png"
 pl.figure()
 pl.yscale("log")
 pl.hist(cleanPulseClass )
+pl.legend(handles=pc_legend_handles)
 pl.xlabel("Pulse Class")
 if save_pulse_plots: pl.savefig(data_dir+"PulseClass_"+pulse_cut_name+".png")
 
 
 pl.figure()
-pl.scatter(cleanTBA, cleanRiseTime, s = 1, c = pulse_class_colors[cleanPulseClass])
+pl.scatter(cleanTBA, cleanRiseTime, s = 1.2, c = pulse_class_colors[cleanPulseClass])
 pl.xlim(-1.01,1.01)
 pl.ylim(-0.05,4)
 pl.ylabel("Rise time, 50-2 (us)")
 pl.xlabel("TBA")
+pl.legend(handles=pc_legend_handles)
 if save_pulse_plots: pl.savefig(data_dir+"RiseTime_vs_TBA_"+pulse_cut_name+".png")
 
 pl.figure()
 pl.xscale("log")
-pl.scatter(cleanArea, cleanRiseTime, s = 1, c = pulse_class_colors[cleanPulseClass])
+pl.scatter(cleanArea, cleanRiseTime, s = 1.2, c = pulse_class_colors[cleanPulseClass])
 pl.xlim(5,10**6)
 pl.ylim(-0.05,4)
 pl.ylabel("Rise time, 50-2 (us)")
 pl.xlabel("Pulse area (phd)")
+pl.legend(handles=pc_legend_handles)
 #pl.xlim(0.7*min(p_area.flatten()), 1.5*max(p_area.flatten()))
 if save_pulse_plots: pl.savefig(data_dir+"RiseTime_vs_PulseArea_"+pulse_cut_name+".png")
 
