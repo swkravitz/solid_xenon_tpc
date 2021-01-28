@@ -53,14 +53,15 @@ spe_sizes = [chA_spe_size, chB_spe_size, chC_spe_size, chD_spe_size, chE_spe_siz
 #data_dir="../data/po_5min/"
 #data_dir = "C:/Users/ryanm/Documents/Research/Data/bkg_3.5g_3.9c_27mV_6_postrecover_5min/" # Old data
 #data_dir = "C:/Users/swkra/Desktop/Jupyter temp/data-201909/091219/"
-data_dir = "C:/Users/swkra/Desktop/Jupyter temp/data-202012/121120/Flow_Th_with_Ba133_4.8g_5.0c_25mV_1.5bar_circ_extra_fill_5min/"
+#data_dir = "/home/xaber/caen/wavedump-3.8.2/data/011521/Flow_Th_Co57_4.8g_5.0c_25mV_1.5bar_circ_5min/"
+data_dir = "/home/xaber/caen/wavedump-3.8.2/data/012721/Co57_ICVbot_LXeonAnode_0g0c-3mV_7mV_ch2_1.3bar_circ_5min/"
 #data_dir  = "C:/Users/ryanm/Documents/Research/Data/bkg_2.8g_3.2c_25mV_1_1.6_circ_0.16bottle_5min/" # Weird but workable data
 #data_dir = "C:/Users/ryanm/Documents/Research/Data/Flow_Th_with_Ba133_0g_0c_25mV_1.5bar_nocirc_5min/" # Weird double s1 data
 #"C:/Users/swkra/Desktop/Jupyter temp/data-202009/091720/bkg_3.5g_3.9c_27mV_7_postrecover2_5min/"
 
 t_start = time.time()
 
-max_evts = 10000#5000  # 25000 # -1 means read in all entries; 25000 is roughly the max allowed in memory on the DAQ computer
+max_evts = 20000#5000  # 25000 # -1 means read in all entries; 25000 is roughly the max allowed in memory on the DAQ computer
 max_pts = -1  # do not change
 if max_evts > 0:
     max_pts = wsize * max_evts
@@ -196,6 +197,8 @@ pc_legend_handles=[]
 for class_ind in range(len(pulse_class_labels)):
     pc_legend_handles.append(mpl.patches.Patch(color=pulse_class_colors[class_ind], label=str(class_ind)+": "+pulse_class_labels[class_ind]))
 
+n_golden = int(0)
+
 for i in range(0, n_events):
     if i%500==0: print("Event #",i)
     
@@ -206,6 +209,9 @@ for i in range(0, n_events):
     # Sort pulses by start times, not areas
     startinds = np.argsort(start_times)
     n_pulses[i] = len(start_times)
+    #if (n_pulses[i] < 1):
+        #print("No pulses found for event {0}; skipping".format(i))
+        #continue
     for m in startinds:
         if m >= max_pulses:
             continue
@@ -266,7 +272,9 @@ for i in range(0, n_events):
             drift_Time[i] = tscale*(p_start[i, np.argmax(index_s2)] - p_start[i, np.argmax(index_s1)])
         if n_s2[i] > 1:
             s1_before_s2[i] = np.argmax(index_s1) < np.argmax(index_s2) 
-        
+    
+    if drift_Time[i]>0:
+        n_golden += 1
 
 
     # =============================================================
@@ -356,7 +364,7 @@ for i in range(0, n_events):
 
         # Debugging of pulse finder
         debug_pf = True
-        if debug_pf:
+        if debug_pf and n_pulses[i]>0:
             pl.plot(t_matrix[i, :], data_conv, 'red')
             pl.plot(t_matrix[i, :], np.tile(0., np.size(data_conv)), 'gray')
             pl.vlines(x=peaks*tscale, ymin=data_conv[peaks] - properties["prominences"],
@@ -370,7 +378,7 @@ for i in range(0, n_events):
         fig.clf()
         
 # end of pulse finding and plotting event loop
-
+print("number of golden events found = {0:d} ({1:g}%)".format(n_golden,n_golden*100./n_events))
 
 # Define some standard cuts for plotting
 cut_dict = {}
@@ -386,6 +394,7 @@ save_S1S2_plots=True # One entry per S1 (S2) pulse
 save_event_plots=True # One entry per event
 pulse_cut_name = 'ValidPulse'
 pulse_cut = cut_dict[pulse_cut_name]
+print("number of pulses found passing cut "+pulse_cut_name+" = {0:d} ({1:g}% of pulses found)".format(np.sum(pulse_cut),np.sum(pulse_cut)*100./np.size(p_area)))
 #pulse_cut_name = 'ValidPulse_SS_Evt'
 #pulse_cut = pulse_cut*SS_cut[:,np.newaxis] # add second dimension to allow broadcasting
 
@@ -411,12 +420,14 @@ cleanS1Area = p_area[s1_cut].flatten()
 cleanS1RiseTime = tscale*(p_afs_50[s1_cut]-p_afs_2l[s1_cut] ).flatten()
 cleanS1AreaChFrac = p_area_ch_frac[s1_cut]
 cleanS1TBA = p_tba[s1_cut].flatten()
+print("number of S1 pulses found = {0:d} ({1:g}% of pulses found)".format(np.sum(s1_cut),np.sum(s1_cut)*100./np.size(p_area)))
 
 s2_cut = pulse_cut*cut_dict['S2']
 cleanS2Area = p_area[s2_cut].flatten()
 cleanS2RiseTime = tscale*(p_afs_50[s2_cut]-p_afs_2l[s2_cut] ).flatten()
 cleanS2AreaChFrac = p_area_ch_frac[s2_cut]
 cleanS2TBA = p_tba[s2_cut].flatten()
+print("number of S2 pulses found = {0:d} ({1:g}% of pulses found)".format(np.sum(s2_cut),np.sum(s2_cut)*100./np.size(p_area)))
 
 # Quantities for plotting only events with n number of pulses, not just all of them
 # May still contain empty pulses
@@ -440,6 +451,7 @@ event_cut = event_cut_dict[event_cut_name]
 cleanSumS1 = sum_s1_area[event_cut]
 cleanSumS2 = sum_s2_area[event_cut]
 cleanDT = drift_Time[event_cut]
+print("number of events found passing cut "+event_cut_name+" = {0:d} ({1:g}%)".format(np.sum(event_cut),np.sum(event_cut)*100./n_events))
 
 
 t_end_recon = time.time()
@@ -552,7 +564,7 @@ pl.xlabel("log10 S2 area")
 if save_S1S2_plots: pl.savefig(data_dir+"log10_S2_"+pulse_cut_name +".png")
 
 pl.figure()
-pl.hist(cleanS1Area, 500)
+pl.hist(cleanS1Area, bins=125,range=(0,150))
 pl.axvline(x=np.mean(cleanS1Area), ls='--', color='r')
 pl.xlabel("S1 area (phd)")
 if save_S1S2_plots: pl.savefig(data_dir+"S1_"+pulse_cut_name +".png")
