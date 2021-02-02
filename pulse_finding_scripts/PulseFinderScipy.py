@@ -87,7 +87,7 @@ def findPulses(waveform_bls, max_pulses):
 
     # pulse finder parameters for tuning
     pulse_window = int(12.0 / tscale) # was 7 us; any reason this can't just always go to next pulse or end of wfm?
-    conv_width = int(0.3 / tscale) # in samples
+    conv_width = 100 #int(0.3 / tscale) # in samples
     min_height = 0.10 # phd/sample
     min_dist = int(0.5 / tscale) # in samples
     bounds_conv_width = 5 # in samples
