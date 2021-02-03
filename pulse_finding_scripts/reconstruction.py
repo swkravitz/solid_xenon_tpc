@@ -54,7 +54,7 @@ spe_sizes = [chA_spe_size, chB_spe_size, chC_spe_size, chD_spe_size, chE_spe_siz
 #data_dir = "C:/Users/ryanm/Documents/Research/Data/bkg_3.5g_3.9c_27mV_6_postrecover_5min/" # Old data
 #data_dir = "C:/Users/swkra/Desktop/Jupyter temp/data-201909/091219/"
 #data_dir = "/home/xaber/caen/wavedump-3.8.2/data/011521/Flow_Th_Co57_4.8g_5.0c_25mV_1.5bar_circ_5min/"
-data_dir = "/home/xaber/caen/wavedump-3.8.2/data/012721/Co57_ICVbot_LXeonAnode_0g0c-3mV_7mV_ch2_1.3bar_circ_5min/"
+data_dir = "/home/xaber/caen/wavedump-3.8.2/data/020221/Cs137_ICVbot_LXefill32min_0g_0c_3mV_1.4bar_circ_2min/"
 #data_dir  = "C:/Users/ryanm/Documents/Research/Data/bkg_2.8g_3.2c_25mV_1_1.6_circ_0.16bottle_5min/" # Weird but workable data
 #data_dir = "C:/Users/ryanm/Documents/Research/Data/Flow_Th_with_Ba133_0g_0c_25mV_1.5bar_nocirc_5min/" # Weird double s1 data
 #"C:/Users/swkra/Desktop/Jupyter temp/data-202009/091720/bkg_3.5g_3.9c_27mV_7_postrecover2_5min/"
@@ -386,13 +386,14 @@ cut_dict['ValidPulse'] = p_area > 0
 cut_dict['PulseClass0'] = p_class == 0
 cut_dict['S1'] = (p_class == 1) + (p_class == 2)
 cut_dict['S2'] = (p_class == 5) + (p_class == 6)
+cut_dict['Co_peak'] = (p_area>30)*(p_area<60)
 SS_cut = drift_Time > 0
 
 # Pick which cut from cut_dict to apply here and whether to save plots
 save_pulse_plots=True # One entry per pulse
 save_S1S2_plots=True # One entry per S1 (S2) pulse
-save_event_plots=True # One entry per event
-pulse_cut_name = 'ValidPulse'
+save_event_plots=False # One entry per event
+pulse_cut_name = 'ValidPulse'#'Co_peak'
 pulse_cut = cut_dict[pulse_cut_name]
 print("number of pulses found passing cut "+pulse_cut_name+" = {0:d} ({1:g}% of pulses found)".format(np.sum(pulse_cut),np.sum(pulse_cut)*100./np.size(p_area)))
 #pulse_cut_name = 'ValidPulse_SS_Evt'
@@ -488,6 +489,13 @@ pl.xlabel("log10 Pulse area (phd)")
 if save_pulse_plots: pl.savefig(data_dir+"log10PulseArea_"+pulse_cut_name+".png")
 
 pl.figure()
+#pl.yscale("log")
+pl.hist(cleanArea, bins=125,range=(0,150))
+pl.axvline(x=np.mean(cleanArea), ls='--', color='r')
+pl.xlabel("Pulse area (phd)")
+if save_pulse_plots: pl.savefig(data_dir+"PulseArea_Under150phd"+pulse_cut_name+".png")
+
+pl.figure()
 pl.yscale("log")
 pl.hist(cleanPulseClass )
 pl.legend(handles=pc_legend_handles)
@@ -515,6 +523,17 @@ pl.legend(handles=pc_legend_handles)
 #pl.xlim(0.7*min(p_area.flatten()), 1.5*max(p_area.flatten()))
 if save_pulse_plots: pl.savefig(data_dir+"RiseTime_vs_PulseArea_"+pulse_cut_name+".png")
 
+# Channel fractional area for all pulses
+pl.figure()
+for j in range(0, n_channels-1):
+    pl.subplot(4,2,j+1)
+    pl.hist(cleanAreaChFrac[:,j],bins=100,range=(0,1))
+    pl.axvline(x=np.mean(cleanAreaChFrac[:,j]), ls='--', color='r')
+    #print("ch {0} area frac mean: {1}".format(j,np.mean(cleanAreaChFrac[:,j])))
+    #pl.yscale('log')
+    pl.xlabel("Pulse area fraction")
+    pl.title('Ch '+str(j))
+if save_pulse_plots: pl.savefig(data_dir+"pulse_ch_area_frac_"+pulse_cut_name+".png")
 
 # Plots of all S1 or all S2 pulses
 pl.figure()
