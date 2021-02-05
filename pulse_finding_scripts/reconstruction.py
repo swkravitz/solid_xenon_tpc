@@ -54,7 +54,7 @@ spe_sizes = [chA_spe_size, chB_spe_size, chC_spe_size, chD_spe_size, chE_spe_siz
 #data_dir = "C:/Users/ryanm/Documents/Research/Data/bkg_3.5g_3.9c_27mV_6_postrecover_5min/" # Old data
 #data_dir = "C:/Users/swkra/Desktop/Jupyter temp/data-201909/091219/"
 #data_dir = "/home/xaber/caen/wavedump-3.8.2/data/011521/Flow_Th_Co57_4.8g_5.0c_25mV_1.5bar_circ_5min/"
-data_dir = "/home/xaber/caen/wavedump-3.8.2/data/020221/Cs137_ICVbot_LXefill32min_0g_0c_3mV_1.4bar_circ_2min/"
+data_dir = "/home/xaber/caen/wavedump-3.8.2/data/020321/Co57_ICVtop_23min_recover_while_recovering_4.8g_5.0c_3mV_2.0bar_1min/"
 #data_dir  = "C:/Users/ryanm/Documents/Research/Data/bkg_2.8g_3.2c_25mV_1_1.6_circ_0.16bottle_5min/" # Weird but workable data
 #data_dir = "C:/Users/ryanm/Documents/Research/Data/Flow_Th_with_Ba133_0g_0c_25mV_1.5bar_nocirc_5min/" # Weird double s1 data
 #"C:/Users/swkra/Desktop/Jupyter temp/data-202009/091720/bkg_3.5g_3.9c_27mV_7_postrecover2_5min/"
@@ -191,8 +191,8 @@ inn=""
 print("Running pulse finder on {:d} events...".format(n_events))
 
 # use for coloring pulses
-pulse_class_colors = np.array(['blue', 'green', 'red', 'purple', 'black', 'magenta', 'darkorange'])
-pulse_class_labels = np.array(['Other', 'S1-like 1', 'S1-like 2', 'Merged S1/S2', 'Merged S1/S2', 'S2-like normal', 'Gas-like S1/S2'])
+pulse_class_colors = np.array(['blue', 'green', 'red', 'magenta', 'darkorange'])
+pulse_class_labels = np.array(['Other', 'S1-like LXe', 'S1-like gas', 'S2-like', 'Merged S1/S2'])
 pc_legend_handles=[]
 for class_ind in range(len(pulse_class_labels)):
     pc_legend_handles.append(mpl.patches.Patch(color=pulse_class_colors[class_ind], label=str(class_ind)+": "+pulse_class_labels[class_ind]))
@@ -259,7 +259,7 @@ for i in range(0, n_events):
 
     # Event level analysis. Look at events with both S1 and S2.
     index_s1 = (p_class[i,:] == 1) + (p_class[i,:] == 2) # S1's
-    index_s2 = (p_class[i,:] == 5) + (p_class[i,:] == 6) # S2's
+    index_s2 = (p_class[i,:] == 3) + (p_class[i,:] == 4) # S2's
     n_s1[i] = np.sum(index_s1)
     n_s2[i] = np.sum(index_s2)
     
@@ -295,7 +295,7 @@ for i in range(0, n_events):
     riseTimeCondition = ((p_afs_50[i,:n_pulses[i]]-p_afs_2l[i,:n_pulses[i]] )*tscale < 0.6)*((p_afs_50[i,:n_pulses[i]]-p_afs_2l[i,:n_pulses[i]] )*tscale > 0.2)
     
     # Condition to skip the individual plotting
-    plotyn = True#False
+    plotyn = True#np.any(p_class[i,:]==4)#False#np.any(p_area[i,:]>1000) and 
 
     # Pulse area condition
     areaRange = np.sum((p_area[i,:] < 50)*(p_area[i,:] > 5))
@@ -385,14 +385,14 @@ cut_dict = {}
 cut_dict['ValidPulse'] = p_area > 0
 cut_dict['PulseClass0'] = p_class == 0
 cut_dict['S1'] = (p_class == 1) + (p_class == 2)
-cut_dict['S2'] = (p_class == 5) + (p_class == 6)
+cut_dict['S2'] = (p_class == 3) + (p_class == 4)
 cut_dict['Co_peak'] = (p_area>30)*(p_area<60)
 SS_cut = drift_Time > 0
 
 # Pick which cut from cut_dict to apply here and whether to save plots
 save_pulse_plots=True # One entry per pulse
 save_S1S2_plots=True # One entry per S1 (S2) pulse
-save_event_plots=False # One entry per event
+save_event_plots=True # One entry per event
 pulse_cut_name = 'ValidPulse'#'Co_peak'
 pulse_cut = cut_dict[pulse_cut_name]
 print("number of pulses found passing cut "+pulse_cut_name+" = {0:d} ({1:g}% of pulses found)".format(np.sum(pulse_cut),np.sum(pulse_cut)*100./np.size(p_area)))
@@ -490,8 +490,9 @@ if save_pulse_plots: pl.savefig(data_dir+"log10PulseArea_"+pulse_cut_name+".png"
 
 pl.figure()
 #pl.yscale("log")
-pl.hist(cleanArea, bins=125,range=(0,150))
-pl.axvline(x=np.mean(cleanArea), ls='--', color='r')
+area_max_plot=150
+pl.hist(cleanArea, bins=125,range=(0,area_max_plot))
+if np.mean(cleanArea)<area_max_plot: pl.axvline(x=np.mean(cleanArea), ls='--', color='r')
 pl.xlabel("Pulse area (phd)")
 if save_pulse_plots: pl.savefig(data_dir+"PulseArea_Under150phd"+pulse_cut_name+".png")
 
