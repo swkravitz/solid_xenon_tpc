@@ -54,14 +54,14 @@ spe_sizes = [chA_spe_size, chB_spe_size, chC_spe_size, chD_spe_size, chE_spe_siz
 #data_dir = "C:/Users/ryanm/Documents/Research/Data/bkg_3.5g_3.9c_27mV_6_postrecover_5min/" # Old data
 #data_dir = "C:/Users/swkra/Desktop/Jupyter temp/data-201909/091219/"
 #data_dir = "/home/xaber/caen/wavedump-3.8.2/data/011521/Flow_Th_Co57_4.8g_5.0c_25mV_1.5bar_circ_5min/"
-data_dir = "/home/xaber/caen/wavedump-3.8.2/data/020321/Co57_ICVtop_23min_recover_while_recovering_4.8g_5.0c_3mV_2.0bar_1min/"
+data_dir = "/home/xaber/caen/wavedump-3.8.2/data/021921/Po_5.8g_6.0c_400mV_1.77bar_circ_20min/"
 #data_dir  = "C:/Users/ryanm/Documents/Research/Data/bkg_2.8g_3.2c_25mV_1_1.6_circ_0.16bottle_5min/" # Weird but workable data
 #data_dir = "C:/Users/ryanm/Documents/Research/Data/Flow_Th_with_Ba133_0g_0c_25mV_1.5bar_nocirc_5min/" # Weird double s1 data
 #"C:/Users/swkra/Desktop/Jupyter temp/data-202009/091720/bkg_3.5g_3.9c_27mV_7_postrecover2_5min/"
 
 t_start = time.time()
 
-max_evts = 20000#5000  # 25000 # -1 means read in all entries; 25000 is roughly the max allowed in memory on the DAQ computer
+max_evts = 18000#5000  # 25000 # -1 means read in all entries; 25000 is roughly the max allowed in memory on the DAQ computer
 max_pts = -1  # do not change
 if max_evts > 0:
     max_pts = wsize * max_evts
@@ -88,6 +88,7 @@ for ch_ind in range(n_sipms):
     if ch_ind==0: v_sum = np.copy(V)
     else: v_sum += V
 v_matrix_all_ch.append(v_sum)
+
 
 # create a time axis in units of µs:
 x = np.arange(0, wsize, 1)
@@ -294,6 +295,8 @@ for i in range(0, n_events):
     # Condition to plot now includes this rise time calc, not necessary
     riseTimeCondition = ((p_afs_50[i,:n_pulses[i]]-p_afs_2l[i,:n_pulses[i]] )*tscale < 0.6)*((p_afs_50[i,:n_pulses[i]]-p_afs_2l[i,:n_pulses[i]] )*tscale > 0.2)
     
+    po_test = np.any((p_area[i,:]>5.0e4)*((p_afs_50[i,:]-p_afs_2l[i,:] )*tscale<1.0))
+    
     # Condition to skip the individual plotting
     plotyn = True#np.any(p_class[i,:]==4)#False#np.any(p_area[i,:]>1000) and 
 
@@ -380,6 +383,8 @@ for i in range(0, n_events):
 # end of pulse finding and plotting event loop
 print("number of golden events found = {0:d} ({1:g}%)".format(n_golden,n_golden*100./n_events))
 
+p_t_rise = tscale*(p_afs_50-p_afs_2l)
+
 # Define some standard cuts for plotting
 cut_dict = {}
 cut_dict['ValidPulse'] = p_area > 0
@@ -407,7 +412,7 @@ cleanPulseClass = p_class[pulse_cut].flatten()
 
 cleanAFS2l = p_afs_2l[pulse_cut].flatten()
 cleanAFS50 = p_afs_50[pulse_cut].flatten()
-cleanRiseTime = tscale*(cleanAFS50-cleanAFS2l)
+cleanRiseTime = p_t_rise[pulse_cut].flatten()
 
 cleanAreaCh = p_area_ch[pulse_cut] # pulse_cut gets broadcast to the right shape
 cleanAreaChFrac = p_area_ch_frac[pulse_cut]
@@ -418,14 +423,14 @@ cleanTBA = p_tba[pulse_cut].flatten()
 
 s1_cut = pulse_cut*cut_dict['S1']
 cleanS1Area = p_area[s1_cut].flatten()
-cleanS1RiseTime = tscale*(p_afs_50[s1_cut]-p_afs_2l[s1_cut] ).flatten()
+cleanS1RiseTime = p_t_rise[s1_cut].flatten()
 cleanS1AreaChFrac = p_area_ch_frac[s1_cut]
 cleanS1TBA = p_tba[s1_cut].flatten()
 print("number of S1 pulses found = {0:d} ({1:g}% of pulses found)".format(np.sum(s1_cut),np.sum(s1_cut)*100./np.size(p_area)))
 
 s2_cut = pulse_cut*cut_dict['S2']
 cleanS2Area = p_area[s2_cut].flatten()
-cleanS2RiseTime = tscale*(p_afs_50[s2_cut]-p_afs_2l[s2_cut] ).flatten()
+cleanS2RiseTime = p_t_rise[s2_cut].flatten()
 cleanS2AreaChFrac = p_area_ch_frac[s2_cut]
 cleanS2TBA = p_tba[s2_cut].flatten()
 print("number of S2 pulses found = {0:d} ({1:g}% of pulses found)".format(np.sum(s2_cut),np.sum(s2_cut)*100./np.size(p_area)))
@@ -446,8 +451,10 @@ na50 = p_afs_50[howMany]
 event_cut_dict = {}
 event_cut_dict["SS"] = drift_Time > 0 
 event_cut_dict["MS"] = (n_s1 == 1)*(n_s2 > 1)*s1_before_s2
+event_cut_dict["Po"] = (drift_Time>0)*np.any((p_area>5.0e4)*(p_t_rise<1.0), axis=1) # true if any pulse in event matches these criteria
+event_cut_dict["lg_S1"] = (drift_Time>0)*np.any((p_area>1000.)*cut_dict["S1"], axis=1) # true if any S1 has area>1000
 
-event_cut_name = "SS"
+event_cut_name = "SS"#"lg_S1"
 event_cut = event_cut_dict[event_cut_name] 
 cleanSumS1 = sum_s1_area[event_cut]
 cleanSumS2 = sum_s2_area[event_cut]
@@ -584,7 +591,7 @@ pl.xlabel("log10 S2 area")
 if save_S1S2_plots: pl.savefig(data_dir+"log10_S2_"+pulse_cut_name +".png")
 
 pl.figure()
-pl.hist(cleanS1Area, bins=125,range=(0,150))
+pl.hist(cleanS1Area, bins=125)
 pl.axvline(x=np.mean(cleanS1Area), ls='--', color='r')
 pl.xlabel("S1 area (phd)")
 if save_S1S2_plots: pl.savefig(data_dir+"S1_"+pulse_cut_name +".png")
@@ -597,9 +604,11 @@ if save_S1S2_plots: pl.savefig(data_dir+"S2_"+pulse_cut_name +".png")
 
 # Plots of event-level variables
 pl.figure()
-pl.scatter(cleanSumS1, np.log10(cleanSumS2), s = 1)
+pl.scatter(cleanSumS1, np.log10(cleanSumS2), s = 1, c=cleanDT)
 pl.xlabel("Sum S1 area (phd)")
 pl.ylabel("log10 Sum S2 area")
+cbar=pl.colorbar()
+cbar.set_label("Drift time (us)")
 if save_event_plots: pl.savefig(data_dir+"log10_SumS2_vs_SumS1_"+event_cut_name +".png")
 
 pl.figure()
