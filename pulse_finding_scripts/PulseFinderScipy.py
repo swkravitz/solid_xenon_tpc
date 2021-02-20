@@ -5,10 +5,19 @@ from scipy.signal import find_peaks
 tscale = (8.0/4096.0)
 
 # Calculate moving avg of waveform
-def wfm_convolve(data, window, avg=False):
+def wfm_convolve(data, window, shape=0, avg=False):
     # Assumes data is already baseline-subtracted
-    weights = np.repeat(1.0, window)
-    if avg: weights /= window  # do avg instead of sum
+
+    # Flat
+    if shape == 0:
+        weights = np.repeat(1.0, window)
+        if avg: weights /= window  # do avg instead of sum
+
+    # Gaussian
+    if shape == 1:
+        x_val = np.linspace(-window/2,window/2,int(window))
+        weights = np.exp(-np.power(x_val/(window/4),2)/2)
+        weights = weights/len(weights)
     return np.convolve(data, weights, 'same')
 
 # Keep only the elements corresponding to indices in peak_ind_keep
@@ -83,14 +92,24 @@ def pulse_bounds(data, t_min, window, start_frac, end_frac):
 #   peaks: locations of peaks in waveform, in samples
 #   data_conv: convolved waveform; used for debugging
 #   properties: list of properties from scipy's peak finder; used for debugging/plotting
-def findPulses(waveform_bls, max_pulses):
-
+def findPulses(waveform_bls, max_pulses, SPEMode):
     # pulse finder parameters for tuning
-    pulse_window = int(12.0 / tscale) # was 7 us; any reason this can't just always go to next pulse or end of wfm?
-    conv_width = 100 #int(0.3 / tscale) # in samples
-    min_height = 0.10 # phd/sample
-    min_dist = int(0.5 / tscale) # in samples
-    bounds_conv_width = 5 # in samples
+
+    # For SPE
+    if SPEMode:
+        pulse_window = int(1/tscale) # in samples
+        conv_width = int(0.1/tscale) # in samples
+        min_height = 0.01 # phd/sample
+        min_dist = int(0.2/tscale)  # in samples
+        bounds_conv_width = conv_width # in samples
+    # Normal mode
+    else:
+        pulse_window = int(12.0 / tscale) # was 7 us; any reason this can't just always go to next pulse or end of wfm?
+        conv_width = 100 #int(0.3 / tscale) # in samples
+        min_height = 0.10 # phd/sample
+        min_dist = int(0.5 / tscale) # in samples
+        bounds_conv_width = 5 # in samples
+
     pulse_start_frac = 0.01  # pulse starts at this fraction of peak height above baseline
     pulse_end_frac = 0.01  # pulse starts at this fraction of peak height above baseline
 
@@ -98,7 +117,7 @@ def findPulses(waveform_bls, max_pulses):
     # Look for local maxima using scipy's find_peaks
     #
     t0 = time.time()
-    data_conv = wfm_convolve(waveform_bls, conv_width, avg=True)
+    data_conv = wfm_convolve(waveform_bls, conv_width, avg=True )
     peaks, properties = find_peaks(data_conv, distance=min_dist, height=min_height,
                                    width=int(0.01 / tscale), prominence=0.1)  # could restrict search if desired
     if len(peaks)<1: return [],[],[],[],[]

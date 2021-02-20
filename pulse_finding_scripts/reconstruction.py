@@ -54,14 +54,23 @@ spe_sizes = [chA_spe_size, chB_spe_size, chC_spe_size, chD_spe_size, chE_spe_siz
 #data_dir = "C:/Users/ryanm/Documents/Research/Data/bkg_3.5g_3.9c_27mV_6_postrecover_5min/" # Old data
 #data_dir = "C:/Users/swkra/Desktop/Jupyter temp/data-201909/091219/"
 #data_dir = "/home/xaber/caen/wavedump-3.8.2/data/011521/Flow_Th_Co57_4.8g_5.0c_25mV_1.5bar_circ_5min/"
-data_dir = "/home/xaber/caen/wavedump-3.8.2/data/021921/Po_5.8g_6.0c_400mV_1.77bar_circ_20min/"
+#data_dir = "/home/xaber/caen/wavedump-3.8.2/data/021921/Po_5.8g_6.0c_400mV_1.77bar_circ_20min/"
+data_dir  = "C:/Users/ryanm/Documents/Research/Data/sipm_test_021921/scope_trig_gain1/"
 #data_dir  = "C:/Users/ryanm/Documents/Research/Data/bkg_2.8g_3.2c_25mV_1_1.6_circ_0.16bottle_5min/" # Weird but workable data
 #data_dir = "C:/Users/ryanm/Documents/Research/Data/Flow_Th_with_Ba133_0g_0c_25mV_1.5bar_nocirc_5min/" # Weird double s1 data
 #"C:/Users/swkra/Desktop/Jupyter temp/data-202009/091720/bkg_3.5g_3.9c_27mV_7_postrecover2_5min/"
 
 t_start = time.time()
 
-max_evts = 18000#5000  # 25000 # -1 means read in all entries; 25000 is roughly the max allowed in memory on the DAQ computer
+SPEMode = False
+if SPEMode:
+    n_sipms = 1
+    n_channels = n_sipms + 1
+    n_top = int((n_channels-1)/2)
+    top_channels=np.array(range(n_top),int)
+    bottom_channels=np.array(range(n_top,2*n_top),int)
+
+max_evts = 30000#5000  # 25000 # -1 means read in all entries; 25000 is roughly the max allowed in memory on the DAQ computer
 max_pts = -1  # do not change
 if max_evts > 0:
     max_pts = wsize * max_evts
@@ -204,7 +213,7 @@ for i in range(0, n_events):
     if i%500==0: print("Event #",i)
     
     # Find pulse locations; other quantities for pf tuning/debugging
-    start_times, end_times, peaks, data_conv, properties = pf.findPulses( v_bls_matrix_all_ch[-1,i,:], max_pulses )
+    start_times, end_times, peaks, data_conv, properties = pf.findPulses( v_bls_matrix_all_ch[-1,i,:], max_pulses, SPEMode )
 
 
     # Sort pulses by start times, not areas
@@ -298,7 +307,7 @@ for i in range(0, n_events):
     po_test = np.any((p_area[i,:]>5.0e4)*((p_afs_50[i,:]-p_afs_2l[i,:] )*tscale<1.0))
     
     # Condition to skip the individual plotting
-    plotyn = True#np.any(p_class[i,:]==4)#False#np.any(p_area[i,:]>1000) and 
+    plotyn = n_pulses[i] > 0 #True #True#np.any(p_class[i,:]==4)#False#np.any(p_area[i,:]>1000) and 
 
     # Pulse area condition
     areaRange = np.sum((p_area[i,:] < 50)*(p_area[i,:] > 5))
@@ -461,6 +470,34 @@ cleanSumS2 = sum_s2_area[event_cut]
 cleanDT = drift_Time[event_cut]
 print("number of events found passing cut "+event_cut_name+" = {0:d} ({1:g}%)".format(np.sum(event_cut),np.sum(event_cut)*100./n_events))
 
+# Save RQs in npy file. When loading, load in same order as you save them
+saveRQ = True
+if saveRQ:
+    outfileRQ = data_dir+"RQs.npy"
+    with open(outfileRQ, 'wb') as f:
+        np.save(f, p_area[event_cut].flatten())
+        np.save(f, p_max_height[event_cut].flatten())
+        np.save(f, p_min_height[event_cut].flatten())
+        np.save(f, p_width[event_cut].flatten())
+        np.save(f, p_class[event_cut].flatten())
+
+        np.save(f, p_afs_2l[event_cut].flatten())
+        np.save(f, p_afs_50[event_cut].flatten())
+        np.save(f, p_t_rise[event_cut].flatten())
+
+        np.save(f, p_area_ch[event_cut].flatten())
+        np.save(f, p_area_ch_frac[event_cut].flatten())
+        np.save(f, p_area_top[event_cut].flatten())
+        np.save(f, p_area_bottom[event_cut].flatten())
+        np.save(f, p_tba[event_cut].flatten())
+
+# Save interesting events in npy file. 
+# You should probably should set this to False unless you know the interesting event count
+saveEvents = False
+if saveEvents:
+    outfileEvents = data_dir+"intEvents.npy"
+    np.save(open(outfileEvents, 'wb'), v_bls_matrix_all_ch[:,event_cut,:])
+ 
 
 t_end_recon = time.time()
 print('time to reconstruct: ', t_end_recon - t_end_wfm_fill)
@@ -660,4 +697,4 @@ if save_event_plots: pl.savefig(data_dir+"SumS2_vs_DriftTime_"+event_cut_name +"
 # pl.xlabel("Small Pulse Area (phd)")
 # pl.ylabel("Big Pulse Area (phd)")
 
-pl.show()
+#pl.show()
