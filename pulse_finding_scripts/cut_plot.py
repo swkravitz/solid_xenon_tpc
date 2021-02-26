@@ -7,7 +7,7 @@ import PulseFinderScipy as pf
 import PulseQuantities as pq
 import PulseClassification as pc
 
-data_dir = "D:/.shortcut-targets-by-id/11qeqHWCbcKfFYFQgvytKem8rulQCTpj8/crystalize/data/data-202102/022321/Po_6.8g_9.0c_3mV_1.75bar_circ_20min/"
+data_dir = "D:/.shortcut-targets-by-id/11qeqHWCbcKfFYFQgvytKem8rulQCTpj8/crystalize/data/data-202102/022421/Po_6.8g_7.0c_3mV_1.75bar_circ_20min/"
 
 # set plotting style
 mpl.rcParams['font.size']=10
@@ -54,9 +54,8 @@ chG_spe_size = 30.84
 chH_spe_size = 30.3*1.8 # scale factor (1.6-2.2) empirical as of Dec 9, 2020
 spe_sizes = [chA_spe_size, chB_spe_size, chC_spe_size, chD_spe_size, chE_spe_size, chF_spe_size, chG_spe_size, chH_spe_size]
 
-rq = open(data_dir+'rq.npz')
-listrq = np.load('rq')
-rq.close()
+#read RQ
+listrq = np.load(data_dir+'rq.npz')
 
 n_events = listrq['n_events'][()]
 n_pulses = listrq['n_pulses']
@@ -79,7 +78,10 @@ p_tba = listrq['p_tba']
 sum_s1_area = listrq['sum_s1_area']
 sum_s2_area = listrq['sum_s2_area']
 
-n_golden = int(np.sum(drift_Time))
+listrq.close()
+#end of RQ read
+
+n_golden = int(np.sum(drift_Time>0))
 print("number of golden events found = {0:d} ({1:g}%)".format(n_golden,n_golden*100./n_events))
 
 p_t_rise = tscale*(p_afs_50-p_afs_2l)
