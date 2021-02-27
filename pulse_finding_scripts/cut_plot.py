@@ -7,7 +7,8 @@ import PulseFinderScipy as pf
 import PulseQuantities as pq
 import PulseClassification as pc
 
-data_dir = "D:/.shortcut-targets-by-id/11qeqHWCbcKfFYFQgvytKem8rulQCTpj8/crystalize/data/data-202102/022421/Po_6.8g_7.0c_3mV_1.75bar_circ_20min/"
+#data_dir = "D:/.shortcut-targets-by-id/11qeqHWCbcKfFYFQgvytKem8rulQCTpj8/crystalize/data/data-202102/022421/Po_6.8g_7.0c_3mV_1.75bar_circ_20min/"
+data_dir  = "C:/Users/ryanm/Documents/Research/Data/2020/bkg_2.8g_3.2c_25mV_1_1.6_circ_0.16bottle_5min/"
 
 # set plotting style
 mpl.rcParams['font.size']=10
@@ -166,75 +167,68 @@ print("number of events found passing cut "+event_cut_name+" = {0:d} ({1:g}%)".f
 # =============================================================
 # now make plots of interesting pulse quantities
 
+# Turns data into (x,y) points of histogram to plot 
+def histToPlot(data, bins):
+    [histData,bins] = np.histogram(data, bins=bins)
+    binCenters = np.array([0.5 * (bins[j] + bins[j+1]) for j in range(len(bins)-1)])
+    return binCenters, histData
+
+# For creating basic histograms
+def basicHist(data, bins=100, save=False, name="", mean=False, show=False, hRange=[], xlim=[], ylim=[], xlabel="", ylabel="", logx=False, logy=False, area_max_plot=-99999999,legHand=[]):
+    pl.figure()
+    if len(hRange) > 1: pl.hist(data, bins, range=(hRange[0],hRange[1]) )
+    else: pl.hist(data, bins)
+
+    pl.xlabel(xlabel)
+    pl.ylabel(ylabel)
+    if mean and area_max_plot<np.mean(data): pl.axvline(x=np.mean(data), ls='--', color='r')
+    if len(xlim) > 1: pl.xlim(xlim[0],xlim[1])
+    if len(ylim) > 1: pl.ylim(ylim[0],ylim[1])
+    if logx: pl.xscale("log")
+    if logy: pl.yscale("log")
+    if len(legHand) > 0: pl.legend(handles=legHand)
+    if save: pl.savefig(str(data_dir)+str(name)+".png")
+    if show: pl.show()
+
+    return
+
+# For creating basic scatter plots
+def basicScatter(xdata, ydata, s=[], c=[], save=False, name="", mean=False, show=False, xlim=[], ylim=[], xlabel="", ylabel="", logx=False, logy=False, area_max_plot=-99999999,legHand=[]):
+    pl.scatter(xdata, ydata, s=s, c=c)
+
+    pl.xlabel(xlabel)
+    pl.ylabel(ylabel)
+    if mean and area_max_plot<np.mean(xdata): pl.axvline(x=np.mean(xdata), ls='--', color='r')
+    if len(xlim) > 1: pl.xlim(xlim[0],xlim[1])
+    if len(ylim) > 1: pl.ylim(ylim[0],ylim[1])
+    if logx: pl.xscale("log")
+    if logy: pl.yscale("log")
+    if len(legHand) > 0: pl.legend(handles=legHand)
+    if save: pl.savefig(str(data_dir)+str(name)+".png")
+    if show: pl.show()
+    pl.close()
+
+    return
 
 
 # Plots of all pulses combined (after cuts)
-pl.figure()
-pl.hist(cleanTBA, bins=100, range=(-1.01, 1.01))
-pl.axvline(x=np.mean(cleanTBA), ls='--', color='r')
-pl.xlabel("TBA")
-if save_pulse_plots: pl.savefig(data_dir+"TBA_"+pulse_cut_name+".png")
-#pl.show() 
+basicHist(cleanTBA, bins=100, hRange=[-1.01,1.01], mean=True, xlabel="TBA", name="TBA_"+pulse_cut_name, save=save_pulse_plots)
 
-pl.figure()
-pl.yscale("log")
-pl.hist(cleanRiseTime, 100)
-pl.axvline(x=np.mean(cleanRiseTime), ls='--', color='r')
-pl.xlabel("Rise time, 50-2 (us)")
-if save_pulse_plots: pl.savefig(data_dir+"RiseTime_"+pulse_cut_name+".png")
-#pl.show()
+basicHist(cleanRiseTime, bins=100, mean=True, logy=True, xlabel="Rise time, 50-2 (us)", name="RiseTime_"+pulse_cut_name, save=save_pulse_plots)
 
-pl.figure()
-#pl.yscale("log")
-pl.hist(np.log10(cleanArea), 100)
-pl.axvline(x=np.mean(np.log10(cleanArea)), ls='--', color='r')
-pl.xlabel("log10 Pulse area (phd)")
-if save_pulse_plots: pl.savefig(data_dir+"log10PulseArea_"+pulse_cut_name+".png")
+basicHist(np.log10(cleanArea), bins=100, mean=True, xlabel="log10 Pulse area (phd)", name="log10PulseArea_"+pulse_cut_name, save=save_pulse_plots)
 
-pl.figure()
-#pl.yscale("log")
 area_max_plot=150
-pl.hist(cleanArea, bins=125,range=(0,area_max_plot))
-if np.mean(cleanArea)<area_max_plot: pl.axvline(x=np.mean(cleanArea), ls='--', color='r')
-pl.xlabel("Pulse area (phd)")
-if save_pulse_plots: pl.savefig(data_dir+"PulseArea_Under150phd"+pulse_cut_name+".png")
+basicHist(cleanArea, bins=125, hRange=[0,area_max_plot], mean=True, xlabel="Pulse area (phd)", area_max_plot=area_max_plot, name="PulseArea_Under150phd"+pulse_cut_name, save=save_pulse_plots)
 
-pl.figure()
-pl.yscale("log")
-pl.hist(cleanPulseClass )
-pl.legend(handles=pc_legend_handles)
-pl.xlabel("Pulse Class")
-if save_pulse_plots: pl.savefig(data_dir+"PulseClass_"+pulse_cut_name+".png")
+basicHist(cleanPulseClass, legHand=pc_legend_handles, xlabel="Pulse Class", name="PulseClass_"+pulse_cut_name, save=save_pulse_plots)
 
+basicScatter(cleanTBA, cleanRiseTime, s=1.2, c=pulse_class_colors[cleanPulseClass], xlim=[-1.01,1.01], ylim=[-0.05,4], xlabel="TBA", ylabel="Rise time, 50-2 (us)", legHand=pc_legend_handles, name="RiseTime_vs_TBA_"+pulse_cut_name, save=save_pulse_plots)
 
-pl.figure()
-pl.scatter(cleanTBA, cleanRiseTime, s = 1.2, c = pulse_class_colors[cleanPulseClass])
-pl.xlim(-1.01,1.01)
-pl.ylim(-0.05,4)
-pl.ylabel("Rise time, 50-2 (us)")
-pl.xlabel("TBA")
-pl.legend(handles=pc_legend_handles)
-if save_pulse_plots: pl.savefig(data_dir+"RiseTime_vs_TBA_"+pulse_cut_name+".png")
+basicScatter(cleanArea, cleanRiseTime, s=1.2, c=pulse_class_colors[cleanPulseClass], logx=True, xlim=[5,10**6], ylim=[-0.05,4], xlabel="Pulse area (phd)", ylabel="Rise time, 50-2 (us)", legHand=pc_legend_handles, name="RiseTime_vs_PulseArea_"+pulse_cut_name, save=save_pulse_plots)
+#xlim=[0.7*min(p_area.flatten()), 1.5*max(p_area.flatten())]
 
-pl.figure()
-pl.xscale("log")
-pl.scatter(cleanArea, cleanRiseTime, s = 1.2, c = pulse_class_colors[cleanPulseClass])
-pl.xlim(5,10**6)
-pl.ylim(-0.05,4)
-pl.ylabel("Rise time, 50-2 (us)")
-pl.xlabel("Pulse area (phd)")
-pl.legend(handles=pc_legend_handles)
-#pl.xlim(0.7*min(p_area.flatten()), 1.5*max(p_area.flatten()))
-if save_pulse_plots: pl.savefig(data_dir+"RiseTime_vs_PulseArea_"+pulse_cut_name+".png")
-
-pl.figure()
-pl.scatter(cleanTBA, cleanArea, s = 1.2, c = pulse_class_colors[cleanPulseClass])
-pl.xlim(-1.01,1.01)
-pl.ylim(0, 6000)
-pl.ylabel("Pulse area (phd)")
-pl.xlabel("TBA")
-pl.legend(handles=pc_legend_handles)
-if save_pulse_plots: pl.savefig(data_dir+"PulseArea_vs_TBA_"+pulse_cut_name+".png")
+basicScatter(cleanTBA, cleanArea, s=1.2, c=pulse_class_colors[cleanPulseClass], xlim=[-1.01,1.01], ylim=[0, 6000], xlabel="TBA", ylabel="Pulse area (phd)", legHand=pc_legend_handles, name="PulseArea_vs_TBA_"+pulse_cut_name, save=save_pulse_plots)
 
 # Channel fractional area for all pulses
 pl.figure()
@@ -271,41 +265,14 @@ for j in range(0, n_channels-1):
     pl.title('Ch '+str(j))
 if save_S1S2_plots: pl.savefig(data_dir+"S2_ch_area_frac_"+pulse_cut_name+".png")
 
-pl.figure()
-pl.hist(cleanS1TBA, bins=100, range=(-1.01,1.01) )
-pl.axvline(x=np.mean(cleanS1TBA), ls='--', color='r')
-pl.xlabel("S1 TBA")
-if save_S1S2_plots: pl.savefig(data_dir+"S1TBA_"+pulse_cut_name+".png")
+basicHist(cleanS1TBA, bins=100, hRange=[-1.01,1.01], mean=True, xlabel="S1 TBA", name="S1TBA_"+pulse_cut_name, save=save_S1S2_plots)
+basicHist(cleanS2TBA, bins=100, hRange=[-1.01,1.01], mean=True, xlabel="S2 TBA", name="S2TBA_"+pulse_cut_name, save=save_S1S2_plots)
 
-pl.figure()
-pl.hist(cleanS2TBA, bins=100, range=(-1.01,1.01) )
-pl.axvline(x=np.mean(cleanS2TBA), ls='--', color='r')
-pl.xlabel("S2 TBA")
-if save_S1S2_plots: pl.savefig(data_dir+"S2TBA_"+pulse_cut_name+".png")
+basicHist(np.log10(cleanS1Area), bins=100, mean=True, xlabel="log10 S1 Area", name="log10_S1_"+pulse_cut_name, save=save_S1S2_plots)
+basicHist(np.log10(cleanS2Area), bins=100, mean=True, xlabel="log10 S2 Area", name="log10_S2_"+pulse_cut_name, save=save_S1S2_plots)
 
-pl.figure()
-pl.hist(np.log10(cleanS1Area), 100)
-pl.axvline(x=np.mean(np.log10(cleanS1Area)), ls='--', color='r')
-pl.xlabel("log10 S1 area")
-if save_S1S2_plots: pl.savefig(data_dir+"log10_S1_"+pulse_cut_name +".png")
-
-pl.figure()
-pl.hist(np.log10(cleanS2Area), 100)
-pl.axvline(x=np.mean(np.log10(cleanS2Area)), ls='--', color='r')
-pl.xlabel("log10 S2 area")
-if save_S1S2_plots: pl.savefig(data_dir+"log10_S2_"+pulse_cut_name +".png")
-
-pl.figure()
-pl.hist(cleanS1Area, bins=125)
-pl.axvline(x=np.mean(cleanS1Area), ls='--', color='r')
-pl.xlabel("S1 area (phd)")
-if save_S1S2_plots: pl.savefig(data_dir+"S1_"+pulse_cut_name +".png")
-
-pl.figure()
-pl.hist(cleanS2Area, 500)
-pl.axvline(x=np.mean(cleanS2Area), ls='--', color='r')
-pl.xlabel("S2 area (phd)")
-if save_S1S2_plots: pl.savefig(data_dir+"S2_"+pulse_cut_name +".png")
+basicHist(cleanS1Area, bins=125, mean=True, xlabel="S1 area (phd)", name="S1_"+pulse_cut_name, save=save_S1S2_plots)
+basicHist(cleanS2Area, bins=500, mean=True, xlabel="S2 area (phd)", name="S2_"+pulse_cut_name, save=save_S1S2_plots)
 
 # Plots of event-level variables
 pl.figure()
@@ -316,23 +283,11 @@ cbar=pl.colorbar()
 cbar.set_label("Drift time (us)")
 if save_event_plots: pl.savefig(data_dir+"log10_SumS2_vs_SumS1_"+event_cut_name +".png")
 
-pl.figure()
-pl.hist(np.log10(cleanSumS1), 100)
-pl.axvline(x=np.mean(np.log10(cleanSumS1)), ls='--', color='r')
-pl.xlabel("log10 Sum S1 area (phd)")
-if save_event_plots: pl.savefig(data_dir+"log10_SumS1_"+event_cut_name +".png")
+basicHist(np.log10(cleanSumS1), bins=100, mean=True, xlabel="log10 Sum S1 area (phd)", name="log10_SumS1_"+event_cut_name, save=save_event_plots)
+basicHist(np.log10(cleanSumS2), bins=100, mean=True, xlabel="log10 Sum S2 area (phd)", name="log10_SumS2_"+event_cut_name, save=save_event_plots)
 
-pl.figure()
-pl.hist(np.log10(cleanSumS2), 100)
-pl.axvline(x=np.mean(np.log10(cleanSumS2)), ls='--', color='r')
-pl.xlabel("log10 Sum S2 area (phd)")
-if save_event_plots: pl.savefig(data_dir+"log10_SumS2_"+event_cut_name +".png")
-
-pl.figure() # Only ever plot this for SS events?
-pl.hist(cleanDT, bins=50, range=(0,10))
-pl.axvline(x=np.mean(cleanDT), ls='--', color='r')
-pl.xlabel("Drift time (us)")
-if save_event_plots: pl.savefig(data_dir+"DriftTime_"+event_cut_name +".png")
+# Only ever plot this for SS events?
+basicHist(cleanDT, bins=50, hRange=[0,10], mean=True, xlabel="Drift time (us)", name="DriftTime_"+event_cut_name, save=save_event_plots)
 
 pl.figure() # Only ever plot this for SS events?
 pl.scatter(cleanDT, cleanSumS2)
