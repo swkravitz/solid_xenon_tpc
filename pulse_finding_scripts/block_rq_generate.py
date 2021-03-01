@@ -9,7 +9,7 @@ import PulseFinderScipy as pf
 import PulseQuantities as pq
 import PulseClassification as pc
 
-data_dir = "G:/.shortcut-targets-by-id/11qeqHWCbcKfFYFQgvytKem8rulQCTpj8/crystalize/data/data-202102/022421/Po_4.0g_4.2c_3mV_1.75bar_circ_20min/"
+data_dir = "G:/.shortcut-targets-by-id/11qeqHWCbcKfFYFQgvytKem8rulQCTpj8/crystalize/data/data-202102/022321/Po_6.8g_9.0c_3mV_1.75bar_circ_20min/"
 
 # set plotting style
 mpl.rcParams['font.size']=10
@@ -53,8 +53,8 @@ spe_sizes = [chA_spe_size, chB_spe_size, chC_spe_size, chD_spe_size, chE_spe_siz
 
 t_start = time.time()
 
-block_size = 5000
-n_block = 4
+block_size = 1000
+n_block = 20
 max_evts = n_block*block_size#5000  # 25000 # -1 means read in all entries; 25000 is roughly the max allowed in memory on the DAQ computer
 max_pts = -1  # do not change
 if max_evts > 0:
@@ -72,6 +72,12 @@ max_pulses = 4
 p_start = np.zeros(( max_evts, max_pulses), dtype=np.int)
 p_end   = np.zeros(( max_evts, max_pulses), dtype=np.int)
 p_found = np.zeros(( max_evts, max_pulses), dtype=np.int)
+
+#center of mass
+center_top_x = np.zeros(( max_evts, max_pulses))
+center_top_y = np.zeros(( max_evts, max_pulses))
+center_bot_x = np.zeros(( max_evts, max_pulses))
+center_bot_y = np.zeros(( max_evts, max_pulses))
 
 p_area = np.zeros(( max_evts, max_pulses))
 p_max_height = np.zeros(( max_evts, max_pulses))
@@ -251,7 +257,10 @@ for j in range(n_block):
             p_area_top[i,pp] = sum(p_area_ch[i,pp,top_channels])
             p_area_bottom[i,pp] = sum(p_area_ch[i,pp,bottom_channels])
             p_tba[i, pp] = (p_area_top[i, pp] - p_area_bottom[i, pp]) / (p_area_top[i, pp] + p_area_bottom[i, pp])
-
+            center_top_x[i,pp] = (p_area_ch[i,pp,1]+p_area_ch[i,pp,3]-p_area_ch[i,pp,0]-p_area_ch[i,pp,2])/p_area_top[i,pp]
+            center_top_y[i,pp] = (p_area_ch[i,pp,0]+p_area_ch[i,pp,1]-p_area_ch[i,pp,2]-p_area_ch[i,pp,3])/p_area_top[i,pp]
+            center_bot_x[i,pp] = (p_area_ch[i,pp,5]+p_area_ch[i,pp,7]-p_area_ch[i,pp,4]-p_area_ch[i,pp,6])/p_area_bottom[i,pp]
+            center_bot_y[i,pp] = (p_area_ch[i,pp,4]+p_area_ch[i,pp,5]-p_area_ch[i,pp,6]-p_area_ch[i,pp,7])/p_area_bottom[i,pp]
             
         # Pulse classifier, work in progress
         p_class[i,:] = pc.ClassifyPulses(p_tba[i, :], (p_afs_50[i, :]-p_afs_2l[i, :])*tscale, n_pulses[i])
@@ -384,5 +393,5 @@ for j in range(n_block):
     # end of pulse finding and plotting event loop
 
 rq = open(data_dir + "rq.npz",'wb')
-np.savez(rq, n_s1=n_s1, n_s2= n_s2, s1_before_s2=s1_before_s2, n_pulses=n_pulses, n_events = n_events, p_area = p_area, p_class=p_class, drift_Time=drift_Time, p_max_height=p_max_height, p_min_height=p_min_height, p_width=p_width, p_afs_2l=p_afs_2l, p_afs_50=p_afs_50, p_area_ch=p_area_ch, p_area_ch_frac=p_area_ch_frac, p_area_top=p_area_top, p_area_bottom=p_area_bottom, p_tba=p_tba, sum_s1_area=sum_s1_area, sum_s2_area=sum_s2_area   )
+np.savez(rq, center_top_x=center_top_x, center_top_y=center_top_y, center_bot_x=center_bot_x, center_bot_y=center_bot_y, n_s1=n_s1, n_s2= n_s2, s1_before_s2=s1_before_s2, n_pulses=n_pulses, n_events = n_events, p_area = p_area, p_class=p_class, drift_Time=drift_Time, p_max_height=p_max_height, p_min_height=p_min_height, p_width=p_width, p_afs_2l=p_afs_2l, p_afs_50=p_afs_50, p_area_ch=p_area_ch, p_area_ch_frac=p_area_ch_frac, p_area_top=p_area_top, p_area_bottom=p_area_bottom, p_tba=p_tba, sum_s1_area=sum_s1_area, sum_s2_area=sum_s2_area   )
 rq.close()

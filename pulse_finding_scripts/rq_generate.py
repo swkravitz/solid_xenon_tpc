@@ -9,6 +9,9 @@ import PulseFinderScipy as pf
 import PulseQuantities as pq
 import PulseClassification as pc
 
+data_dir = "G:/.shortcut-targets-by-id/11qeqHWCbcKfFYFQgvytKem8rulQCTpj8/crystalize/data/data-202102/022421/Po_4.0g_4.2c_3mV_1.75bar_circ_20min/"
+
+
 # set plotting style
 mpl.rcParams['font.size']=10
 mpl.rcParams['legend.fontsize']='small'
@@ -48,17 +51,8 @@ spe_sizes = [chA_spe_size, chB_spe_size, chC_spe_size, chD_spe_size, chE_spe_siz
 # ==================================================================
 
 #load in raw data
-#data_dir="../data/bkg_3.5g_3.9c_27mV_7_postrecover2_5min/"
-#data_dir="../data/bkg_3.5g_3.9c_27mV_1_5min/"
-#data_dir="../data/fewevts/"
-#data_dir="../data/po_5min/"
-#data_dir = "C:/Users/ryanm/Documents/Research/Data/bkg_3.5g_3.9c_27mV_6_postrecover_5min/" # Old data
-#data_dir = "C:/Users/swkra/Desktop/Jupyter temp/data-201909/091219/"
-#data_dir = "/home/xaber/caen/wavedump-3.8.2/data/011521/Flow_Th_Co57_4.8g_5.0c_25mV_1.5bar_circ_5min/"
-data_dir = "D:/.shortcut-targets-by-id/11qeqHWCbcKfFYFQgvytKem8rulQCTpj8/crystalize/data/data-202102/022421/Po_4.8g_7.0c_3mV_1.75bar_circ_20min/"
-#data_dir  = "C:/Users/ryanm/Documents/Research/Data/bkg_2.8g_3.2c_25mV_1_1.6_circ_0.16bottle_5min/" # Weird but workable data
-#data_dir = "C:/Users/ryanm/Documents/Research/Data/Flow_Th_with_Ba133_0g_0c_25mV_1.5bar_nocirc_5min/" # Weird double s1 data
-#"C:/Users/swkra/Desktop/Jupyter temp/data-202009/091720/bkg_3.5g_3.9c_27mV_7_postrecover2_5min/"
+
+
 
 t_start = time.time()
 
@@ -298,10 +292,12 @@ for i in range(0, n_events):
     
     po_test = np.any((p_area[i,:]>5.0e4)*((p_afs_50[i,:]-p_afs_2l[i,:] )*tscale<1.0))
     
-    # Condition to skip the individual plotting
-    #plotyn = False#np.any((p_tba[i,:]>-0.75)*(p_tba[i,:]<-0.25)*(p_area[i,:]<3200)*(p_area[i,:]>1500))#np.any((p_tba[i,:]>-0.91)*(p_tba[i,:]<-0.82)*(p_area[i,:]<2800)*(p_area[i,:]>1000))# True#np.any(p_class[i,:]==4)#False#np.any(p_area[i,:]>1000) and 
-    #plotyn = sum_s1_area[i]>1000 and sum_s1_area[i]<3000 and sum_s2_area[i]<1*10**4
-    plotyn = False
+    # Condition to skip the individual plotting, hand scan condition
+    #plotyn = drift_Time[i]<2 and drift_Time[i]>0 and np.any((p_tba[i,:]>-0.75)*(p_tba[i,:]<-0.25)*(p_area[i,:]<3000)*(p_area[i,:]>1400))#np.any((p_tba[i,:]>-0.91)*(p_tba[i,:]<-0.82)*(p_area[i,:]<2800)*(p_area[i,:]>1000))# True#np.any(p_class[i,:]==4)#False#np.any(p_area[i,:]>1000) and 
+    #plotyn = drift_Time[i]>0 and sum_s1_area[i]>10**3.1 and sum_s1_area[i]<10**3.5 and sum_s2_area[i]<10**5.1 and sum_s2_area[i]>10**4.6
+    #plotyn = False
+    p_t_rise = tscale*(p_afs_50-p_afs_2l)
+    plotyn = np.any((p_area[i,:]<80)*(p_area[i,:]>10)*(p_t_rise[i,:]<0.09)*(p_t_rise[i,:]>0.06))
     # Pulse area condition
     areaRange = np.sum((p_area[i,:] < 50)*(p_area[i,:] > 5))
     if areaRange > 0:
