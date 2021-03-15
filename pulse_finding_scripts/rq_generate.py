@@ -9,7 +9,7 @@ import PulseFinderScipy as pf
 import PulseQuantities as pq
 import PulseClassification as pc
 
-data_dir = "G:/.shortcut-targets-by-id/11qeqHWCbcKfFYFQgvytKem8rulQCTpj8/crystalize/data/data-202102/022321/Po_6.8g_9.0c_3mV_1.75bar_circ_20min/"
+data_dir = "G:/.shortcut-targets-by-id/11qeqHWCbcKfFYFQgvytKem8rulQCTpj8/crystalize/data/data-202103/031121/Po_2.8g_3.0c_0.78bar_circ_30min_1312/"
 
 # set plotting style
 mpl.rcParams['font.size']=10
@@ -53,8 +53,8 @@ spe_sizes = [chA_spe_size, chB_spe_size, chC_spe_size, chD_spe_size, chE_spe_siz
 
 t_start = time.time()
 
-block_size = 1000
-n_block = 20
+block_size = 3000
+n_block = 100
 max_evts = n_block*block_size#5000  # 25000 # -1 means read in all entries; 25000 is roughly the max allowed in memory on the DAQ computer
 max_pts = -1  # do not change
 if max_evts > 0:
@@ -120,6 +120,7 @@ n_s2 = np.zeros(max_evts, dtype=np.int)
 sum_s1_area = np.zeros(max_evts)
 sum_s2_area = np.zeros(max_evts)
 drift_Time = np.zeros(max_evts)
+drift_Time_AS = np.zeros(max_evts) # for multi-scatter drift time, defined by the first S2. 
 s1_before_s2 = np.zeros(max_evts)
 
 # Temporary, for testing low area, multiple-S1 events
@@ -152,8 +153,7 @@ for j in range(n_block):
         if ch_ind==0: v_sum = np.copy(V)
         else: v_sum += V
     v_matrix_all_ch.append(v_sum)
-
-
+    
     # create a time axis in units of µs:
     x = np.arange(0, wsize, 1)
     t = tscale*x
@@ -161,6 +161,7 @@ for j in range(n_block):
 
     # Note: if max_evts != -1, we won't load in all events in the dataset
     n_events = int(v_matrix_all_ch[0].shape[0])
+    if n_events == 0: break
         
     # perform baseline subtraction:
     # for now, using first 2 µs of event
@@ -278,8 +279,10 @@ for j in range(n_block):
         if n_s1[i] == 1:
             if n_s2[i] == 1:
                 drift_Time[i] = tscale*(p_start[i, np.argmax(index_s2)] - p_start[i, np.argmax(index_s1)])
+                drift_Time_AS[i] = tscale*(p_start[i, np.argmax(index_s2)] - p_start[i, np.argmax(index_s1)])
             if n_s2[i] > 1:
                 s1_before_s2[i] = np.argmax(index_s1) < np.argmax(index_s2) 
+                drift_Time_AS[i] = tscale*(p_start[i, np.argmax(index_s2)] - p_start[i, np.argmax(index_s1)]) #For multi-scatter events. 
         
         if drift_Time[i]>0:
             n_golden += 1
@@ -307,7 +310,7 @@ for j in range(n_block):
         # Condition to skip the individual plotting, hand scan condition
         #plotyn = drift_Time[i]<2 and drift_Time[i]>0 and np.any((p_tba[i,:]>-0.75)*(p_tba[i,:]<-0.25)*(p_area[i,:]<3000)*(p_area[i,:]>1400))#np.any((p_tba[i,:]>-0.91)*(p_tba[i,:]<-0.82)*(p_area[i,:]<2800)*(p_area[i,:]>1000))# True#np.any(p_class[i,:]==4)#False#np.any(p_area[i,:]>1000) and 
         #plotyn = drift_Time[i]>0 and sum_s1_area[i]>10**3.1 and sum_s1_area[i]<10**3.5 and sum_s2_area[i]<10**5.1 and sum_s2_area[i]>10**4.6
-        plotyn = False
+        plotyn = False#np.any((p_tba[i,:]>-0.75)*(p_tba[i,:]<-0.25)*(p_area[i,:]<3000)*(p_area[i,:]>1000))
         # Pulse area condition
         areaRange = np.sum((p_area[i,:] < 50)*(p_area[i,:] > 5))
         if areaRange > 0:
@@ -392,6 +395,43 @@ for j in range(n_block):
             
     # end of pulse finding and plotting event loop
 
+n_events = i
+print("total number of events processed:", n_events)
+
+#create a dictionary with all RQs
+list_rq = {}
+list_rq['center_top_x'] = center_top_x
+list_rq['center_top_y'] = center_top_y
+list_rq['center_bot_x'] = center_bot_x
+list_rq['center_bot_y'] = center_bot_y
+list_rq['n_s1'] = n_s1
+list_rq['n_s2'] = n_s2
+list_rq['s1_before_s2'] = s1_before_s2
+list_rq['n_pulses'] = n_pulses
+list_rq['n_events'] = n_events
+list_rq['p_area'] = p_area
+list_rq['p_class'] = p_class
+list_rq['drift_Time'] = drift_Time
+list_rq['drift_Time_AS'] = drift_Time_AS
+list_rq['p_max_height'] = p_max_height
+list_rq['p_min_height'] = p_min_height
+list_rq['p_width'] = p_width
+list_rq['p_afs_2l'] = p_afs_2l
+list_rq['p_afs_50'] = p_afs_50
+list_rq['p_area_ch'] = p_area_ch
+list_rq['p_area_ch_frac'] = p_area_ch_frac
+list_rq['p_area_top'] = p_area_top
+list_rq['p_area_bottom'] = p_area_bottom
+list_rq['p_tba'] = p_tba
+list_rq['sum_s1_area'] = sum_s1_area
+list_rq['sum_s2_area'] = sum_s2_area
+#list_rq[''] =    #add more rq
+
+#remove zeros in the end of each RQ array. 
+for rq in list_rq.keys():
+    if rq != 'n_events':
+        list_rq[rq] = list_rq[rq][:n_events]
+
 rq = open(data_dir + "rq.npz",'wb')
-np.savez(rq, center_top_x=center_top_x, center_top_y=center_top_y, center_bot_x=center_bot_x, center_bot_y=center_bot_y, n_s1=n_s1, n_s2= n_s2, s1_before_s2=s1_before_s2, n_pulses=n_pulses, n_events = n_events, p_area = p_area, p_class=p_class, drift_Time=drift_Time, p_max_height=p_max_height, p_min_height=p_min_height, p_width=p_width, p_afs_2l=p_afs_2l, p_afs_50=p_afs_50, p_area_ch=p_area_ch, p_area_ch_frac=p_area_ch_frac, p_area_top=p_area_top, p_area_bottom=p_area_bottom, p_tba=p_tba, sum_s1_area=sum_s1_area, sum_s2_area=sum_s2_area   )
+np.savez(rq, **list_rq)
 rq.close()

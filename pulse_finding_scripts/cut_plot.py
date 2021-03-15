@@ -8,7 +8,7 @@ import PulseQuantities as pq
 import PulseClassification as pc
 
 #data_dir = "D:/.shortcut-targets-by-id/11qeqHWCbcKfFYFQgvytKem8rulQCTpj8/crystalize/data/data-202102/022421/Po_6.8g_7.0c_3mV_1.75bar_circ_20min/"
-data_dir  = "C:/Users/ryanm/Documents/Research/Data/2020/bkg_2.8g_3.2c_25mV_1_1.6_circ_0.16bottle_5min/"
+data_dir = "G:/.shortcut-targets-by-id/11qeqHWCbcKfFYFQgvytKem8rulQCTpj8/crystalize/data/data-202103/031121/Po_2.8g_3.0c_0.78bar_circ_30min_1312/"
 
 # set plotting style
 mpl.rcParams['font.size']=10
@@ -66,6 +66,7 @@ s1_before_s2 = listrq['s1_before_s2']
 p_area = listrq['p_area']
 p_class = listrq['p_class']
 drift_Time = listrq['drift_Time']
+drift_Time_AS = listrq['drift_Time_AS']
 p_max_height = listrq['p_max_height']
 p_min_height = listrq['p_min_height']
 p_width = listrq['p_width']
@@ -152,15 +153,16 @@ na50 = p_afs_50[howMany]
 # Event level quantities 
 event_cut_dict = {}
 event_cut_dict["SS"] = drift_Time > 0 
+event_cut_dict["All_Scatter"] = drift_Time_AS > 0
 event_cut_dict["MS"] = (n_s1 == 1)*(n_s2 > 1)*s1_before_s2
-event_cut_dict["Po"] = (drift_Time>0)*np.any((p_tba<-0.25)*(p_tba>-0.75)*(p_area>1400)*(p_area<3000), axis=1)#np.any((p_tba<-0.85)*(p_tba>-0.91)*(p_area>1500)*(p_area<2700), axis=1) # true if any pulse in event matches these criteria
+event_cut_dict["Po"] = (drift_Time>0)*np.any((p_tba<-0.0)*(p_tba>-0.7)*(p_area>1000)*(p_area<4000), axis=1)#np.any((p_tba<-0.85)*(p_tba>-0.91)*(p_area>1500)*(p_area<2700), axis=1) # true if any pulse in event matches these criteria
 event_cut_dict["lg_S1"] = (drift_Time>0)*np.any((p_area>1000.)*cut_dict["S1"], axis=1) # true if any S1 has area>1000
 
-event_cut_name = "SS"#"lg_S1"
+event_cut_name = "Po"#"lg_S1"
 event_cut = event_cut_dict[event_cut_name] 
 cleanSumS1 = sum_s1_area[event_cut]
 cleanSumS2 = sum_s2_area[event_cut]
-cleanDT = drift_Time[event_cut]
+cleanDT = drift_Time_AS[event_cut]
 print("number of events found passing cut "+event_cut_name+" = {0:d} ({1:g}%)".format(np.sum(event_cut),np.sum(event_cut)*100./n_events))
 
 # =============================================================
@@ -176,7 +178,10 @@ def histToPlot(data, bins):
 # For creating basic histograms
 def basicHist(data, bins=100, save=False, name="", mean=False, show=False, hRange=[], xlim=[], ylim=[], xlabel="", ylabel="", logx=False, logy=False, area_max_plot=-99999999,legHand=[]):
     pl.figure()
-    if len(hRange) > 1: pl.hist(data, bins, range=(hRange[0],hRange[1]) )
+    if len(hRange) > 1: 
+        cut = (data>hRange[0])*(data<hRange[1])
+        data = data[cut]
+        pl.hist(data, bins, range=(hRange[0],hRange[1]) )
     else: pl.hist(data, bins)
 
     pl.xlabel(xlabel)
