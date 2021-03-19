@@ -83,16 +83,26 @@ def pulse_bounds(data, t_min, window, start_frac, end_frac):
 #   peaks: locations of peaks in waveform, in samples
 #   data_conv: convolved waveform; used for debugging
 #   properties: list of properties from scipy's peak finder; used for debugging/plotting
-def findPulses(waveform_bls, max_pulses):
+def findPulses(waveform_bls, max_pulses, SPEMode=False):
+
+    if SPEMode:
+        pulse_window = int(12.0 / tscale) # was 7 us; any reason this can't just always go to next pulse or end of wfm?
+        conv_width = 150 #int(0.3 / tscale) # in samples
+        min_height = 0.15 # mV
+        min_dist = int(0.5 / tscale) # in samples
+        bounds_conv_width = 5 # in samples
+        pulse_start_frac = 0.01  # pulse starts at this fraction of peak height above baseline
+        pulse_end_frac = 0.01  # pulse starts at this fraction of peak height above baseline       
 
     # pulse finder parameters for tuning
-    pulse_window = int(12.0 / tscale) # was 7 us; any reason this can't just always go to next pulse or end of wfm?
-    conv_width = 100 #int(0.3 / tscale) # in samples
-    min_height = 0.10 # phd/sample
-    min_dist = int(0.5 / tscale) # in samples
-    bounds_conv_width = 5 # in samples
-    pulse_start_frac = 0.01  # pulse starts at this fraction of peak height above baseline
-    pulse_end_frac = 0.01  # pulse starts at this fraction of peak height above baseline
+    else:
+        pulse_window = int(12.0 / tscale) # was 7 us; any reason this can't just always go to next pulse or end of wfm?
+        conv_width = 100 #int(0.3 / tscale) # in samples
+        min_height = 0.10 # phd/sample
+        min_dist = int(0.5 / tscale) # in samples
+        bounds_conv_width = 5 # in samples
+        pulse_start_frac = 0.01  # pulse starts at this fraction of peak height above baseline
+        pulse_end_frac = 0.01  # pulse starts at this fraction of peak height above baseline
 
     # Do a moving average (sum) of the waveform
     # Look for local maxima using scipy's find_peaks
@@ -101,7 +111,7 @@ def findPulses(waveform_bls, max_pulses):
     data_conv = wfm_convolve(waveform_bls, conv_width, avg=True)
     peaks, properties = find_peaks(data_conv, distance=min_dist, height=min_height,
                                    width=int(0.01 / tscale), prominence=0.1)  # could restrict search if desired
-    if len(peaks)<1: return [],[],[],[],[]
+    if len(peaks)<1 and not SPEMode: return [],[],[],[],[]
     peak_conv_heights = data_conv[peaks]
 
     # only keep the largest max_pulses peaks
