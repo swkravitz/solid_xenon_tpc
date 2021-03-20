@@ -8,7 +8,10 @@ import PulseFinderScipy as pf
 import PulseQuantities as pq
 import PulseClassification as pc
 
-data_dir = "C:/Users/ryanm/Documents/Research/Data/SPE_LN/"
+#data_dir = "C:/Users/ryanm/Documents/Research/Data/SPE_LN/"
+#data_dir = "/home/xaber/Data/LED_cold_FG4.2V/"
+#data_dir = "/home/xaber/Data/210319/cold_dark_b10v_noise/"
+data_dir = "/home/xaber/Data/210319/cold_led4.4_b56v/"
 
 SPEMode = True
 LED = True
@@ -56,7 +59,7 @@ load_dtype = "int16"
 
 
 # RQ's for SPE analysis
-max_pulses = 4
+max_pulses = 1
 p_found = np.zeros((n_sipms, max_evts, max_pulses), dtype=np.int)
 p_start = np.zeros((n_sipms, max_evts, max_pulses), dtype=np.int)
 p_end   = np.zeros((n_sipms, max_evts, max_pulses), dtype=np.int)
@@ -107,12 +110,12 @@ for j in range(n_block):
     # Baseline subtraction
     # For LED, looks 0.5 us before expected range of pulse
     if LED:
-        baseline_start = left_bound - int(0.5/tscale)
+        baseline_start = left_bound - int(0.2/tscale)
         baseline_end = left_bound
     # Otherwise, looks at first 0.5 us
     else:
         baseline_start = 0
-        baseline_end = int(0.5/tscale)
+        baseline_end = int(0.2/tscale)
 
     # baseline subtracted (bls) waveforms saved in this matrix:
     v_bls_matrix_all_ch = np.zeros( np.shape(v_matrix_all_ch), dtype=array_dtype) # dims are (chan #, evt #, sample #)
@@ -156,7 +159,7 @@ for j in range(n_block):
             start_times, end_times, peaks, data_conv, properties = pf.findPulses( v_bls_matrix_all_ch[k,i-j*block_size,left_bound:right_bound], max_pulses, SPEMode=SPEMode)
           
             start_times = [t+left_bound for t in start_times] 
-            end_times  = [t+left_bound for t in end_times] 
+            end_times  = [t+left_bound+10 for t in end_times] 
 
             # Sort pulses by start times, not areas
             startinds = np.argsort(start_times)
@@ -172,7 +175,15 @@ for j in range(n_block):
                 p_width[k,i,n] = p_end[k,i,n] - p_start[k,i,n]
 
             # Plotter
-            if not inn == 'q' and plotyn:
+            #areacut = (p_area[3,i,0]*tscale > 0.075)*(p_area[3,i,0]*tscale < 0.085) #nice peak..maybe singles?
+            #areacut = (p_area[3,i,0]*tscale > 0.022)*(p_area[3,i,0]*tscale < 0.028) # weird peak...
+            areacut = (p_area[12,i,0]*tscale > 0.03)*(p_area[12,i,0]*tscale < 0.06)
+            #areacut = True
+
+
+            # horizontal lines: @ zero, baseline, height
+
+            if not inn == 'q' and plotyn and areacut and k==12:
                 # Plot something
                 fig = pl.figure(1,figsize=(10, 7))
                 pl.grid(b=True,which='major',color='lightgray',linestyle='--')
@@ -180,16 +191,23 @@ for j in range(n_block):
                 pl.plot(t_matrix[i,left_bound:right_bound], data_conv, color='red')
                 for pulse in range(len(start_times)):
                     pl.axvspan(start_times[pulse] * tscale, end_times[pulse] * tscale, alpha=0.25, color='green')
+                    pl.text(end_times[pulse]*tscale,p_max_height[12,i,pulse]*1.1,"Pulse area = {:0.3f} mV*us".format(p_area[12,i,pulse]*tscale) )
                 
-                pl.ylim([-2,5])
+                pl.hlines(0.15,0,4,color='orange',label='Height treshhold = 0.25')
+                pl.hlines(0,0,4,color="black")
 
+    
+                pl.ylim([-2,5])
+                pl.xlim([1.2,3])
                 pl.title("Channel "+str(k)+", Event "+str(i) )
                 pl.xlabel('Time (us)')
                 pl.ylabel('mV')
                 pl.draw()
-                pl.show(block=0)
+                pl.show()
+                #pl.show(block=0)
                 inn = input("Press enter to continue, q to stop plotting, evt # to skip to # (forward only)")
-                fig.clf()
+                pl.close()
+                #fig.clf()
 
             
 # End of pulse finding and plotting event loop
@@ -203,18 +221,52 @@ print("total number of events processed:", n_events)
 
 def SPE_Area_Hist(data,sipm_n):
     pl.figure()
-    pl.hist(data, 100)
+    pl.hist(data, 200)
+    pl.xlim([0,0.3])
+    xticksteps = 0.025
+    pl.xticks(np.arange(0,0.3+xticksteps, xticksteps))
+    pl.title("Channel "+str(sipm_n))
     pl.xlabel("Pulse Area (mV*us)")
     if saveplot: pl.savefig(data_dir+"SPE_area_sipm_"+str(sipm_n)+".png")
     return 
 
+def SPE_Height_Hist(data,sipm_n):
+    pl.figure()
+    pl.hist(data, 200)
+    #pl.xlim([0,0.3])
+    pl.title("Channel "+str(sipm_n))
+    pl.xlabel("Pulse Height (mV)")
+    if saveplot: pl.savefig(data_dir+"SPE_height_sipm_"+str(sipm_n)+".png")
+    return    
+
+def SPE_Start_Hist(data,sipm_n):
+    pl.figure()
+    pl.hist(data, 200)
+    #pl.xlim([0,0.3])
+    pl.title("Channel "+str(sipm_n))
+    pl.xlabel("Start times (us)")
+    if saveplot: pl.savefig(data_dir+"SPE_start_sipm_"+str(sipm_n)+".png")
+    return   
+
+
 list_rq = {}
 
 for p in range(n_sipms):
-    cleanCut = p_area[p,:,:] > 0
+
+    cleanCut = (p_area[p,:,:] > 0)*(p_area[p,:,:] < (0.3/tscale) )
+
     cleanArea = p_area[p,cleanCut].flatten()
+    cleanHeight = p_max_height[p,cleanCut].flatten()
+    cleanStart = p_start[p,cleanCut].flatten()
+
     SPE_Area_Hist(cleanArea*tscale, p)
+    SPE_Height_Hist(cleanHeight, p)
+    SPE_Start_Hist(cleanStart*tscale, p)
+
     list_rq['p_area_'+str(p)] = cleanArea
+    list_rq['p_max_height_'+str(p)] = cleanHeight
+    list_rq['p_start_'+str(p)] = cleanStart
+
 
 rq = open(data_dir + "spe_rq.npz",'wb')
 np.savez(rq, **list_rq)
