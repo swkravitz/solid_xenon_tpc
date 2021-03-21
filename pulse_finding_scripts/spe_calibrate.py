@@ -3,6 +3,7 @@ import matplotlib.pyplot as pl
 import matplotlib as mpl
 import time
 import sys
+from scipy import stats
 
 import PulseFinderScipy as pf
 import PulseQuantities as pq
@@ -11,7 +12,7 @@ import PulseClassification as pc
 #data_dir = "C:/Users/ryanm/Documents/Research/Data/SPE_LN/"
 #data_dir = "/home/xaber/Data/LED_cold_FG4.2V/"
 #data_dir = "/home/xaber/Data/210319/cold_dark_b10v_noise/"
-data_dir = "/home/xaber/Data/210319/cold_led4.4_b56v/"
+data_dir = "/Users/scott/Hardware/data/sipm_test_210319/cold_led4.04_b57v/"
 
 SPEMode = True
 LED = True
@@ -19,7 +20,8 @@ plotyn = True
 saveplot = True
 
 # set plotting style
-mpl.rcParams['font.size']=10
+mpl.rcParams['font.size']=12
+mpl.rcParams['axes.labelsize']=12
 mpl.rcParams['legend.fontsize']='small'
 mpl.rcParams['figure.autolayout']=True
 mpl.rcParams['figure.figsize']=[8.0,6.0]
@@ -29,7 +31,7 @@ mpl.rcParams['figure.figsize']=[8.0,6.0]
 #wsize = 12500             # size of event window in samples. 1 sample = 2 ns.
 event_window = 4.  # in us
 wsize = int(500 * event_window)  # samples per waveform # 12500 for 25 us
-vscale = (2000.0/16384.0) # = 0.122 mV/ADCC, vertical scale
+vscale = (2000.0/16384.0) # vertical scale, = 0.031 mV/ADCC for 0.5 Vpp dynamic range
 tscale = (8.0/4096.0)     # = 0.002 µs/sample, time scale
 
 # Set range to look for pulses
@@ -177,8 +179,9 @@ for j in range(n_block):
             # Plotter
             #areacut = (p_area[3,i,0]*tscale > 0.075)*(p_area[3,i,0]*tscale < 0.085) #nice peak..maybe singles?
             #areacut = (p_area[3,i,0]*tscale > 0.022)*(p_area[3,i,0]*tscale < 0.028) # weird peak...
-            areacut = (p_area[12,i,0]*tscale > 0.03)*(p_area[12,i,0]*tscale < 0.06)
+            #areacut = (p_area[12,i,0]*tscale > 0.03)*(p_area[12,i,0]*tscale < 0.06)
             #areacut = True
+            areacut = (p_area[12,i,0]*tscale > 0.0)
 
 
             # horizontal lines: @ zero, baseline, height
@@ -203,11 +206,11 @@ for j in range(n_block):
                 pl.xlabel('Time (us)')
                 pl.ylabel('mV')
                 pl.draw()
-                pl.show()
-                #pl.show(block=0)
+                #pl.show()
+                pl.show(block=0)
                 inn = input("Press enter to continue, q to stop plotting, evt # to skip to # (forward only)")
                 pl.close()
-                #fig.clf()
+                fig.clf()
 
             
 # End of pulse finding and plotting event loop
@@ -218,13 +221,25 @@ print("total number of events processed:", n_events)
 
 # Clean up and Plotting
 
+#fit the lab TS distribution
 
 def SPE_Area_Hist(data,sipm_n):
     pl.figure()
-    pl.hist(data, 200)
-    pl.xlim([0,0.3])
-    xticksteps = 0.025
-    pl.xticks(np.arange(0,0.3+xticksteps, xticksteps))
+    nbin=200
+    r=(0,0.1)
+    pl.hist(data, bins=nbin,range=r,histtype='step',linewidth='1')
+    
+    
+    #sel = (data>0.02) & (data<0.06)
+    #reddata = data*sel
+    #final = reddata[reddata>0]
+    #mu, sig = stats.norm.fit(final)
+    #x = np.linspace(r[0], r[1], 1000)
+    #pdf = stats.norm.pdf(x, mu, sig)
+    #pl.plot(x, pdf*len(final)/len(data), color='salmon',linewidth=1)
+    
+    xticksteps = 0.01
+    pl.xticks(np.arange(r[0],r[1]+xticksteps, xticksteps))
     pl.title("Channel "+str(sipm_n))
     pl.xlabel("Pulse Area (mV*us)")
     if saveplot: pl.savefig(data_dir+"SPE_area_sipm_"+str(sipm_n)+".png")
@@ -232,7 +247,8 @@ def SPE_Area_Hist(data,sipm_n):
 
 def SPE_Height_Hist(data,sipm_n):
     pl.figure()
-    pl.hist(data, 200)
+    nbin=200
+    pl.hist(data, bins=nbin,histtype='step',linewidth='1')
     #pl.xlim([0,0.3])
     pl.title("Channel "+str(sipm_n))
     pl.xlabel("Pulse Height (mV)")
@@ -241,7 +257,8 @@ def SPE_Height_Hist(data,sipm_n):
 
 def SPE_Start_Hist(data,sipm_n):
     pl.figure()
-    pl.hist(data, 200)
+    nbin=200
+    pl.hist(data, bins=nbin,histtype='step',linewidth='1')
     #pl.xlim([0,0.3])
     pl.title("Channel "+str(sipm_n))
     pl.xlabel("Start times (us)")
