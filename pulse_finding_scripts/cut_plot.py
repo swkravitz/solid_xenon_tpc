@@ -8,7 +8,7 @@ import PulseQuantities as pq
 import PulseClassification as pc
 
 #data_dir = "D:/.shortcut-targets-by-id/11qeqHWCbcKfFYFQgvytKem8rulQCTpj8/crystalize/data/data-202102/022421/Po_6.8g_7.0c_3mV_1.75bar_circ_20min/"
-data_dir = "G:/.shortcut-targets-by-id/11qeqHWCbcKfFYFQgvytKem8rulQCTpj8/crystalize/data/data-202103/031121/Po_2.8g_3.0c_0.78bar_circ_30min_1312/"
+data_dir = "/home/xaber/caen/wavedump-3.8.2/data/032221/Co_ICVbot_Po_2.8g_0c_1.5bar_circ_5min_1520/"
 
 # set plotting style
 mpl.rcParams['font.size']=10
@@ -158,7 +158,7 @@ event_cut_dict["MS"] = (n_s1 == 1)*(n_s2 > 1)*s1_before_s2
 event_cut_dict["Po"] = (drift_Time>0)*np.any((p_tba<-0.0)*(p_tba>-0.7)*(p_area>1000)*(p_area<4000), axis=1)#np.any((p_tba<-0.85)*(p_tba>-0.91)*(p_area>1500)*(p_area<2700), axis=1) # true if any pulse in event matches these criteria
 event_cut_dict["lg_S1"] = (drift_Time>0)*np.any((p_area>1000.)*cut_dict["S1"], axis=1) # true if any S1 has area>1000
 
-event_cut_name = "Po"#"lg_S1"
+event_cut_name = "SS"#"Po"#"lg_S1"
 event_cut = event_cut_dict[event_cut_name] 
 cleanSumS1 = sum_s1_area[event_cut]
 cleanSumS2 = sum_s2_area[event_cut]
@@ -199,6 +199,7 @@ def basicHist(data, bins=100, save=False, name="", mean=False, show=False, hRang
 
 # For creating basic scatter plots
 def basicScatter(xdata, ydata, s=[], c=[], save=False, name="", mean=False, show=False, xlim=[], ylim=[], xlabel="", ylabel="", logx=False, logy=False, area_max_plot=-99999999,legHand=[]):
+    pl.figure()
     pl.scatter(xdata, ydata, s=s, c=c)
 
     pl.xlabel(xlabel)
