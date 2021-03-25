@@ -180,7 +180,7 @@ n_s2 = np.zeros(n_events, dtype=np.int)
 sum_s1_area = np.zeros(n_events)
 sum_s2_area = np.zeros(n_events)
 drift_Time = np.zeros(n_events)
-s1_before_s2 = np.zeros(n_events)
+s1_before_s2 = np.zeros(n_events, dtype=bool)
 
 # Temporary, for testing low area, multiple-S1 events
 dt = np.zeros(n_events)

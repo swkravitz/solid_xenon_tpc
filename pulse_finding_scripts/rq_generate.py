@@ -10,6 +10,7 @@ import PulseQuantities as pq
 import PulseClassification as pc
 
 data_dir = "G:/.shortcut-targets-by-id/11qeqHWCbcKfFYFQgvytKem8rulQCTpj8/crystalize/data/data-202103/031121/Po_2.8g_3.0c_0.78bar_circ_30min_1312/"
+data_dir = "G:/My Drive/crystalize/data/data-202103/032221/Co_ICVbot_Po_2.8g_3.00c_1.1bar_circ_5min_1720/"
 
 # set plotting style
 mpl.rcParams['font.size']=10
@@ -121,7 +122,7 @@ sum_s1_area = np.zeros(max_evts)
 sum_s2_area = np.zeros(max_evts)
 drift_Time = np.zeros(max_evts)
 drift_Time_AS = np.zeros(max_evts) # for multi-scatter drift time, defined by the first S2. 
-s1_before_s2 = np.zeros(max_evts)
+s1_before_s2 = np.zeros(max_evts, dtype=bool)
 
 # Temporary, for testing low area, multiple-S1 events
 dt = np.zeros(max_evts)
@@ -311,6 +312,7 @@ for j in range(n_block):
         #plotyn = drift_Time[i]<2 and drift_Time[i]>0 and np.any((p_tba[i,:]>-0.75)*(p_tba[i,:]<-0.25)*(p_area[i,:]<3000)*(p_area[i,:]>1400))#np.any((p_tba[i,:]>-0.91)*(p_tba[i,:]<-0.82)*(p_area[i,:]<2800)*(p_area[i,:]>1000))# True#np.any(p_class[i,:]==4)#False#np.any(p_area[i,:]>1000) and 
         #plotyn = drift_Time[i]>0 and sum_s1_area[i]>10**3.1 and sum_s1_area[i]<10**3.5 and sum_s2_area[i]<10**5.1 and sum_s2_area[i]>10**4.6
         plotyn = False#np.any((p_tba[i,:]>-0.75)*(p_tba[i,:]<-0.25)*(p_area[i,:]<3000)*(p_area[i,:]>1000))
+        plotyn = np.any((np.log10(p_area[i,:])>3.2)*(np.log10(p_area[i,:])<3.4) )#False#np.any((p_tba[i,:]>-0.75)*(p_tba[i,:]<-0.25)*(p_area[i,:]<3000)*(p_area[i,:]>1000))
         # Pulse area condition
         areaRange = np.sum((p_area[i,:] < 50)*(p_area[i,:] > 5))
         if areaRange > 0:

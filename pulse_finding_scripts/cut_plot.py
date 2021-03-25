@@ -9,6 +9,7 @@ import PulseClassification as pc
 
 #data_dir = "D:/.shortcut-targets-by-id/11qeqHWCbcKfFYFQgvytKem8rulQCTpj8/crystalize/data/data-202102/022421/Po_6.8g_7.0c_3mV_1.75bar_circ_20min/"
 data_dir = "/home/xaber/caen/wavedump-3.8.2/data/032221/Co_ICVbot_Po_2.8g_0c_1.5bar_circ_5min_1520/"
+data_dir = "G:/My Drive/crystalize/data/data-202103/032221/Co_ICVbot_Po_2.8g_3.00c_1.1bar_circ_5min_1720/"
 
 # set plotting style
 mpl.rcParams['font.size']=10
@@ -103,7 +104,7 @@ save_S1S2_plots=True # One entry per S1 (S2) pulse
 save_event_plots=True # One entry per event
 pulse_cut_name = 'ValidPulse'#'Co_peak'
 pulse_cut = cut_dict[pulse_cut_name]
-print("number of pulses found passing cut "+pulse_cut_name+" = {0:d} ({1:g}% of pulses found)".format(np.sum(pulse_cut),np.sum(pulse_cut)*100./np.size(p_area)))
+print("number of pulses found passing cut "+pulse_cut_name+" = {0:d} ({1:g}% of pulses found)".format(np.sum(pulse_cut),np.sum(pulse_cut)*100./np.sum(n_pulses)))
 #pulse_cut_name = 'ValidPulse_SS_Evt'
 #pulse_cut = pulse_cut*SS_cut[:,np.newaxis] # add second dimension to allow broadcasting
 
@@ -129,14 +130,14 @@ cleanS1Area = p_area[s1_cut].flatten()
 cleanS1RiseTime = p_t_rise[s1_cut].flatten()
 cleanS1AreaChFrac = p_area_ch_frac[s1_cut]
 cleanS1TBA = p_tba[s1_cut].flatten()
-print("number of S1 pulses found = {0:d} ({1:g}% of pulses found)".format(np.sum(s1_cut),np.sum(s1_cut)*100./np.size(p_area)))
+print("number of S1 pulses found = {0:d} ({1:g}% of pulses found)".format(np.sum(s1_cut),np.sum(s1_cut)*100./np.sum(n_pulses)))
 
 s2_cut = pulse_cut*cut_dict['S2']
 cleanS2Area = p_area[s2_cut].flatten()
 cleanS2RiseTime = p_t_rise[s2_cut].flatten()
 cleanS2AreaChFrac = p_area_ch_frac[s2_cut]
 cleanS2TBA = p_tba[s2_cut].flatten()
-print("number of S2 pulses found = {0:d} ({1:g}% of pulses found)".format(np.sum(s2_cut),np.sum(s2_cut)*100./np.size(p_area)))
+print("number of S2 pulses found = {0:d} ({1:g}% of pulses found)".format(np.sum(s2_cut),np.sum(s2_cut)*100./np.sum(n_pulses)))
 
 # Quantities for plotting only events with n number of pulses, not just all of them
 # May still contain empty pulses
