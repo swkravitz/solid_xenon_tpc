@@ -5,17 +5,8 @@ from scipy.optimize import curve_fit
 
 tscale = (8.0/4096.0)/4.0
 
-data_dir = "./"
+data_dir = "../../led4.04_old_rq/"
 filebase = "spe_rq_"
-
-rq54 = np.load(data_dir+filebase+"54.npz")
-
-rq55 = np.load(data_dir+filebase+"55.npz")
-
-rq56 = np.load(data_dir+filebase+"56.npz")
-
-rq57 = np.load(data_dir+filebase+"57.npz")
-
 
 def gauss(x,A,mu,sig):
     return A*np.exp(-(x-mu)**2/(2*sig**2))
@@ -24,12 +15,9 @@ biaslist = np.array([54,55,56,57])
 gainlist = []
 gainerrlist = []
 for channel in [12]:
-    area54 = rq54["p_area_%d"%channel]*tscale
-    area55 = rq55["p_area_%d"%channel]*tscale
-    area56 = rq56["p_area_%d"%channel]*tscale
-    area57 = rq57["p_area_%d"%channel]*tscale
-    rqlist = [area54,area55,area56,area57]
-    for bias,area in zip(biaslist,rqlist):
+    for bias in biaslist:
+         rq = np.load(data_dir+filebase+"%d.npz"%bias)
+         area = rq["p_area_%d"%channel]*tscale 
          nbins = 150
          uplim = 0.07
          [data,bins] = np.histogram(area, bins=nbins, range=(0,uplim))
