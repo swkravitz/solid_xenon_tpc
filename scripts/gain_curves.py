@@ -30,7 +30,7 @@ for channel in [12]:
          [noisep,noisepcov] = curve_fit(gauss, xdata=xnoise, ydata=ynoise, p0=[4000,noisemean,0.002],bounds=[[100,0.,0],[5000,0.1,0.2]])
          #set the initial fit range for the sphe peak
          fmin = noisep[1]+4*noisep[2] #left bound is 4 sigma away from the noise peak
-         fmax = fmin+0.05
+         fmax = fmin+0.015
          #preliminary fit to the sphe peak
          gpts = np.logical_and(fmin<binCenters, fmax>binCenters)
          x = binCenters[gpts]
