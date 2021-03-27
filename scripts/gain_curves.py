@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as pl
 from scipy.optimize import curve_fit
 
+biaslist = np.array([54,55,56,57])
 
 tscale = (8.0/4096.0)/4.0
 
@@ -11,7 +12,6 @@ filebase = "spe_rq_"
 def gauss(x,A,mu,sig):
     return A*np.exp(-(x-mu)**2/(2*sig**2))
 
-biaslist = np.array([54,55,56,57])
 gainlist = []
 gainerrlist = []
 for channel in [12]:
@@ -58,8 +58,8 @@ for channel in [12]:
          pl.xticks(np.arange(0,uplim+xticksteps, xticksteps))
          pl.title("Channel %d"%channel)
          pl.xlabel("Pulse Area (mV*us)")
-         pl.savefig("Channel_%d_Bias_%dV"%(channel,bias))
-         pl.show()
+#         pl.savefig("Channel_%d_Bias_%dV"%(channel,bias))
+#         pl.show()
 
     #plot gain curve for the given channel
     gainlist = np.array(gainlist)
