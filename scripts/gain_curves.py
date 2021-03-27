@@ -12,9 +12,9 @@ filebase = "spe_rq_"
 def gauss(x,A,mu,sig):
     return A*np.exp(-(x-mu)**2/(2*sig**2))
 
-gainlist = []
-gainerrlist = []
-for channel in [12]:
+for channel in range(16):
+    gainlist = []
+    gainerrlist = []
     for bias in biaslist:
          rq = np.load(data_dir+filebase+"%d.npz"%bias)
          area = rq["p_area_%d"%channel]*tscale 
@@ -27,16 +27,31 @@ for channel in [12]:
          gpts = np.logical_and(0.<binCenters, noisemean*2.2>binCenters)
          xnoise = binCenters[gpts]
          ynoise = data[gpts]
-         [noisep,noisepcov] = curve_fit(gauss, xdata=xnoise, ydata=ynoise, p0=[4000,noisemean,0.002],bounds=[[100,0.,0],[5000,0.1,0.2]])
+         try:
+             [noisep,noisepcov] = curve_fit(gauss, xdata=xnoise, ydata=ynoise, p0=[4000,noisemean,0.002],bounds=[[100,0.,0],[5000,0.1,0.2]])
+         except:
+             print("can't fit noise peak")
+             pl.figure()
+             pl.hist(area,nbins,range=(0,uplim))
+             pl.show()
+             break
          #set the initial fit range for the sphe peak
          fmin = noisep[1]+4*noisep[2] #left bound is 4 sigma away from the noise peak
          fmax = fmin+0.015
+         print (fmin,fmax)
          #preliminary fit to the sphe peak
          gpts = np.logical_and(fmin<binCenters, fmax>binCenters)
          x = binCenters[gpts]
          y = data[gpts]
          mean = x[np.argmax(y)]
-         [p0,p0cov] = curve_fit(gauss, xdata=x, ydata=y, p0=[150,mean,0.002])
+         try:
+             [p0,p0cov] = curve_fit(gauss, xdata=x, ydata=y, p0=[150,mean,0.002])
+         except:
+             print("can't perform intial sphe fit on channel %d"%channel)
+             pl.figure()
+             pl.hist(area,nbins,range=(0,uplim))
+             pl.show()
+             break
          #set the fit range based on the intial fit
          fmax = p0[1]+2*p0[2]
          #final fit to the sphe peak
@@ -62,21 +77,22 @@ for channel in [12]:
 #         pl.show()
 
     #plot gain curve for the given channel
-    gainlist = np.array(gainlist)
-    gainconv = pow(10,-3)*pow(10,-6)/(1.602*pow(10,-19)*25)
-    gainlist = gainlist*gainconv
-    m,b = np.polyfit(biaslist,gainlist,1)
-    pl.figure()
-    pl.xlabel("Bias voltage (V)")
-    pl.ylabel("SiPM Gain")
-    if b>0:
-        sign = "+"
-    else:
-        sign = "-"
-    pl.plot(biaslist,m*biaslist+b,"b",label="%d*x%s%d"%(m,sign,abs(b)))
-    pl.errorbar(biaslist,gainlist,yerr=gainerrlist,fmt='o',color="b")
-    pl.legend(loc="upper right")
-    pl.title("Channel %d"%channel)
-    pl.savefig("gaincurve_ch%d"%channel)
-    pl.show()
+    if len(gainlist)>1:
+        gainlist = np.array(gainlist)
+        gainconv = pow(10,-3)*pow(10,-6)/(1.602*pow(10,-19)*25)
+        gainlist = gainlist*gainconv
+        m,b = np.polyfit(biaslist,gainlist,1)
+        pl.figure()
+        pl.xlabel("Bias voltage (V)")
+        pl.ylabel("SiPM Gain")
+        if b>0:
+            sign = "+"
+        else:
+            sign = "-"
+        pl.plot(biaslist,m*biaslist+b,"b",label="%d*x%s%d"%(m,sign,abs(b)))
+        pl.errorbar(biaslist,gainlist,yerr=gainerrlist,fmt='o',color="b")
+        pl.legend(loc="upper right")
+        pl.title("Channel %d"%channel)
+        pl.savefig("gaincurve_ch%d"%channel)
+        pl.show()
 
