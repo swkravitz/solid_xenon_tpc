@@ -9,15 +9,18 @@ import PulseFinderScipy as pf
 import PulseQuantities as pq
 import PulseClassification as pc
 
-#data_dir = "C:/Users/ryanm/Documents/Research/Data/SPE_LN/"
+import PulseFinderSPE as pfSPE
+
 #data_dir = "/home/xaber/Data/LED_cold_FG4.2V/"
 #data_dir = "/home/xaber/Data/210319/cold_dark_b10v_noise/"
-data_dir = "/Users/scott/Hardware/data/sipm_test_210319/cold_led4.04_b57v/"
+#data_dir = "/Users/scott/Hardware/data/sipm_test_210319/cold_led4.04_b54v/"
+data_dir = "C:/Users/ryanm/Documents/Research/Data/sipm_test_210319/cold_led4.04_b57v/"
+#data_dir = "C:/Users/ryanm/Documents/Research/Data/sipm_test_210319/cold_dark_b10v_noise/"
 
-SPEMode = True
-LED = True
-plotyn = True
-saveplot = True
+SPEMode = True 
+LED = True # LED mode, expects signal at ~2us
+plotyn = True # Waveform plotting
+saveplot = True # Save RQ plots
 
 # set plotting style
 mpl.rcParams['font.size']=12
@@ -31,13 +34,13 @@ mpl.rcParams['figure.figsize']=[8.0,6.0]
 #wsize = 12500             # size of event window in samples. 1 sample = 2 ns.
 event_window = 4.  # in us
 wsize = int(500 * event_window)  # samples per waveform # 12500 for 25 us
-vscale = (2000.0/16384.0) # vertical scale, = 0.031 mV/ADCC for 0.5 Vpp dynamic range
+vscale = (500.0/16384.0) # vertical scale, = 0.031 mV/ADCC for 0.5 Vpp dynamic range
 tscale = (8.0/4096.0)     # = 0.002 µs/sample, time scale
 
 # Set range to look for pulses
 if LED:
-    left_bound = int(2/tscale)
-    right_bound = int(3/tscale)
+    left_bound = int(2.0/tscale)
+    right_bound = int(2.3/tscale)
 else:
     left_bound = 0
     right_bound = wsize
@@ -52,7 +55,7 @@ n_sipms = 16
 t_start = time.time()
 
 block_size = 5000
-n_block = 100
+n_block = 2
 max_evts = n_block*block_size#5000  # 25000 # -1 means read in all entries; 25000 is roughly the max allowed in memory on the DAQ computer
 max_pts = -1  # do not change
 if max_evts > 0:
@@ -62,15 +65,19 @@ load_dtype = "int16"
 
 # RQ's for SPE analysis
 max_pulses = 1
-p_found = np.zeros((n_sipms, max_evts, max_pulses), dtype=np.int)
 p_start = np.zeros((n_sipms, max_evts, max_pulses), dtype=np.int)
 p_end   = np.zeros((n_sipms, max_evts, max_pulses), dtype=np.int)
 
+# p_sarea instead of p_int
+p_sarea = np.zeros((n_sipms, max_evts, max_pulses))
 p_area = np.zeros((n_sipms, max_evts, max_pulses))
 p_max_height = np.zeros((n_sipms, max_evts, max_pulses))
 p_width = np.zeros((n_sipms, max_evts, max_pulses))
 
 n_pulses = np.zeros((n_sipms, max_evts), dtype=np.int)
+
+e_fft = np.zeros(wsize, dtype=np.complex128)
+
 
 inn=""
 
@@ -154,53 +161,57 @@ for j in range(n_block):
         if i%500==0: print("Event #",i)
         
         # Loop over channels, slowest part of the code
-        # Have to do a loop, findPulses does not like v_bls_matrix_all_ch[:,i,:] 
+        # Have to do a loop, pulse finder does not like v_bls_matrix_all_ch[:,i,:] 
         for k in range(n_sipms):
-            
-            # Find pulse locations; other quantities for pf tuning/debugging
-            start_times, end_times, peaks, data_conv, properties = pf.findPulses( v_bls_matrix_all_ch[k,i-j*block_size,left_bound:right_bound], max_pulses, SPEMode=SPEMode)
-          
-            start_times = [t+left_bound for t in start_times] 
-            end_times  = [t+left_bound+10 for t in end_times] 
+        
+            # Do a simple integral over desired range
+            # If you change the range, make sure to change the plot x_label
+            l_area = int(2.06/tscale) #2.06
+            r_area = int(2.30/tscale) #2.18
+            p_sarea[k,i,0] = pfSPE.simpleSumArea(v_bls_matrix_all_ch[k,i-j*block_size,:],[l_area,r_area])
 
-            # Sort pulses by start times, not areas
-            startinds = np.argsort(start_times)
-            for m in startinds:
-                p_start[k,i,m] = start_times[m]
-                p_end[k,i,m] = end_times[m]
+            # Unfinished FFT calculator. Not sure we need this?
+            e_fft += np.abs(np.fft.fft(v_bls_matrix_all_ch[k,i-j*block_size,:] ))
 
-            # Loop over found pulses, calculate interesting quantities
-            n_pulses[k,i] = len(start_times)
-            for n in range(n_pulses[k,i]):
-                p_area[k,i,n] = pq.GetPulseArea(p_start[k,i,n], p_end[k,i,n], v_bls_matrix_all_ch[k,i-j*block_size,:] )
-                p_max_height[k,i,n] = pq.GetPulseMaxHeight(p_start[k,i,n], p_end[k,i,n], v_bls_matrix_all_ch[k,i-j*block_size,:] )
-                p_width[k,i,n] = p_end[k,i,n] - p_start[k,i,n]
+            # Do a proper pulse finder
+            start_times, end_times, peaks, data_conv = pfSPE.findLEDSPEs( v_bls_matrix_all_ch[k, i-j*block_size, left_bound:right_bound] )
+            start_times += left_bound
+            end_times +=left_bound
+
+            # Calculate RQ's from pulse finder
+            p_area[k,i,0] = pq.GetPulseArea(start_times,end_times,v_bls_matrix_all_ch[k, i-j*block_size, :])
+            p_max_height[k,i,0] = pq.GetPulseMaxHeight(start_times,end_times,v_bls_matrix_all_ch[k, i-j*block_size, :])
+            p_width[k,i,0] = start_times - end_times
+            p_start[k,i,0] = start_times
+            p_end[k,i,0] = end_times
+
+            if start_times != end_times:
+                n_pulses[k,0] += 1
+
+
 
             # Plotter
-            #areacut = (p_area[3,i,0]*tscale > 0.075)*(p_area[3,i,0]*tscale < 0.085) #nice peak..maybe singles?
-            #areacut = (p_area[3,i,0]*tscale > 0.022)*(p_area[3,i,0]*tscale < 0.028) # weird peak...
-            #areacut = (p_area[12,i,0]*tscale > 0.03)*(p_area[12,i,0]*tscale < 0.06)
-            #areacut = True
-            areacut = (p_area[12,i,0]*tscale > 0.0)
-
+            #areacut = p_area[12,i,0] > 0
+            areacut = False
 
             # horizontal lines: @ zero, baseline, height
-
+            
             if not inn == 'q' and plotyn and areacut and k==12:
                 # Plot something
                 fig = pl.figure(1,figsize=(10, 7))
                 pl.grid(b=True,which='major',color='lightgray',linestyle='--')
                 pl.plot(t_matrix[i,:], v_bls_matrix_all_ch[k,i-j*block_size,:], color='blue')
                 pl.plot(t_matrix[i,left_bound:right_bound], data_conv, color='red')
-                for pulse in range(len(start_times)):
-                    pl.axvspan(start_times[pulse] * tscale, end_times[pulse] * tscale, alpha=0.25, color='green')
-                    pl.text(end_times[pulse]*tscale,p_max_height[12,i,pulse]*1.1,"Pulse area = {:0.3f} mV*us".format(p_area[12,i,pulse]*tscale) )
+                #for pulse in range(len(start_times)):
+                    #pl.axvspan(start_times[pulse] * tscale, end_times[pulse] * tscale, alpha=0.25, color='green')
+                    #pl.text(end_times[pulse]*tscale,p_max_height[12,i,pulse]*1.1,"Pulse area = {:0.3f} mV*us".format(p_area[12,i,pulse]*tscale) )
+                pl.axvspan((start_times)*tscale, (end_times)*tscale, alpha=0.25, color='green')
+                #pl.text(end_times*tscale, p_max_height[12,i,0]*1.1,"Pulse area = {:0.3f} mV*us".format(p_area[12,i,0]*tscale) )
                 
-                pl.hlines(0.15,0,4,color='orange',label='Height treshhold = 0.25')
+                pl.hlines(0.06,0,4,color='orange',label='Height treshhold = 0.1')
                 pl.hlines(0,0,4,color="black")
 
-    
-                pl.ylim([-2,5])
+                pl.ylim([-0.5,1])
                 pl.xlim([1.2,3])
                 pl.title("Channel "+str(k)+", Event "+str(i) )
                 pl.xlabel('Time (us)')
@@ -211,7 +222,6 @@ for j in range(n_block):
                 inn = input("Press enter to continue, q to stop plotting, evt # to skip to # (forward only)")
                 pl.close()
                 fig.clf()
-
             
 # End of pulse finding and plotting event loop
 
@@ -221,13 +231,28 @@ print("total number of events processed:", n_events)
 
 # Clean up and Plotting
 
-#fit the lab TS distribution
+def SPE_Sarea_Hist(data,sipm_n):
+    pl.figure()
+    pl.hist(data, 600)
+    pl.vlines(0,0,3*pow(10,3),colors="red")
+
+    r=(-0.02,0.05)
+    xticksteps = 0.01
+    pl.xticks(np.arange(r[0],r[1]+xticksteps, xticksteps))
+    pl.xlim([r[0],r[1]])
+    #pl.yscale("log")
+
+    pl.xlabel("Integral from 2.06-2.30 us (mV*us)")
+    pl.title("Channel "+str(sipm_n))
+    if saveplot: pl.savefig(data_dir+"SPE_int_sipm_lin"+str(sipm_n)+".png")
+    return
 
 def SPE_Area_Hist(data,sipm_n):
     pl.figure()
-    nbin=200
+    nbin=300
     r=(0,0.1)
-    pl.hist(data, bins=nbin,range=r,histtype='step',linewidth='1')
+    #pl.hist(data, bins=nbin,range=r,histtype='step',linewidth='1')
+    pl.hist(data, bins=nbin,range=r)#,histtype='step',linewidth='1')
     
     
     #sel = (data>0.02) & (data<0.06)
@@ -243,6 +268,7 @@ def SPE_Area_Hist(data,sipm_n):
     pl.title("Channel "+str(sipm_n))
     pl.xlabel("Pulse Area (mV*us)")
     if saveplot: pl.savefig(data_dir+"SPE_area_sipm_"+str(sipm_n)+".png")
+    #pl.show()
     return 
 
 def SPE_Height_Hist(data,sipm_n):
@@ -269,22 +295,30 @@ def SPE_Start_Hist(data,sipm_n):
 list_rq = {}
 
 for p in range(n_sipms):
+#for p in range(12,13):
 
-    cleanCut = (p_area[p,:,:] > 0)*(p_area[p,:,:] < (0.3/tscale) )
+    # Cuts for RQ's
+    cutSarea = (p_sarea[p,:,:]*tscale > -0.05)*(p_sarea[p,:,:]*tscale < 0.05)
+    cleanSarea = p_sarea[p,cutSarea].flatten()
 
-    cleanArea = p_area[p,cleanCut].flatten()
-    cleanHeight = p_max_height[p,cleanCut].flatten()
-    cleanStart = p_start[p,cleanCut].flatten()
+    cutArea = (p_area[p,:,:] > 0)*(p_area[p,:,:] < (0.3/tscale) )
+    cleanArea = p_area[p,cutArea].flatten()
+    cleanHeight = p_max_height[p,cutArea].flatten()
+    cleanStart = p_start[p,cutArea].flatten()
 
+    # Make some plots
+    SPE_Sarea_Hist(cleanSarea*tscale, p)
     SPE_Area_Hist(cleanArea*tscale, p)
     SPE_Height_Hist(cleanHeight, p)
     SPE_Start_Hist(cleanStart*tscale, p)
 
+    # Save RQ's 
+    list_rq['p_sarea_'+str(p)] = cleanSarea
     list_rq['p_area_'+str(p)] = cleanArea
     list_rq['p_max_height_'+str(p)] = cleanHeight
     list_rq['p_start_'+str(p)] = cleanStart
 
-
+# Save RQ's
 rq = open(data_dir + "spe_rq.npz",'wb')
 np.savez(rq, **list_rq)
 rq.close()
