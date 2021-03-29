@@ -30,7 +30,7 @@ for channel in range(16):
          try:
              [noisep,noisepcov] = curve_fit(gauss, xdata=xnoise, ydata=ynoise, p0=[4000,noisemean,0.002],bounds=[[100,0.,0],[5000,0.1,0.2]])
          except:
-             print("can't fit noise peak")
+             print("can't fit noise peak on channel %d"%channel)
              pl.figure()
              pl.hist(area,nbins,range=(0,uplim))
              pl.show()
