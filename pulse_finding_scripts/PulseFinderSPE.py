@@ -81,10 +81,11 @@ def findBase1(data):
 
     return base_1_min
 
+
 def findDarkSPEs(data):
     base_win = int(0.2/tscale) # 0.2 us
 
-    #start_times, end_times, peaks, data_conv = findLEDSPEs(data)
+    # Do the initial pulse finding
 
     conv_width = 60 # samples
     min_height = 0.09 # mV 
@@ -95,21 +96,40 @@ def findDarkSPEs(data):
 
     data_conv = wfm_convolve(data, conv_width, avg=True)
 
-    peaks, properties = find_peaks(data_conv, height=min_height, width=min_width, rel_height=rel_height)
+    old_peaks, properties = find_peaks(data_conv, height=min_height, width=min_width, rel_height=rel_height)
     
-    # Restrict to one event
-    if len(peaks) < 1 :
-        return 0,0,0,0,data_conv
-    else:
-        peaks = peaks[0]
 
-    if peaks-20-base_win < 1:
-        return 0,0,0,0,data_conv
+    # On to second sweep of pulse finding
+    peaks = np.zeros(len(old_peaks), dtype=np.int)
+    baselines = np.zeros(len(old_peaks))
+    start_times = np.zeros(len(old_peaks), dtype=np.int)
+    end_times = np.zeros(len(old_peaks), dtype=np.int)
+    peak_data = 0
 
-    baselines = np.mean(data[peaks-20-base_win:peaks-20])
-    data -= baselines
+    l_sample = 20
+    l_p_bound = l_sample + base_win # Stops 20 samples + baseline before
+    r_p_bound = int(0.2/tscale) # Stops .25 us after
+    for i in range(len(old_peaks)):
 
-    start_times, end_times, peaks, data_conv = findLEDSPEs(data)
+        # Check to see if peak is too close to start/end or to previous peak
+        if old_peaks[i] - l_p_bound < 1 or old_peaks[i] + r_p_bound > len(data):
+            peak_data = 0
+        elif i != 0:
+            if abs(old_peaks[i] - old_peaks[i-1]) < r_p_bound:
+                peak_data = 0
 
-    return start_times, end_times, peaks, baselines, data_conv
+        # Divides waveform between peaks found and finds pulses
+        else:
+            peak_data = data[old_peaks[i] - l_p_bound:old_peaks[i] + r_p_bound] 
+            baselines[i] = np.mean(data[old_peaks[i]-l_p_bound:old_peaks[i]-l_sample])
+            peak_data -= baselines[i]
+
+            start_times[i], end_times[i], peaks[i], data_conv = findLEDSPEs(peak_data)
+
+    # Shift times to proper position
+    start_times[start_times > 0] += old_peaks - l_p_bound
+    end_times[start_times > 0] += old_peaks - l_p_bound
+    peaks[start_times > 0] += old_peaks - l_p_bound
+
+    return start_times, end_times, peaks, baselines
 

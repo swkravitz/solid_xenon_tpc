@@ -64,7 +64,7 @@ load_dtype = "int16"
 
 
 # RQ's for SPE analysis
-max_pulses = 1
+max_pulses = 4
 p_start = np.zeros((n_sipms, max_evts, max_pulses), dtype=np.int)
 p_end   = np.zeros((n_sipms, max_evts, max_pulses), dtype=np.int)
 
@@ -187,21 +187,21 @@ for j in range(n_block):
 
             # Preliminary baseline should already be done
             else:
-                start_times, end_times, peaks, baselines, data_conv  = pfSPE.findDarkSPEs(v_bls_matrix_all_ch[k, i-j*block_size, :])
-                v_bls_matrix_all_ch[k, i-j*block_size, :] -= baselines
-
+                start_times, end_times, peaks, baselines  = pfSPE.findDarkSPEs(v_bls_matrix_all_ch[k, i-j*block_size, :])
+                
             # Calculate RQ's from pulse finder
-            p_area[k,i,0] = pq.GetPulseArea(start_times,end_times,v_bls_matrix_all_ch[k, i-j*block_size, :])
-            p_max_height[k,i,0] = pq.GetPulseMaxHeight(start_times,end_times,v_bls_matrix_all_ch[k, i-j*block_size, :])
-            p_width[k,i,0] = start_times - end_times
-            p_start[k,i,0] = start_times
-            p_end[k,i,0] = end_times
+            for n in range(len(start_times)):
+                if n > max_pulses - 1: break
+                if start_times[n] != 0:
+                    p_area[k,i,n] = pq.GetPulseArea(start_times[n],end_times[n],v_bls_matrix_all_ch[k, i-j*block_size, :] - baselines[n])
+                    p_max_height[k,i,n] = pq.GetPulseMaxHeight(start_times[n],end_times[n],v_bls_matrix_all_ch[k, i-j*block_size, :]- baselines[n])
+                    p_width[k,i,n] = start_times[n] - end_times[n]
+                    p_start[k,i,n] = start_times[n]
+                    p_end[k,i,n] = end_times[n]
+            
+            n_pulses[k,i] += len(start_times)
 
-            if start_times != end_times:
-                n_pulses[k,0] += 1
         
-
-
             # Plotter
             areacut = p_area[12,i,0] > 0
             #areacut = (p_start[12,i,0] < 0.5/tscale)*p_area[12,i,0] > 0
@@ -212,13 +212,13 @@ for j in range(n_block):
                 # Plot something
                 fig = pl.figure(1,figsize=(10, 7))
                 pl.grid(b=True,which='major',color='lightgray',linestyle='--')
-                pl.plot(t_matrix[i,:], v_bls_matrix_all_ch[k,i-j*block_size,:], color='blue')
-                pl.plot(t_matrix[i,left_bound:right_bound], data_conv, color='red')
-                #for pulse in range(len(start_times)):
-                    #pl.axvspan(start_times[pulse] * tscale, end_times[pulse] * tscale, alpha=0.25, color='green')
-                    #pl.text(end_times[pulse]*tscale,p_max_height[12,i,pulse]*1.1,"Pulse area = {:0.3f} mV*us".format(p_area[12,i,pulse]*tscale) )
-                pl.axvspan((start_times)*tscale, (end_times)*tscale, alpha=0.25, color='green')
-                pl.text(end_times*tscale, p_max_height[12,i,0]*1.1,"Pulse area = {:0.3f} mV*us".format(p_area[12,i,0]*tscale) )
+                pl.plot(t_matrix[j,:], v_bls_matrix_all_ch[k,i-j*block_size,:], color='blue')
+                #pl.plot(t_matrix[i,left_bound:right_bound], data_conv, color='red')
+                for pulse in range(len(start_times)):
+                    pl.axvspan(start_times[pulse] * tscale, end_times[pulse] * tscale, alpha=0.25, color='green')
+                    pl.text(end_times[pulse]*tscale,p_max_height[12,i,pulse]*1.1,"Pulse area = {:0.3f} mV*us".format(p_area[12,i,pulse]*tscale) )
+                #pl.axvspan((start_times)*tscale, (end_times)*tscale, alpha=0.25, color='green')
+                #pl.text(end_times*tscale, p_max_height[12,i,0]*1.1,"Pulse area = {:0.3f} mV*us".format(p_area[12,i,0]*tscale) )
                 
                 pl.hlines(0.06,0,4,color='orange',label='Height treshhold = 0.1')
                 pl.hlines(0,0,4,color="black")
@@ -234,6 +234,7 @@ for j in range(n_block):
                 inn = input("Press enter to continue, q to stop plotting, evt # to skip to # (forward only)")
                 pl.close()
                 fig.clf()
+
             
 # End of pulse finding and plotting event loop
 
