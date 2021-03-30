@@ -14,11 +14,11 @@ import PulseFinderSPE as pfSPE
 #data_dir = "/home/xaber/Data/LED_cold_FG4.2V/"
 #data_dir = "/home/xaber/Data/210319/cold_dark_b10v_noise/"
 #data_dir = "/Users/scott/Hardware/data/sipm_test_210319/cold_led4.04_b54v/"
-data_dir = "C:/Users/ryanm/Documents/Research/Data/sipm_test_210319/cold_led4.04_b57v/"
+data_dir = "C:/Users/ryanm/Documents/Research/Data/sipm_test_210319/cold_dark_b57v/"
 #data_dir = "C:/Users/ryanm/Documents/Research/Data/sipm_test_210319/cold_dark_b10v_noise/"
 
 SPEMode = True 
-LED = True # LED mode, expects signal at ~2us
+LED = False # LED mode, expects signal at ~2us
 plotyn = True # Waveform plotting
 saveplot = True # Save RQ plots
 
@@ -55,7 +55,7 @@ n_sipms = 16
 t_start = time.time()
 
 block_size = 5000
-n_block = 2
+n_block = 28
 max_evts = n_block*block_size#5000  # 25000 # -1 means read in all entries; 25000 is roughly the max allowed in memory on the DAQ computer
 max_pts = -1  # do not change
 if max_evts > 0:
@@ -64,7 +64,7 @@ load_dtype = "int16"
 
 
 # RQ's for SPE analysis
-max_pulses = 1
+max_pulses = 4
 p_start = np.zeros((n_sipms, max_evts, max_pulses), dtype=np.int)
 p_end   = np.zeros((n_sipms, max_evts, max_pulses), dtype=np.int)
 
@@ -117,15 +117,6 @@ for j in range(n_block):
         
 
     # Baseline subtraction
-    # For LED, looks 0.5 us before expected range of pulse
-    if LED:
-        baseline_start = left_bound - int(0.2/tscale)
-        baseline_end = left_bound
-    # Otherwise, looks at first 0.5 us
-    else:
-        baseline_start = 0
-        baseline_end = int(0.2/tscale)
-
     # baseline subtracted (bls) waveforms saved in this matrix:
     v_bls_matrix_all_ch = np.zeros( np.shape(v_matrix_all_ch), dtype=array_dtype) # dims are (chan #, evt #, sample #)
 
@@ -133,13 +124,27 @@ for j in range(n_block):
     print("Time to fill all waveform arrays: ", t_end_wfm_fill - t_end_load)
 
     print("Events to process: ",n_events)
-    for b in range(0, n_events):
 
-        baselines = [ np.mean( ch_j[b,baseline_start:baseline_end] ) for ch_j in v_matrix_all_ch ]
+    
+    # For LED, looks 0.5 us before expected range of pulse
+    if LED:
+        baseline_start = left_bound - int(0.2/tscale)
+        baseline_end = left_bound
+    
+        for b in range(0, n_events):
+
+            baselines = [ np.mean( ch_j[b,baseline_start:baseline_end] ) for ch_j in v_matrix_all_ch ]
         
-        ch_data = [ch_j[b,:]-baseline_j for (ch_j,baseline_j) in zip(v_matrix_all_ch,baselines)]
+            ch_data = [ch_j[b,:]-baseline_j for (ch_j,baseline_j) in zip(v_matrix_all_ch,baselines)]
         
-        v_bls_matrix_all_ch[:,b,:] = ch_data
+            v_bls_matrix_all_ch[:,b,:] = ch_data
+
+    # Does preliminary baseline subtraction
+    else:
+        for bb in range(n_events):
+            baselines = [ pfSPE.findBase1(ch_j[bb,:]) for ch_j in v_matrix_all_ch ]
+            ch_data = [ch_j[bb,:]-baseline_j for (ch_j,baseline_j) in zip(v_matrix_all_ch,baselines)]
+            v_bls_matrix_all_ch[:,bb,:] = ch_data
 
 
     # ==================================================================
@@ -162,7 +167,8 @@ for j in range(n_block):
         
         # Loop over channels, slowest part of the code
         # Have to do a loop, pulse finder does not like v_bls_matrix_all_ch[:,i,:] 
-        for k in range(n_sipms):
+        #for k in range(n_sipms):
+        for k in range(12,13):
         
             # Do a simple integral over desired range
             # If you change the range, make sure to change the plot x_label
@@ -174,25 +180,31 @@ for j in range(n_block):
             e_fft += np.abs(np.fft.fft(v_bls_matrix_all_ch[k,i-j*block_size,:] ))
 
             # Do a proper pulse finder
-            start_times, end_times, peaks, data_conv = pfSPE.findLEDSPEs( v_bls_matrix_all_ch[k, i-j*block_size, left_bound:right_bound] )
-            start_times += left_bound
-            end_times +=left_bound
+            if LED:
+                start_times, end_times, peaks, data_conv = pfSPE.findLEDSPEs( v_bls_matrix_all_ch[k, i-j*block_size, left_bound:right_bound] )
+                start_times += left_bound
+                end_times +=left_bound
 
+            # Preliminary baseline should already be done
+            else:
+                start_times, end_times, peaks, baselines  = pfSPE.findDarkSPEs(v_bls_matrix_all_ch[k, i-j*block_size, :])
+                
             # Calculate RQ's from pulse finder
-            p_area[k,i,0] = pq.GetPulseArea(start_times,end_times,v_bls_matrix_all_ch[k, i-j*block_size, :])
-            p_max_height[k,i,0] = pq.GetPulseMaxHeight(start_times,end_times,v_bls_matrix_all_ch[k, i-j*block_size, :])
-            p_width[k,i,0] = start_times - end_times
-            p_start[k,i,0] = start_times
-            p_end[k,i,0] = end_times
+            for n in range(len(start_times)):
+                if n > max_pulses - 1: break
+                if start_times[n] != 0:
+                    p_area[k,i,n] = pq.GetPulseArea(start_times[n],end_times[n],v_bls_matrix_all_ch[k, i-j*block_size, :] - baselines[n])
+                    p_max_height[k,i,n] = pq.GetPulseMaxHeight(start_times[n],end_times[n],v_bls_matrix_all_ch[k, i-j*block_size, :]- baselines[n])
+                    p_width[k,i,n] = start_times[n] - end_times[n]
+                    p_start[k,i,n] = start_times[n]
+                    p_end[k,i,n] = end_times[n]
+            
+            n_pulses[k,i] += len(start_times)
 
-            if start_times != end_times:
-                n_pulses[k,0] += 1
-
-
-
+        
             # Plotter
-            #areacut = p_area[12,i,0] > 0
-            areacut = False
+            areacut = p_area[12,i,0] > 0
+            #areacut = (p_start[12,i,0] < 0.5/tscale)*p_area[12,i,0] > 0
 
             # horizontal lines: @ zero, baseline, height
             
@@ -200,19 +212,19 @@ for j in range(n_block):
                 # Plot something
                 fig = pl.figure(1,figsize=(10, 7))
                 pl.grid(b=True,which='major',color='lightgray',linestyle='--')
-                pl.plot(t_matrix[i,:], v_bls_matrix_all_ch[k,i-j*block_size,:], color='blue')
-                pl.plot(t_matrix[i,left_bound:right_bound], data_conv, color='red')
-                #for pulse in range(len(start_times)):
-                    #pl.axvspan(start_times[pulse] * tscale, end_times[pulse] * tscale, alpha=0.25, color='green')
-                    #pl.text(end_times[pulse]*tscale,p_max_height[12,i,pulse]*1.1,"Pulse area = {:0.3f} mV*us".format(p_area[12,i,pulse]*tscale) )
-                pl.axvspan((start_times)*tscale, (end_times)*tscale, alpha=0.25, color='green')
+                pl.plot(t_matrix[j,:], v_bls_matrix_all_ch[k,i-j*block_size,:], color='blue')
+                #pl.plot(t_matrix[i,left_bound:right_bound], data_conv, color='red')
+                for pulse in range(len(start_times)):
+                    pl.axvspan(start_times[pulse] * tscale, end_times[pulse] * tscale, alpha=0.25, color='green')
+                    pl.text(end_times[pulse]*tscale,p_max_height[12,i,pulse]*1.1,"Pulse area = {:0.3f} mV*us".format(p_area[12,i,pulse]*tscale) )
+                #pl.axvspan((start_times)*tscale, (end_times)*tscale, alpha=0.25, color='green')
                 #pl.text(end_times*tscale, p_max_height[12,i,0]*1.1,"Pulse area = {:0.3f} mV*us".format(p_area[12,i,0]*tscale) )
                 
                 pl.hlines(0.06,0,4,color='orange',label='Height treshhold = 0.1')
                 pl.hlines(0,0,4,color="black")
 
                 pl.ylim([-0.5,1])
-                pl.xlim([1.2,3])
+                pl.xlim([0,4])
                 pl.title("Channel "+str(k)+", Event "+str(i) )
                 pl.xlabel('Time (us)')
                 pl.ylabel('mV')
@@ -222,6 +234,7 @@ for j in range(n_block):
                 inn = input("Press enter to continue, q to stop plotting, evt # to skip to # (forward only)")
                 pl.close()
                 fig.clf()
+
             
 # End of pulse finding and plotting event loop
 
@@ -294,8 +307,8 @@ def SPE_Start_Hist(data,sipm_n):
 
 list_rq = {}
 
-for p in range(n_sipms):
-#for p in range(12,13):
+#for p in range(n_sipms):
+for p in range(12,13):
 
     # Cuts for RQ's
     cutSarea = (p_sarea[p,:,:]*tscale > -0.05)*(p_sarea[p,:,:]*tscale < 0.05)
@@ -322,3 +335,5 @@ for p in range(n_sipms):
 rq = open(data_dir + "spe_rq.npz",'wb')
 np.savez(rq, **list_rq)
 rq.close()
+
+pl.show()

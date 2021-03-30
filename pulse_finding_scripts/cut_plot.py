@@ -8,7 +8,8 @@ import PulseQuantities as pq
 import PulseClassification as pc
 
 #data_dir = "D:/.shortcut-targets-by-id/11qeqHWCbcKfFYFQgvytKem8rulQCTpj8/crystalize/data/data-202102/022421/Po_6.8g_7.0c_3mV_1.75bar_circ_20min/"
-data_dir = "G:/.shortcut-targets-by-id/11qeqHWCbcKfFYFQgvytKem8rulQCTpj8/crystalize/data/data-202103/031121/Po_2.8g_3.0c_0.78bar_circ_30min_1312/"
+data_dir = "/home/xaber/caen/wavedump-3.8.2/data/032221/Co_ICVbot_Po_2.8g_0c_1.5bar_circ_5min_1520/"
+data_dir = "G:/My Drive/crystalize/data/data-202103/032221/Co_ICVbot_Po_2.8g_3.00c_1.1bar_circ_5min_1720/"
 
 # set plotting style
 mpl.rcParams['font.size']=10
@@ -103,7 +104,7 @@ save_S1S2_plots=True # One entry per S1 (S2) pulse
 save_event_plots=True # One entry per event
 pulse_cut_name = 'ValidPulse'#'Co_peak'
 pulse_cut = cut_dict[pulse_cut_name]
-print("number of pulses found passing cut "+pulse_cut_name+" = {0:d} ({1:g}% of pulses found)".format(np.sum(pulse_cut),np.sum(pulse_cut)*100./np.size(p_area)))
+print("number of pulses found passing cut "+pulse_cut_name+" = {0:d} ({1:g}% of pulses found)".format(np.sum(pulse_cut),np.sum(pulse_cut)*100./np.sum(n_pulses)))
 #pulse_cut_name = 'ValidPulse_SS_Evt'
 #pulse_cut = pulse_cut*SS_cut[:,np.newaxis] # add second dimension to allow broadcasting
 
@@ -129,14 +130,14 @@ cleanS1Area = p_area[s1_cut].flatten()
 cleanS1RiseTime = p_t_rise[s1_cut].flatten()
 cleanS1AreaChFrac = p_area_ch_frac[s1_cut]
 cleanS1TBA = p_tba[s1_cut].flatten()
-print("number of S1 pulses found = {0:d} ({1:g}% of pulses found)".format(np.sum(s1_cut),np.sum(s1_cut)*100./np.size(p_area)))
+print("number of S1 pulses found = {0:d} ({1:g}% of pulses found)".format(np.sum(s1_cut),np.sum(s1_cut)*100./np.sum(n_pulses)))
 
 s2_cut = pulse_cut*cut_dict['S2']
 cleanS2Area = p_area[s2_cut].flatten()
 cleanS2RiseTime = p_t_rise[s2_cut].flatten()
 cleanS2AreaChFrac = p_area_ch_frac[s2_cut]
 cleanS2TBA = p_tba[s2_cut].flatten()
-print("number of S2 pulses found = {0:d} ({1:g}% of pulses found)".format(np.sum(s2_cut),np.sum(s2_cut)*100./np.size(p_area)))
+print("number of S2 pulses found = {0:d} ({1:g}% of pulses found)".format(np.sum(s2_cut),np.sum(s2_cut)*100./np.sum(n_pulses)))
 
 # Quantities for plotting only events with n number of pulses, not just all of them
 # May still contain empty pulses
@@ -158,7 +159,7 @@ event_cut_dict["MS"] = (n_s1 == 1)*(n_s2 > 1)*s1_before_s2
 event_cut_dict["Po"] = (drift_Time>0)*np.any((p_tba<-0.0)*(p_tba>-0.7)*(p_area>1000)*(p_area<4000), axis=1)#np.any((p_tba<-0.85)*(p_tba>-0.91)*(p_area>1500)*(p_area<2700), axis=1) # true if any pulse in event matches these criteria
 event_cut_dict["lg_S1"] = (drift_Time>0)*np.any((p_area>1000.)*cut_dict["S1"], axis=1) # true if any S1 has area>1000
 
-event_cut_name = "Po"#"lg_S1"
+event_cut_name = "SS"#"Po"#"lg_S1"
 event_cut = event_cut_dict[event_cut_name] 
 cleanSumS1 = sum_s1_area[event_cut]
 cleanSumS2 = sum_s2_area[event_cut]
@@ -199,6 +200,7 @@ def basicHist(data, bins=100, save=False, name="", mean=False, show=False, hRang
 
 # For creating basic scatter plots
 def basicScatter(xdata, ydata, s=[], c=[], save=False, name="", mean=False, show=False, xlim=[], ylim=[], xlabel="", ylabel="", logx=False, logy=False, area_max_plot=-99999999,legHand=[]):
+    pl.figure()
     pl.scatter(xdata, ydata, s=s, c=c)
 
     pl.xlabel(xlabel)
