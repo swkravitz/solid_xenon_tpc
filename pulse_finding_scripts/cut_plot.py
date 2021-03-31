@@ -8,8 +8,8 @@ import PulseQuantities as pq
 import PulseClassification as pc
 
 #data_dir = "D:/.shortcut-targets-by-id/11qeqHWCbcKfFYFQgvytKem8rulQCTpj8/crystalize/data/data-202102/022421/Po_6.8g_7.0c_3mV_1.75bar_circ_20min/"
-data_dir = "/home/xaber/caen/wavedump-3.8.2/data/032221/Co_ICVbot_Po_2.8g_0c_1.5bar_circ_5min_1520/"
-data_dir = "G:/My Drive/crystalize/data/data-202103/032221/Co_ICVbot_Po_2.8g_3.00c_1.1bar_circ_5min_1720/"
+data_dir = "/home/xaber/caen/wavedump-3.8.2/data/032921/Co_ICV_bot_2.8g_3.0c_0.73bar_circ_3min_1030/"
+#data_dir = "G:/My Drive/crystalize/data/data-202103/032221/Co_ICVbot_Po_2.8g_3.00c_1.1bar_circ_5min_1720/"
 
 # set plotting style
 mpl.rcParams['font.size']=10
@@ -78,6 +78,8 @@ p_area_ch_frac = listrq['p_area_ch_frac']
 p_area_top = listrq['p_area_top']
 p_area_bottom = listrq['p_area_bottom']
 p_tba = listrq['p_tba']
+p_start = listrq['p_start']
+p_end = listrq['p_end']
 sum_s1_area = listrq['sum_s1_area']
 sum_s2_area = listrq['sum_s2_area']
 
@@ -102,6 +104,7 @@ SS_cut = drift_Time > 0
 save_pulse_plots=True # One entry per pulse
 save_S1S2_plots=True # One entry per S1 (S2) pulse
 save_event_plots=True # One entry per event
+save_2S2_plots=True # One entry per event w/ 2 S2s
 pulse_cut_name = 'ValidPulse'#'Co_peak'
 pulse_cut = cut_dict[pulse_cut_name]
 print("number of pulses found passing cut "+pulse_cut_name+" = {0:d} ({1:g}% of pulses found)".format(np.sum(pulse_cut),np.sum(pulse_cut)*100./np.sum(n_pulses)))
@@ -158,12 +161,14 @@ event_cut_dict["All_Scatter"] = drift_Time_AS > 0
 event_cut_dict["MS"] = (n_s1 == 1)*(n_s2 > 1)*s1_before_s2
 event_cut_dict["Po"] = (drift_Time>0)*np.any((p_tba<-0.0)*(p_tba>-0.7)*(p_area>1000)*(p_area<4000), axis=1)#np.any((p_tba<-0.85)*(p_tba>-0.91)*(p_area>1500)*(p_area<2700), axis=1) # true if any pulse in event matches these criteria
 event_cut_dict["lg_S1"] = (drift_Time>0)*np.any((p_area>1000.)*cut_dict["S1"], axis=1) # true if any S1 has area>1000
+event_cut_dict["2S2"] = (n_s2 == 2)
 
 event_cut_name = "SS"#"Po"#"lg_S1"
 event_cut = event_cut_dict[event_cut_name] 
 cleanSumS1 = sum_s1_area[event_cut]
 cleanSumS2 = sum_s2_area[event_cut]
-cleanDT = drift_Time_AS[event_cut]
+cleanDT = drift_Time[event_cut]
+cleanDT_AS = drift_Time_AS[drift_Time_AS>0]
 print("number of events found passing cut "+event_cut_name+" = {0:d} ({1:g}%)".format(np.sum(event_cut),np.sum(event_cut)*100./n_events))
 
 # =============================================================
@@ -230,9 +235,9 @@ basicHist(cleanArea, bins=125, hRange=[0,area_max_plot], mean=True, xlabel="Puls
 
 basicHist(cleanPulseClass, legHand=pc_legend_handles, xlabel="Pulse Class", name="PulseClass_"+pulse_cut_name, save=save_pulse_plots)
 
-basicScatter(cleanTBA, cleanRiseTime, s=1.2, c=pulse_class_colors[cleanPulseClass], xlim=[-1.01,1.01], ylim=[-0.05,4], xlabel="TBA", ylabel="Rise time, 50-2 (us)", legHand=pc_legend_handles, name="RiseTime_vs_TBA_"+pulse_cut_name, save=save_pulse_plots)
+basicScatter(cleanTBA, cleanRiseTime, s=1.2, c=pulse_class_colors[cleanPulseClass], xlim=[-1.01,1.01], logy=True, ylim=[.01,4], xlabel="TBA", ylabel="Rise time, 50-2 (us)", legHand=pc_legend_handles, name="RiseTime_vs_TBA_"+pulse_cut_name, save=save_pulse_plots)
 
-basicScatter(cleanArea, cleanRiseTime, s=1.2, c=pulse_class_colors[cleanPulseClass], logx=True, xlim=[5,10**6], ylim=[-0.05,4], xlabel="Pulse area (phd)", ylabel="Rise time, 50-2 (us)", legHand=pc_legend_handles, name="RiseTime_vs_PulseArea_"+pulse_cut_name, save=save_pulse_plots)
+basicScatter(cleanArea, cleanRiseTime, s=1.2, c=pulse_class_colors[cleanPulseClass], logx=True, logy=True, xlim=[5,10**6], ylim=[.01,4], xlabel="Pulse area (phd)", ylabel="Rise time, 50-2 (us)", legHand=pc_legend_handles, name="RiseTime_vs_PulseArea_"+pulse_cut_name, save=save_pulse_plots)
 #xlim=[0.7*min(p_area.flatten()), 1.5*max(p_area.flatten())]
 
 basicScatter(cleanTBA, cleanArea, s=1.2, c=pulse_class_colors[cleanPulseClass], xlim=[-1.01,1.01], ylim=[0, 6000], xlabel="TBA", ylabel="Pulse area (phd)", legHand=pc_legend_handles, name="PulseArea_vs_TBA_"+pulse_cut_name, save=save_pulse_plots)
@@ -296,6 +301,8 @@ basicHist(np.log10(cleanSumS2), bins=100, mean=True, xlabel="log10 Sum S2 area (
 # Only ever plot this for SS events?
 basicHist(cleanDT, bins=50, hRange=[0,10], mean=True, xlabel="Drift time (us)", name="DriftTime_"+event_cut_name, save=save_event_plots)
 
+basicHist(cleanDT_AS, bins=50, hRange=[0,10], mean=True, xlabel="Drift time AS (us)", name="DriftTime_AS", save=save_event_plots)
+
 pl.figure() # Only ever plot this for SS events?
 pl.scatter(cleanDT, cleanSumS2)
 pl.xlabel("Drift time (us)")
@@ -329,4 +336,35 @@ if save_event_plots: pl.savefig(data_dir+"SumS2_vs_DriftTime_"+event_cut_name +"
 
 #pl.show()
 
+# Just for 2S2 events
+s2_bool_2s2 = cut_dict['S2'][event_cut_dict['2S2']] # get boolean array of S2 pulses, w/in 2s2 events
+s2_ind_array = np.array(np.where(s2_bool_2s2)) # convert to an array of indices
+first_s2_ind = tuple(s2_ind_array[:,::2]) # 1st pulse per event is entry 0,2,4,...; use tuple for indexing
+second_s2_ind = tuple(s2_ind_array[:,1::2]) # 2nd pulse per event is entry 1,3,5,...
+n_2s2 = np.sum(event_cut_dict['2S2'])
 
+area_1st_s2 = p_area[event_cut_dict['2S2']][first_s2_ind]
+area_2nd_s2 = p_area[event_cut_dict['2S2']][second_s2_ind]
+
+tstart_1st_s2 = p_start[event_cut_dict['2S2']][first_s2_ind]
+tstart_2nd_s2 = p_start[event_cut_dict['2S2']][second_s2_ind]
+dt_2s2 = tscale*(tstart_2nd_s2 - tstart_1st_s2)
+
+pl.figure()
+pl.scatter(np.log10(area_1st_s2), np.log10(area_2nd_s2), c=dt_2s2)
+pl.plot([1.5,5],[1.5,5],c='r')
+cbar=pl.colorbar()
+cbar.set_label("Time between S2s (us)")
+pl.xlabel('log10(1st S2 area)')
+pl.ylabel('log10(2nd S2 area)')
+if save_2S2_plots: pl.savefig(data_dir+"2S2_log10_area2_vs_log10_area1.png")
+
+pl.figure()
+pl.hist(area_2nd_s2/area_1st_s2,range=(0,4),bins=50)
+pl.xlabel('2nd S2 area/1st S2 area')
+if save_2S2_plots: pl.savefig(data_dir+"2S2_area2_over_area1.png")
+
+pl.figure()
+pl.hist(dt_2s2,bins=50)
+pl.xlabel('Time between S2s (us)')
+if save_2S2_plots: pl.savefig(data_dir+"2S2_time_diff.png")
