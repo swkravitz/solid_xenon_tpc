@@ -9,8 +9,8 @@ import PulseFinderScipy as pf
 import PulseQuantities as pq
 import PulseClassification as pc
 
-data_dir = "G:/.shortcut-targets-by-id/11qeqHWCbcKfFYFQgvytKem8rulQCTpj8/crystalize/data/data-202103/031121/Po_2.8g_3.0c_0.78bar_circ_30min_1312/"
-data_dir = "G:/My Drive/crystalize/data/data-202103/032221/Co_ICVbot_Po_2.8g_3.00c_1.1bar_circ_5min_1720/"
+#data_dir = "G:/.shortcut-targets-by-id/11qeqHWCbcKfFYFQgvytKem8rulQCTpj8/crystalize/data/data-202103/031121/Po_2.8g_3.0c_0.78bar_circ_30min_1312/"
+data_dir = "/home/xaber/caen/wavedump-3.8.2/data/033021/Co_ICV_bot_Po_2.8g_3.0c_0.72bar_circ_5min_1200/"
 
 # set plotting style
 mpl.rcParams['font.size']=10
@@ -70,9 +70,9 @@ load_dtype = "int16"
 # Pulse class (S1, S2, other)
 # max number of pulses per event
 max_pulses = 4
-p_start = np.zeros(( max_evts, max_pulses), dtype=np.int)
-p_end   = np.zeros(( max_evts, max_pulses), dtype=np.int)
-p_found = np.zeros(( max_evts, max_pulses), dtype=np.int)
+p_start = np.zeros(( max_evts, max_pulses), dtype=int)
+p_end   = np.zeros(( max_evts, max_pulses), dtype=int)
+p_found = np.zeros(( max_evts, max_pulses), dtype=int)
 
 #center of mass
 center_top_x = np.zeros(( max_evts, max_pulses))
@@ -102,8 +102,8 @@ p_mean_time = np.zeros((max_evts, max_pulses) )
 p_rms_time = np.zeros((max_evts, max_pulses) )
 
 # Channel level (per event, per pulse, per channel)
-p_start_ch = np.zeros((max_evts, max_pulses, n_channels-1), dtype=np.int)
-p_end_ch = np.zeros((max_evts, max_pulses, n_channels-1), dtype=np.int )
+p_start_ch = np.zeros((max_evts, max_pulses, n_channels-1), dtype=int)
+p_end_ch = np.zeros((max_evts, max_pulses, n_channels-1), dtype=int )
 p_area_ch = np.zeros((max_evts, max_pulses, n_channels-1) )
 p_area_ch_frac = np.zeros((max_evts, max_pulses, n_channels-1) )
 
@@ -111,13 +111,13 @@ p_area_top = np.zeros((max_evts, max_pulses))
 p_area_bottom = np.zeros((max_evts, max_pulses))
 p_tba = np.zeros((max_evts, max_pulses))
 
-p_class = np.zeros((max_evts, max_pulses), dtype=np.int)
+p_class = np.zeros((max_evts, max_pulses), dtype=int)
 
 # Event-level variables
-n_pulses = np.zeros(max_evts, dtype=np.int)
+n_pulses = np.zeros(max_evts, dtype=int)
 
-n_s1 = np.zeros(max_evts, dtype=np.int)
-n_s2 = np.zeros(max_evts, dtype=np.int)
+n_s1 = np.zeros(max_evts, dtype=int)
+n_s2 = np.zeros(max_evts, dtype=int)
 sum_s1_area = np.zeros(max_evts)
 sum_s2_area = np.zeros(max_evts)
 drift_Time = np.zeros(max_evts)
@@ -312,7 +312,7 @@ for j in range(n_block):
         #plotyn = drift_Time[i]<2 and drift_Time[i]>0 and np.any((p_tba[i,:]>-0.75)*(p_tba[i,:]<-0.25)*(p_area[i,:]<3000)*(p_area[i,:]>1400))#np.any((p_tba[i,:]>-0.91)*(p_tba[i,:]<-0.82)*(p_area[i,:]<2800)*(p_area[i,:]>1000))# True#np.any(p_class[i,:]==4)#False#np.any(p_area[i,:]>1000) and 
         #plotyn = drift_Time[i]>0 and sum_s1_area[i]>10**3.1 and sum_s1_area[i]<10**3.5 and sum_s2_area[i]<10**5.1 and sum_s2_area[i]>10**4.6
         plotyn = False#np.any((p_tba[i,:]>-0.75)*(p_tba[i,:]<-0.25)*(p_area[i,:]<3000)*(p_area[i,:]>1000))
-        plotyn = np.any((np.log10(p_area[i,:])>3.2)*(np.log10(p_area[i,:])<3.4) )#False#np.any((p_tba[i,:]>-0.75)*(p_tba[i,:]<-0.25)*(p_area[i,:]<3000)*(p_area[i,:]>1000))
+        #plotyn = np.any((np.log10(p_area[i,:])>3.2)*(np.log10(p_area[i,:])<3.4) )#False#np.any((p_tba[i,:]>-0.75)*(p_tba[i,:]<-0.25)*(p_area[i,:]<3000)*(p_area[i,:]>1000))
         # Pulse area condition
         areaRange = np.sum((p_area[i,:] < 50)*(p_area[i,:] > 5))
         if areaRange > 0:
@@ -425,6 +425,8 @@ list_rq['p_area_ch_frac'] = p_area_ch_frac
 list_rq['p_area_top'] = p_area_top
 list_rq['p_area_bottom'] = p_area_bottom
 list_rq['p_tba'] = p_tba
+list_rq['p_start'] = p_start
+list_rq['p_end'] = p_end
 list_rq['sum_s1_area'] = sum_s1_area
 list_rq['sum_s2_area'] = sum_s2_area
 #list_rq[''] =    #add more rq
