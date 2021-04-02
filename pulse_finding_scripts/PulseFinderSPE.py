@@ -108,7 +108,7 @@ def findDarkSPEs(data):
 
     l_sample = 20
     l_p_bound = l_sample + base_win # Stops 20 samples + baseline before
-    r_p_bound = int(0.2/tscale) # Stops .25 us after
+    r_p_bound = int(0.2/tscale) # Stops .2 us after
     for i in range(len(old_peaks)):
 
         # Check to see if peak is too close to start/end or to previous peak
@@ -126,10 +126,10 @@ def findDarkSPEs(data):
 
             start_times[i], end_times[i], peaks[i], data_conv = findLEDSPEs(peak_data)
 
-    # Shift times to proper position
-    start_times[start_times > 0] += old_peaks - l_p_bound
-    end_times[start_times > 0] += old_peaks - l_p_bound
-    peaks[start_times > 0] += old_peaks - l_p_bound
+            # Shift times to proper position
+            start_times[i] += old_peaks[i] - l_p_bound
+            end_times[i] += old_peaks[i] - l_p_bound
+            peaks[i] += old_peaks[i] - l_p_bound
 
     return start_times, end_times, peaks, baselines
 
