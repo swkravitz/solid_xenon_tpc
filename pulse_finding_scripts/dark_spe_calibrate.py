@@ -11,10 +11,9 @@ import PulseClassification as pc
 
 import PulseFinderSPE as pfSPE
 
-#data_dir = "/home/xaber/Data/LED_cold_FG4.2V/"
-#data_dir = "/home/xaber/Data/210319/cold_dark_b10v_noise/"
-#data_dir = "/Users/scott/Hardware/data/sipm_test_210319/cold_led4.04_b54v/"
-data_dir = "C:/Users/ryanm/Documents/Research/Data/sipm_test_210319/cold_dark_b57v/"
+bias = 57
+data_dir = "/Volumes/Samsung USB/cold_dark_b%dv/"%bias
+#data_dir = "/Users/qingxia/Documents/Physics/LZ/SiPM/"
 #data_dir = "C:/Users/ryanm/Documents/Research/Data/sipm_test_210319/cold_dark_b10v_noise/"
 
 SPEMode = True 
@@ -64,7 +63,7 @@ load_dtype = "int16"
 
 
 # RQ's for SPE analysis
-max_pulses = 4
+max_pulses = 6
 p_start = np.zeros((n_sipms, max_evts, max_pulses), dtype=np.int)
 p_end   = np.zeros((n_sipms, max_evts, max_pulses), dtype=np.int)
 
@@ -85,7 +84,11 @@ inn=""
 for j in range(n_block):
     ch_data = []
     for ch_ind in range(n_sipms):
-        ch_data.append(np.fromfile(data_dir + "wave"+str(ch_ind)+".dat", dtype=load_dtype, offset = block_size*wsize*j, count=wsize*block_size))
+        try:
+            ch_data.append(np.fromfile(data_dir + "wave"+str(ch_ind)+".dat", dtype=load_dtype, offset = block_size*wsize*j, count=wsize*block_size))
+        except:
+            print ("no data from ch%d"%ch_ind)
+            ch_data.append(np.zeros(10000000))
 
     t_end_load = time.time()
     print("Time to load files: ", t_end_load-t_start)
@@ -187,7 +190,7 @@ for j in range(n_block):
 
             # Preliminary baseline should already be done
             else:
-                start_times, end_times, peaks, baselines  = pfSPE.findDarkSPEs(v_bls_matrix_all_ch[k, i-j*block_size, :])
+                start_times, end_times, peaks, baselines, data_conv  = pfSPE.findDarkSPEs(v_bls_matrix_all_ch[k, i-j*block_size, :])
                 
             # Calculate RQ's from pulse finder
             for n in range(len(start_times)):
@@ -208,15 +211,16 @@ for j in range(n_block):
 
             # horizontal lines: @ zero, baseline, height
             
-            if not inn == 'q' and plotyn and areacut and k==12:
+            if not inn == 'q' and plotyn and areacut and k==12 and len(start_times)>1:
                 # Plot something
                 fig = pl.figure(1,figsize=(10, 7))
                 pl.grid(b=True,which='major',color='lightgray',linestyle='--')
                 pl.plot(t_matrix[j,:], v_bls_matrix_all_ch[k,i-j*block_size,:], color='blue')
-                #pl.plot(t_matrix[i,left_bound:right_bound], data_conv, color='red')
+                pl.plot(t_matrix[j,:], data_conv, color='red')
                 for pulse in range(len(start_times)):
                     pl.axvspan(start_times[pulse] * tscale, end_times[pulse] * tscale, alpha=0.25, color='green')
                     pl.text(end_times[pulse]*tscale,p_max_height[12,i,pulse]*1.1,"Pulse area = {:0.3f} mV*us".format(p_area[12,i,pulse]*tscale) )
+                    print ("area:",p_area[12,i,pulse]*tscale,"start:",start_times[pulse],"end:",end_times[pulse])
                 #pl.axvspan((start_times)*tscale, (end_times)*tscale, alpha=0.25, color='green')
                 #pl.text(end_times*tscale, p_max_height[12,i,0]*1.1,"Pulse area = {:0.3f} mV*us".format(p_area[12,i,0]*tscale) )
                 
@@ -229,11 +233,13 @@ for j in range(n_block):
                 pl.xlabel('Time (us)')
                 pl.ylabel('mV')
                 pl.draw()
-                #pl.show()
-                pl.show(block=0)
+                pl.ion()
+                pl.show()
+#                pl.show(block=0)
                 inn = input("Press enter to continue, q to stop plotting, evt # to skip to # (forward only)")
                 pl.close()
-                fig.clf()
+#                fig.clf()
+
 
             
 # End of pulse finding and plotting event loop
@@ -332,7 +338,7 @@ for p in range(12,13):
     list_rq['p_start_'+str(p)] = cleanStart
 
 # Save RQ's
-rq = open(data_dir + "spe_rq.npz",'wb')
+rq = open(data_dir + "spe_rq_b%dV.npz"%bias,'wb')
 np.savez(rq, **list_rq)
 rq.close()
 
