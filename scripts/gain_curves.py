@@ -1,33 +1,40 @@
 import numpy as np
 import matplotlib.pyplot as pl
 from scipy.optimize import curve_fit
+from scipy.signal import find_peaks
 
-#biaslist = np.array([54,55,56,57])
-biaslist = np.array([57])
-mode = "randomDC" #"led"
+biaslist = np.array([54,55,56,57])
+#mode = "randomDC" 
+mode = "led"
 tscale = (8.0/4096.0)
 
 #data_dir = "../../led4.04_old_rq/"
 #data_dir = "../../darkcount_cold/"
-#data_dir = "/Volumes/Samsung USB/led4.04_old_rq/"
-data_dir = "/Volumes/Samsung USB/cold_dark_b57v/"
+data_dir = "/Volumes/Samsung USB/cold_led4.04_b%dv/"
+#data_dir = "/Volumes/Samsung USB/cold_dark_b%dv/"
 filebase = "spe_rq_"
-
+fontsize = 14
+pl.rc('xtick',labelsize=fontsize)
+pl.rc('ytick',labelsize=fontsize)
 def gauss(x,A,mu,sig):
     return A*np.exp(-(x-mu)**2/(2*sig**2))
 
 #for channel in range(16):
-for channel in [12,13]:
+for channel in [12]:
     gainlist = []
     gainerrlist = []
     for bias in biaslist:
-         rq = np.load(data_dir+filebase+"b%dV.npz"%bias)
+         rq = np.load(data_dir%bias+filebase+"b%dV.npz"%bias)
+#         rq = np.load(data_dir%bias+filebase+"%d.npz"%bias)
          area = rq["p_area_%d"%channel]*tscale 
-         nbins = 150
+         area = area[area!=0]
+         nbins = 80
          uplim = 0.07
-         [data,bins] = np.histogram(area, bins=nbins, range=(0,uplim))
+         lowlim = -0.01
+         [data,bins] = np.histogram(area, bins=nbins, range=(lowlim,uplim))
          binCenters = np.array([0.5 * (bins[j] + bins[j+1]) for j in range(len(bins)-1)])
          if mode == "randomDC":
+             noisearea = rq["p_noisearea_%d"%channel]*tscale
              #set the initial fit range for the sphe peak
              fmin = 0
              fmax = 0.02
@@ -41,7 +48,7 @@ for channel in [12,13]:
              except:
                  print("can't perform intial sphe fit on channel %d"%channel)
                  pl.figure()
-                 pl.hist(area,nbins,range=(0,uplim))
+                 pl.hist(area,nbins,range=(lowlim,uplim))
                  pl.show()
                  break
              #set the fit range based on the intial fit
@@ -53,8 +60,8 @@ for channel in [12,13]:
              y = data[gpts]
              [p,pcov] = curve_fit(gauss, xdata=x, ydata=y, p0=p0)
 
-             fmin = p0[1]-3*p0[2]             
-             fmax = p0[1]+3*p0[2]             
+             fmin = p0[1]-1.5*p0[2]             
+             fmax = p0[1]+1.5*p0[2]             
              #final fit to the sphe peak
              gpts = np.logical_and(fmin<binCenters, fmax>binCenters)
              x3 = binCenters[gpts]
@@ -66,34 +73,38 @@ for channel in [12,13]:
              gainerrlist.append(perr[1])
              #plot pulse area hitos and fitted guassians
              pl.figure()
-             pl.hist(area,nbins,range=(0,uplim))
-             pl.plot(x,gauss(x, *p), color='red')
-             pl.plot(x3,gauss(x3, *p3), color='blue')
-             pl.xlim([0,uplim])
+             areaandbase = np.concatenate([area,noisearea[0:5000]])
+#             pl.hist(area,nbins,range=(lowlim,uplim))
+             pl.hist(areaandbase,nbins,range=(lowlim,uplim))
+             pl.plot(x,gauss(x, *p), color='blue',label="mean=%.4f"%p[1])
+             pl.plot(x3,gauss(x3, *p3), color='red',label="mean=%.4f"%p3[1])
+#             pl.xlim([0,uplim])
              xticksteps = 0.01
-             pl.text(uplim/4.,1000,"Bias = %dV\nMean = %.4f mV*us\nSigma = %.4f mV*us"%(bias,p[1],p[2]))
-             pl.xticks(np.arange(0,uplim+xticksteps, xticksteps))
-             pl.title("Channel %d"%channel)
-             pl.xlabel("Pulse Area (mV*us)")
+             pl.text(uplim/4.,pl.ylim()[1]*0.6,"Bias = %dV\nMean = %.4f mV*us\nSigma = %.4f mV*us"%(bias,p[1],p[2]))
+             pl.xticks(np.arange(lowlim,uplim+xticksteps, xticksteps))
+             pl.title("Channel %d"%channel,fontsize=fontsize)
+             pl.xlabel("Pulse Area (mV*us)", fontsize=fontsize)
+             pl.legend(loc="upper right",prop={"size":fontsize})
     #         pl.savefig("Channel_%d_Bias_%dV"%(channel,bias))
              pl.show()
 
          elif mode == "led":
              # fit the noise peak 
              noisemean = binCenters[np.argmax(data)]
-             gpts = np.logical_and(0.<binCenters, noisemean*2.2>binCenters)
+#             gpts = np.logical_and(0.<binCenters, noisemean*2.2>binCenters)
+             gpts = 0.01>binCenters
              xnoise = binCenters[gpts]
              ynoise = data[gpts]
              try:
-                 [noisep,noisepcov] = curve_fit(gauss, xdata=xnoise, ydata=ynoise, p0=[4000,noisemean,0.002],bounds=[[100,0.,0],[5000,0.1,0.2]])
+                 [noisep,noisepcov] = curve_fit(gauss, xdata=xnoise, ydata=ynoise, p0=[16000,noisemean,0.01],bounds=[[100,-0.1,0],[50000,0.1,0.2]])
              except:
                  print("can't fit noise peak on channel %d"%channel)
                  pl.figure()
-                 pl.hist(area,nbins,range=(0,uplim))
+                 pl.hist(area,nbins,range=(lowlim,uplim))
                  pl.show()
-                 break
+                 continue
              #set the initial fit range for the sphe peak
-             fmin = noisep[1]+4*noisep[2] #left bound is 4 sigma away from the noise peak
+             fmin = noisep[1]+3*noisep[2] #left bound is 4 sigma away from the noise peak
              fmax = fmin+0.015
              #preliminary fit to the sphe peak
              gpts = np.logical_and(fmin<binCenters, fmax>binCenters)
@@ -105,7 +116,10 @@ for channel in [12,13]:
              except:
                  print("can't perform intial sphe fit on channel %d"%channel)
                  pl.figure()
-                 pl.hist(area,nbins,range=(0,uplim))
+                 pl.hist(area,nbins,range=(lowlim,uplim))
+                 pl.plot(xnoise,gauss(xnoise, *noisep))
+                 pl.plot([fmin,fmax],[100,100])
+                 pl.plot(mean,y[np.argmax(y)],"o")
                  pl.show()
                  break
              #set the fit range based on the intial fit
@@ -120,15 +134,15 @@ for channel in [12,13]:
              gainerrlist.append(perr[1])
              #plot pulse area hitos and fitted guassians
              pl.figure()
-             pl.hist(area,nbins,range=(0,uplim))
+             pl.hist(area,nbins,range=(lowlim,uplim))
              pl.plot(xnoise,gauss(xnoise, *noisep), color='orange')
              pl.plot(x,gauss(x, *p), color='red')
-             pl.xlim([0,uplim])
+             pl.xlim([lowlim,uplim])
              xticksteps = 0.01
-             pl.text(uplim/4.,1000,"Bias = %dV\nMean = %.4f mV*us\nSigma = %.4f mV*us"%(bias,p[1],p[2]))
-             pl.xticks(np.arange(0,uplim+xticksteps, xticksteps))
-             pl.title("Channel %d"%channel)
-             pl.xlabel("Pulse Area (mV*us)")
+             pl.text(uplim/4.,pl.ylim()[1]*0.6,"Bias = %dV\nMean = %.4f mV*us\nSigma = %.4f mV*us"%(bias,p[1],p[2]))
+             pl.xticks(np.arange(lowlim,uplim+xticksteps, xticksteps))
+             pl.title("Channel %d"%channel,fontsize=fontsize)
+             pl.xlabel("Pulse Area (mV*us)",fontsize=fontsize)
     #         pl.savefig("Channel_%d_Bias_%dV"%(channel,bias))
              pl.show()
 
@@ -138,17 +152,23 @@ for channel in [12,13]:
         gainconv = pow(10,-3)*pow(10,-6)/(1.602*pow(10,-19)*25)
         gainlist = gainlist*gainconv
         m,b = np.polyfit(biaslist,gainlist,1)
+        print (biaslist,gainlist)
         pl.figure()
-        pl.xlabel("Bias voltage (V)")
-        pl.ylabel("SiPM Gain")
+        pl.xlabel("Bias voltage (V)",fontsize=fontsize)
+        pl.ylabel("SiPM Gain",fontsize=fontsize)
         if b>0:
             sign = "+"
         else:
             sign = "-"
-        pl.plot(biaslist,m*biaslist+b,"b",label="%d*x%s%d"%(m,sign,abs(b)))
+        pl.plot(biaslist,m*biaslist+b,"b",label="%s:%d*x%s%d"%("dark count",m,sign,abs(b)))
         pl.errorbar(biaslist,gainlist,yerr=gainerrlist,fmt='o',color="b")
-        pl.legend(loc="upper right")
-        pl.title("Channel %d"%channel)
-        pl.savefig(data_dir+"/gaincurve_ch%d"%channel)
+#        gainlist2_old = [2045810.67910546,3153525.80880244,3774032.33859399,4291897.25896552]
+        gainlist2 = [2656858.00862382,3301362.05565534,3842214.58339314,4290514.78103186]
+        m2,b2 = np.polyfit(biaslist[2:],gainlist2[2:],1)
+        pl.plot(biaslist,m2*biaslist+b2,"g",label="%s:%d*x%s%d"%("led",m2,sign,abs(b2)))
+        pl.plot(biaslist,gainlist2,"go")
+        pl.legend(loc="upper left",prop={"size":fontsize})
+        pl.title("Channel %d"%channel,fontsize=fontsize)
+#        pl.savefig(data_dir+"/gaincurve_ch%d"%channel)
         pl.show()
 

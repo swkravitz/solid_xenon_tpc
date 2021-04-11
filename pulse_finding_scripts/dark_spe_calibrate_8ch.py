@@ -12,12 +12,12 @@ import PulseClassification as pc
 import PulseFinderSPE as pfSPE
 
 try:
-    bias = int(sys.argv[1])
+    temp = sys.argv[1]
 except:
-    print ("usage: python dark_spe_calibrate.py [bias voltage]")
+    print ("usage: python dark_spe_calibrate.py [temperature]")
     exit(0)
-data_dir = "/Volumes/Samsung USB/cold_dark_b%dv/"%bias
-#data_dir = "/Volumes/Samsung USB/cold_led4.04_b%dv/"%bias
+#data_dir = "/Volumes/Samsung USB/cold_dark_b%dv/"%bias
+data_dir = "/Volumes/Samsung USB/crystalize/dark_count_all_channel_Cu_rod_%s/"%temp
 #data_dir = "/Users/qingxia/Documents/Physics/LZ/SiPM/"
 #data_dir = "C:/Users/ryanm/Documents/Research/Data/sipm_test_210319/cold_dark_b10v_noise/"
 
@@ -36,20 +36,20 @@ mpl.rcParams['figure.figsize']=[8.0,6.0]
 # ==================================================================
 # define DAQ and other parameters
 #wsize = 12500             # size of event window in samples. 1 sample = 2 ns.
-event_window = 4.  # in us
-wsize = int(500 * event_window)  # samples per waveform # 12500 for 25 us
+#event_window = 2.  # in us
+wsize = 1030  # samples per waveform # 12500 for 25 us
 vscale = (500.0/16384.0) # vertical scale, = 0.031 mV/ADCC for 0.5 Vpp dynamic range
 tscale = (8.0/4096.0)     # = 0.002 µs/sample, time scale
 
 # Set range to look for pulses
 if LED:
-    left_bound = int(2.0/tscale)
-    right_bound = int(2.6/tscale)
+    left_bound = int(0.7/tscale)
+    right_bound = int(1.5/tscale)
 else:
     left_bound = 0
     right_bound = wsize
 
-n_sipms = 16
+n_sipms = 8
 
 
 # ==================================================================
@@ -59,7 +59,7 @@ n_sipms = 16
 t_start = time.time()
 
 block_size = 5000
-n_block = 28
+n_block = 17
 max_evts = n_block*block_size#5000  # 25000 # -1 means read in all entries; 25000 is roughly the max allowed in memory on the DAQ computer
 max_pts = -1  # do not change
 if max_evts > 0:
@@ -111,9 +111,9 @@ for j in range(n_block):
         V = V[:int(len(V) / wsize) * wsize]
         V = V.reshape(int(V.size / wsize), wsize) # reshape to make each channel's matrix of events
         v_matrix_all_ch.append(V)
-        if ch_ind==0: v_sum = np.copy(V)
-        else: v_sum += V
-    v_matrix_all_ch.append(v_sum)
+#        if ch_ind==0: v_sum = np.copy(V)
+ #       else: v_sum += V
+  #  v_matrix_all_ch.append(v_sum)
     
     # create a time axis in units of µs:
     x = np.arange(0, wsize, 1)
@@ -177,7 +177,6 @@ for j in range(n_block):
         # Loop over channels, slowest part of the code
         # Have to do a loop, pulse finder does not like v_bls_matrix_all_ch[:,i,:] 
         for k in range(n_sipms):
-#        for k in range(12,13):
         
             # Do a simple integral over desired range
             # If you change the range, make sure to change the plot x_label
@@ -199,9 +198,8 @@ for j in range(n_block):
             # Preliminary baseline should already be done
             else:
                 start_times, end_times, peaks, baselines, data_conv = pfSPE.findDarkSPEs(v_bls_matrix_all_ch[k, i-j*block_size, :])
-
-            # Calculate RQ's from pulse finder
             base_win = int(0.2/tscale) # 0.2 us
+            # Calculate RQ's from pulse finder
             if SPEMode:
                 for n in range(len(start_times)):
                     if n > max_pulses - 1: break
@@ -221,8 +219,8 @@ for j in range(n_block):
                 p_start[k,i,0] = start_times[0]
                 p_end[k,i,0] = end_times[0]
             else:
-                start_times[0] = left_bound
-                end_times[0] = left_bound+base_win
+#                start_times[0] = left_bound-2*base_win
+ #               end_times[0] = left_bound-base_win
                 p_area[k,i,0] = pq.GetPulseArea(start_times[0],end_times[0],v_bls_matrix_all_ch[k, i-j*block_size, :])
                 p_max_height[k,i,0] = pq.GetPulseMaxHeight(left_bound,right_bound,v_bls_matrix_all_ch[k, i-j*block_size, :])
                 p_width[k,i,0] = -left_bound+right_bound
@@ -235,12 +233,12 @@ for j in range(n_block):
                 if  noisewin:
                     p_noisearea.append(pq.GetPulseArea(base_win,2*base_win,v_bls_matrix_all_ch[k, i-j*block_size, :] - baselines[0]))
             # Plotter
-            areacut = p_area[k,i,0]*tscale>0.
-            #areacut = (p_start[12,i,0] < 0.5/tscale)*p_area[12,i,0] > 0
+            areacut = p_area[k,i,0] > 0
+#            areacut = np.logical_and(p_area[k,i,0]*tscale*1000>6,p_area[k,i,0]*tscale*1000<15)
 
             # horizontal lines: @ zero, baseline, height
             
-            if not inn == 'q' and plotyn and len(start_times)>1 and areacut:
+            if not inn == 'q' and plotyn and k==7 and areacut:
                 # Plot something
                 fig = pl.figure(1,figsize=(10, 7))
                 pl.grid(b=True,which='major',color='lightgray',linestyle='--')
@@ -251,17 +249,15 @@ for j in range(n_block):
                     pl.plot(t_matrix[j,:], data_conv, color='red')
                 for pulse in range(len(start_times)):
                     if start_times[pulse]!=0:
-                        pl.axvspan(start_times[pulse] * tscale, end_times[pulse] * tscale, alpha=0.25, color='green',label="Pulse area = {:0.3f} mV*us".format(p_area[k,i,pulse]*tscale))
-                        print ("area:",p_area[12,i,pulse]*tscale,"start:",start_times[pulse],"end:",end_times[pulse])
-                #pl.axvspan((start_times)*tscale, (end_times)*tscale, alpha=0.25, color='green')
-                #pl.text(end_times*tscale, p_max_height[12,i,0]*1.1,"Pulse area = {:0.3f} mV*us".format(p_area[12,i,0]*tscale) )
+                        pl.axvspan(start_times[pulse] * tscale, end_times[pulse] * tscale, alpha=0.25, color='green',label="Pulse area = {:0.3f} mV*ns".format(p_area[k,i,pulse]*tscale*1000))
+                        print ("area:",p_area[k,i,pulse]*tscale,"start:",start_times[pulse]*tscale,"end:",end_times[pulse]*tscale)
                 if SPEMode and noisewin: # plot the area for calculating noise area
                     pl.axvspan(base_win*tscale, 2*base_win*tscale, alpha=0.25, color='orange')
                 pl.hlines(0.06,0,4,color='orange',label='Height treshhold = 0.1')
                 pl.hlines(0,0,4,color="black")
 
 #                pl.ylim([-0.5,1])
-                pl.xlim([0,4])
+                pl.xlim([0,2])
                 pl.title("Channel "+str(k)+", Event "+str(i) )
                 pl.xlabel('Time (us)')
                 pl.ylabel('mV')
@@ -281,7 +277,7 @@ for j in range(n_block):
 n_events = i
 print("total number of events processed:", n_events+1)
 if SPEMode:
-    for k in range(16):
+    for k in range(n_sipms):
         print ("total number of dark pulses on ch%d:"%k,np.sum(n_pulses[k,:]))
 
 # Clean up and Plotting
@@ -349,8 +345,7 @@ def SPE_Start_Hist(data,sipm_n):
 
 list_rq = {}
 
-#for p in range(n_sipms):
-for p in range(12,13):
+for p in range(n_sipms):
 
     # Cuts for RQ's
     cutSarea = (p_sarea[p,:,:]*tscale > -0.05)*(p_sarea[p,:,:]*tscale < 0.05)
@@ -363,10 +358,10 @@ for p in range(12,13):
     cleanStart = p_start[p,cutArea].flatten()
 
     # Make some plots
-#    SPE_Sarea_Hist(cleanSarea*tscale, p)
- #   SPE_Area_Hist(cleanArea*tscale, p)
-  #  SPE_Height_Hist(cleanHeight, p)
-   # SPE_Start_Hist(cleanStart*tscale, p)
+ #   SPE_Sarea_Hist(cleanSarea*tscale, p)
+  #  SPE_Area_Hist(cleanArea*tscale, p)
+   # SPE_Height_Hist(cleanHeight, p)
+    #SPE_Start_Hist(cleanStart*tscale, p)
 
     # Save RQ's 
     list_rq['p_sarea_'+str(p)] = cleanSarea
@@ -377,8 +372,8 @@ for p in range(12,13):
         list_rq['p_noisearea_'+str(p)] = np.array(p_noisearea)
 
 # Save RQ's
-rq = open(data_dir + "spe_rq_b%dV.npz"%bias,'wb')
+rq = open(data_dir + "randomDC_spe_rq_t-%sC.npz"%temp,'wb')
 np.savez(rq, **list_rq)
 rq.close()
 
-pl.show()
+#pl.show()
