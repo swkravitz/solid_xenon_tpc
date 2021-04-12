@@ -30,27 +30,18 @@ def simpleSumArea(data, window, convolve=False):
 # Finds pulse area using find_peaks
 def findLEDSPEs(data):
 
-    conv_width = 40 # samples
+    conv_width = 60 # samples
     min_height = 0.06 # mV 
     min_width = 5 # samples
     rel_height = 0.10 # percent of pulse height to look at width, from the top
     pulse_start_frac = 0.5  # pulse starts at this fraction of peak height above baseline
-    pulse_end_frac = 0  # pulse starts at this fraction of peak height above baseline       
-
+    pulse_end_frac = 0.1  # pulse starts at this fraction of peak height above baseline       
+#    pulse_end_frac = 0.3  # for crystalize ch7
     data_conv = wfm_convolve(data, conv_width, avg=True)
 
     peaks, properties = find_peaks(data_conv, height=min_height, width=min_width, rel_height=rel_height)
-    if False:
-        pl.figure()
-        pl.plot(list(range(len(data))),data)
-        pl.plot(list(range(len(data_conv))),data_conv)
-        pl.ion()
-        pl.show()
-        input()
-        pl.close()
     # Restrict to one event
     if len(peaks) < 1:
-        print ("no LED spe!")
         return 0,0,0,data_conv
     else:
         peaks = peaks[0]
@@ -92,6 +83,7 @@ def findBase1(data):
 
 def findDarkSPEs(data):
     base_win = int(0.2/tscale) # 0.2 us
+#    base_win = int(0.05/tscale) # for cyrstalize ch7
 
     # Do the initial pulse finding
 
@@ -108,14 +100,19 @@ def findDarkSPEs(data):
     old_peaks = sorted(old_peaks)
     # On to second sweep of pulse finding
     peaks = np.zeros(len(old_peaks), dtype=np.int)
-    baselines = np.zeros(len(old_peaks))
+    if len(old_peaks) == 0:
+        baselines = np.array([np.mean(data[0:base_win])])
+    else:
+        baselines = np.zeros(len(old_peaks))
     start_times = np.zeros(len(old_peaks), dtype=np.int)
     end_times = np.zeros(len(old_peaks), dtype=np.int)
     peak_data = 0
 
-    l_sample = 20
+    l_sample = 40
     l_p_bound = l_sample + base_win # Stops 20 samples + baseline before
     r_p_bound = int(0.2/tscale) # Stops .2 us after
+    data_conv2 = np.zeros(len(data_conv))
+#    print (np.array(old_peaks)*tscale)
     for i in range(len(old_peaks)):
         # Check to see if peak is too close to start/end or to previous peak
         if old_peaks[i] - l_p_bound < 1 or old_peaks[i] + r_p_bound > len(data):
@@ -131,11 +128,11 @@ def findDarkSPEs(data):
             baselines[i] = np.mean(data[old_peaks[i]-l_p_bound:old_peaks[i]-l_sample])
             peak_data -= baselines[i]
                 
-            start_times[i], end_times[i], peaks[i], data_conv2 = findLEDSPEs(peak_data)
-                
+            start_times[i], end_times[i], peaks[i], data_conv_led = findLEDSPEs(peak_data)
+            data_conv2[old_peaks[i] - l_p_bound:old_peaks[i] + r_p_bound] = data_conv_led 
             # Shift times to proper position
             start_times[i] += old_peaks[i] - l_p_bound
             end_times[i] += old_peaks[i] - l_p_bound
             peaks[i] += old_peaks[i] - l_p_bound
-    return start_times, end_times, peaks, baselines, data_conv
+    return start_times, end_times, peaks, baselines, data_conv2
 
