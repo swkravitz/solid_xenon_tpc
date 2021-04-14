@@ -8,7 +8,7 @@ import PulseQuantities as pq
 import PulseClassification as pc
 
 #data_dir = "D:/.shortcut-targets-by-id/11qeqHWCbcKfFYFQgvytKem8rulQCTpj8/crystalize/data/data-202102/022421/Po_6.8g_7.0c_3mV_1.75bar_circ_20min/"
-data_dir = "/home/xaber/caen/wavedump-3.8.2/data/032921/Co_ICV_bot_2.8g_3.0c_0.73bar_circ_3min_1030/"
+data_dir = "/home/xaber/caen/wavedump-3.8.2/data/032321/Po_4.8g_7.0c_1.2bar_circ_20min_1212/"
 #data_dir = "G:/My Drive/crystalize/data/data-202103/032221/Co_ICVbot_Po_2.8g_3.00c_1.1bar_circ_5min_1720/"
 
 # set plotting style
@@ -159,14 +159,16 @@ event_cut_dict = {}
 event_cut_dict["SS"] = drift_Time > 0 
 event_cut_dict["All_Scatter"] = drift_Time_AS > 0
 event_cut_dict["MS"] = (n_s1 == 1)*(n_s2 > 1)*s1_before_s2
-event_cut_dict["Po"] = (drift_Time>0)*np.any((p_tba<-0.0)*(p_tba>-0.7)*(p_area>1000)*(p_area<4000), axis=1)#np.any((p_tba<-0.85)*(p_tba>-0.91)*(p_area>1500)*(p_area<2700), axis=1) # true if any pulse in event matches these criteria
+event_cut_dict["Po"] = (drift_Time>4)*np.any((p_tba<-0.0)*(p_tba>-0.7)*(p_area>1000)*(p_area<4000), axis=1)#np.any((p_tba<-0.85)*(p_tba>-0.91)*(p_area>1500)*(p_area<2700), axis=1) # true if any pulse in event matches these criteria
 event_cut_dict["lg_S1"] = (drift_Time>0)*np.any((p_area>1000.)*cut_dict["S1"], axis=1) # true if any S1 has area>1000
 event_cut_dict["2S2"] = (n_s2 == 2)
 
-event_cut_name = "SS"#"Po"#"lg_S1"
+event_cut_name = "Po"#"Po"#"lg_S1"
 event_cut = event_cut_dict[event_cut_name] 
 cleanSumS1 = sum_s1_area[event_cut]
 cleanSumS2 = sum_s2_area[event_cut]
+# For events passing event_cut, get area-weighted avg of TBA for S1s only
+cleanAvgS1TBA = np.sum(p_area[event_cut]*p_tba[event_cut]*s1_cut[event_cut],axis=1)/np.sum(p_area[event_cut]*s1_cut[event_cut],axis=1)
 cleanDT = drift_Time[event_cut]
 cleanDT_AS = drift_Time_AS[drift_Time_AS>0]
 print("number of events found passing cut "+event_cut_name+" = {0:d} ({1:g}%)".format(np.sum(event_cut),np.sum(event_cut)*100./n_events))
@@ -294,6 +296,14 @@ pl.ylabel("log10 Sum S2 area")
 cbar=pl.colorbar()
 cbar.set_label("Drift time (us)")
 if save_event_plots: pl.savefig(data_dir+"log10_SumS2_vs_SumS1_"+event_cut_name +".png")
+
+pl.figure()
+pl.scatter(cleanAvgS1TBA, np.log10(cleanSumS2), s = 1, c=cleanDT)
+pl.xlabel("Avg S1 TBA")
+pl.ylabel("log10 Sum S2 area")
+cbar=pl.colorbar()
+cbar.set_label("Drift time (us)")
+if save_event_plots: pl.savefig(data_dir+"log10_SumS2_vs_S1TBA_"+event_cut_name +".png")
 
 basicHist(np.log10(cleanSumS1), bins=100, mean=True, xlabel="log10 Sum S1 area (phd)", name="log10_SumS1_"+event_cut_name, save=save_event_plots)
 basicHist(np.log10(cleanSumS2), bins=100, mean=True, xlabel="log10 Sum S2 area (phd)", name="log10_SumS2_"+event_cut_name, save=save_event_plots)
