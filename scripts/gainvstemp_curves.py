@@ -18,8 +18,8 @@ def linearfit(x,a,b):
      return a*x+b
 fig = pl.figure()
 ax = fig.gca()
-#for channel in range(7):
-for channel in [7]:
+for channel in range(7):
+#for channel in [7]:
     gainlist = []
     gainerrlist = []
     plottemplist = []
@@ -50,7 +50,7 @@ for channel in [7]:
          subax.hist(area,nbins,range=(lowlim,uplim))
          for i in range(len(peakmeans)):
              lab=""
-             lab2=""
+             lab2 = "final fit"
              try:
                  if len(peakmeans)==1:
                      print ("only one peak found on channel %d, T=-%sC"%(channel,str(temp)))
@@ -60,7 +60,6 @@ for channel in [7]:
                      if i==0:
                          fmin = peakmeans[i]-(peakmeans[i+1]-peakmeans[i])/2.
                          lab = "initial fit"
-                         lab2 = "final fit"
                      else:
                          fmin = (peakmeans[i]+peakmeans[i-1])/2.
                      if i==len(peakmeans)-1:
@@ -72,7 +71,7 @@ for channel in [7]:
                  gpts = np.logical_and(fmin<binCenters, fmax>binCenters)
                  x = binCenters[gpts]
                  y = data[gpts]
-                 [p0,p0cov] = curve_fit(gauss, xdata=x, ydata=y, p0=[150,peakmeans[i],10])
+                 [p0,p0cov] = curve_fit(gauss, xdata=x, ydata=y, p0=[150,peakmeans[i],10],bounds=([0,-100,0],[100000,200,50]))
                  subax.plot(x,gauss(x, *p0), color='orange',label=lab)
              except:
                  print("can't perform intial fit to peak #%d on channel %d"%(i,channel))
@@ -93,13 +92,15 @@ for channel in [7]:
 #             xplot = binCenters[gptsplot]
              y = data[gpts]
              try:
-                 [p,pcov] = curve_fit(gauss, xdata=x, ydata=y, p0=p0)
+                 [p,pcov] = curve_fit(gauss, xdata=x, ydata=y, p0=p0,bounds=([0,-100,0],[100000,200,50]))
                  perr = np.sqrt(np.diag(pcov))
                  peaklist.append(p[1])
                  peakerrlist.append(perr[1])
 #                 subax.plot(peakmeans,[400]*len(peakmeans),"o",color="orange")
                  #plot pulse area histos and fitted guassians
-                 subax.plot(x,gauss(x, *p), color='red', label=lab2)
+                 if p[1]>5:
+                     lab2 = lab2+" sigma/mean=%.2f"%(p[2]/p[1])
+                 subax.plot(x,gauss(x, *p), label=lab2)
              except:
                  print("can't perform final fit to peak #%d on channel %d"%(i,channel))
                  errfig = pl.figure()
