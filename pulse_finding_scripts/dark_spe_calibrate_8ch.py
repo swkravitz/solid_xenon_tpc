@@ -9,7 +9,7 @@ import PulseFinderScipy as pf
 import PulseQuantities as pq
 import PulseClassification as pc
 
-import PulseFinderSPE as pfSPE
+import PulseFinderSPE_crystalize as pfSPE
 
 try:
     temp = sys.argv[1]
@@ -17,8 +17,8 @@ except:
     print ("usage: python dark_spe_calibrate.py [temperature]")
     exit(0)
 #data_dir = "/Volumes/Samsung USB/cold_dark_b%dv/"%bias
-data_dir = "/Volumes/Samsung USB/crystalize/dark_count_all_channel_Cu_rod_%s/"%temp
-#data_dir = "/Users/qingxia/Documents/Physics/LZ/SiPM/"
+#data_dir = "/Volumes/Samsung USB/crystalize/dark_count_all_channel_Cu_rod_%s/"%temp
+data_dir = "/Users/qingxia/Documents/Physics/LZ/SiPM/dark_count_all_ch_calibration_%s/"%temp
 #data_dir = "C:/Users/ryanm/Documents/Research/Data/sipm_test_210319/cold_dark_b10v_noise/"
 
 SPEMode = True
@@ -197,13 +197,14 @@ for j in range(n_block):
 
             # Preliminary baseline should already be done
             else:
-                start_times, end_times, peaks, baselines, data_conv = pfSPE.findDarkSPEs(v_bls_matrix_all_ch[k, i-j*block_size, :])
+                start_times, end_times, peaks, baselines, data_conv,baselines_start,baselines_end = pfSPE.findDarkSPEs(v_bls_matrix_all_ch[k, i-j*block_size, :])
+
             base_win = int(0.2/tscale) # 0.2 us
             # Calculate RQ's from pulse finder
             if SPEMode:
                 for n in range(len(start_times)):
                     if n > max_pulses - 1: break
-                    if start_times[n] != 0:
+                    if start_times[n] <end_times[n]:
                         p_area[k,i,n] = pq.GetPulseArea(start_times[n],end_times[n],v_bls_matrix_all_ch[k, i-j*block_size, :] - baselines[n])
                         p_max_height[k,i,n] = pq.GetPulseMaxHeight(start_times[n],end_times[n],v_bls_matrix_all_ch[k, i-j*block_size, :]- baselines[n])
                         p_width[k,i,n] = start_times[n] - end_times[n]
@@ -212,15 +213,15 @@ for j in range(n_block):
             
                 
                     n_pulses[k,i] += len(start_times)
-            elif LED and start_times[0] != end_times[0]:
+            elif LED and start_times[0] <end_times[0]:
                 p_area[k,i,0] = pq.GetPulseArea(start_times[0],end_times[0],v_bls_matrix_all_ch[k, i-j*block_size, :])
                 p_max_height[k,i,0] = pq.GetPulseMaxHeight(start_times[0],end_times[0],v_bls_matrix_all_ch[k, i-j*block_size, :])
                 p_width[k,i,0] = start_times[0] - end_times[0]
                 p_start[k,i,0] = start_times[0]
                 p_end[k,i,0] = end_times[0]
             else:
-#                start_times[0] = left_bound-2*base_win
- #               end_times[0] = left_bound-base_win
+                start_times[0] = left_bound
+                end_times[0] = left_bound+base_win
                 p_area[k,i,0] = pq.GetPulseArea(start_times[0],end_times[0],v_bls_matrix_all_ch[k, i-j*block_size, :])
                 p_max_height[k,i,0] = pq.GetPulseMaxHeight(left_bound,right_bound,v_bls_matrix_all_ch[k, i-j*block_size, :])
                 p_width[k,i,0] = -left_bound+right_bound
@@ -233,27 +234,29 @@ for j in range(n_block):
                 if  noisewin:
                     p_noisearea.append(pq.GetPulseArea(base_win,2*base_win,v_bls_matrix_all_ch[k, i-j*block_size, :] - baselines[0]))
             # Plotter
-            areacut = p_area[k,i,0] > 0
-#            areacut = np.logical_and(p_area[k,i,0]*tscale*1000>6,p_area[k,i,0]*tscale*1000<15)
+#            areacut = p_area[k,i,0] > 0
+            areacut = np.logical_and(p_area[k,i,0]*tscale*1000>40,p_area[k,i,0]*tscale*1000<200)
 
             # horizontal lines: @ zero, baseline, height
             
-            if not inn == 'q' and plotyn and k==7 and areacut:
+            if not inn == 'q' and plotyn and areacut and k==7:
                 # Plot something
                 fig = pl.figure(1,figsize=(10, 7))
                 pl.grid(b=True,which='major',color='lightgray',linestyle='--')
-                pl.plot(t_matrix[j,:], v_bls_matrix_all_ch[k,i-j*block_size,:], color='blue')
                 if LED:
+                    pl.plot(t_matrix[j,:], v_bls_matrix_all_ch[k,i-j*block_size,:], color='blue')
                     pl.plot(t_matrix[j,left_bound:right_bound], data_conv, color='red')
                 else:
+                    pl.plot(t_matrix[j,:], v_bls_matrix_all_ch[k,i-j*block_size,:]-baselines[0], color='blue')
                     pl.plot(t_matrix[j,:], data_conv, color='red')
                 for pulse in range(len(start_times)):
                     if start_times[pulse]!=0:
                         pl.axvspan(start_times[pulse] * tscale, end_times[pulse] * tscale, alpha=0.25, color='green',label="Pulse area = {:0.3f} mV*ns".format(p_area[k,i,pulse]*tscale*1000))
+                        pl.axvspan(baselines_start[pulse]*tscale, baselines_end[pulse]*tscale, alpha=0.25, color='purple',label="baseline")
                         print ("area:",p_area[k,i,pulse]*tscale,"start:",start_times[pulse]*tscale,"end:",end_times[pulse]*tscale)
                 if SPEMode and noisewin: # plot the area for calculating noise area
-                    pl.axvspan(base_win*tscale, 2*base_win*tscale, alpha=0.25, color='orange')
-                pl.hlines(0.06,0,4,color='orange',label='Height treshhold = 0.1')
+                    pl.axvspan(base_win*tscale, 2*base_win*tscale, alpha=0.25, color='orange',label="noise window")
+#                pl.hlines(0.06,0,4,color='orange',label='Height treshhold = 0.1')
                 pl.hlines(0,0,4,color="black")
 
 #                pl.ylim([-0.5,1])
@@ -372,6 +375,7 @@ for p in range(n_sipms):
         list_rq['p_noisearea_'+str(p)] = np.array(p_noisearea)
 
 # Save RQ's
+#rq = open(data_dir + "randomDC_spe_rq_t-%sC.npz"%temp,'wb')
 rq = open(data_dir + "randomDC_spe_rq_t-%sC.npz"%temp,'wb')
 np.savez(rq, **list_rq)
 rq.close()
