@@ -3,11 +3,14 @@ import matplotlib.pyplot as pl
 from scipy.optimize import curve_fit
 from scipy.signal import find_peaks
 
-templist = np.array([117.6,110.0,103.1,97.3,90.2])
+#templist = np.array([117.6,110.0,103.1,97.3,90.2])
 #templist = np.array([117.6,110.0,103.1])
+templist = np.array([100.6])
+
 tscale = (8.0/4096.0)*1000 #ns
 
-data_dir = "/Volumes/Samsung USB/crystalize/dark_count_all_channel_Cu_rod_%s/"
+#data_dir = "/Volumes/Samsung USB/crystalize/dark_count_all_channel_Cu_rod_%s/"
+data_dir = "/Users/qingxia/Documents/Physics/LZ/SiPM/dark_count_all_ch_calibration_%s/"
 filebase = "spe_rq_"
 fontsize = 14
 pl.rc('xtick',labelsize=fontsize)
@@ -18,7 +21,7 @@ def linearfit(x,a,b):
      return a*x+b
 fig = pl.figure()
 ax = fig.gca()
-for channel in range(7):
+for channel in range(8):
 #for channel in [7]:
     gainlist = []
     gainerrlist = []
@@ -26,22 +29,27 @@ for channel in range(7):
     for temp in templist:
          peaklist = []
          peakerrlist = []
-         if channel==7 and temp!=117.6:
+         if channel==7 and temp ==100.6:
              rq = np.load(data_dir%str(temp)+"randomDC_"+filebase+"t-%sC.npz"%str(temp))
+             area = rq["p_area_%d"%channel]*tscale 
+             noisearea = rq["p_noisearea_%d"%channel]*tscale
+             area = np.concatenate([area,noisearea[0:5000]])
          else:
              rq = np.load(data_dir%str(temp)+filebase+"t-%sC.npz"%str(temp))
-         area = rq["p_area_%d"%channel]*tscale 
+             area = rq["p_area_%d"%channel]*tscale 
          area = area[area!=0]
-         nbins = 180
+#         nbins = 180
+         nbins = 100
          uplim = 130
          lowlim = -20
          [data,bins] = np.histogram(area, bins=nbins, range=(lowlim,uplim))
          binCenters = np.array([0.5 * (bins[j] + bins[j+1]) for j in range(len(bins)-1)])
+
          #find prominent peaks in the dark count spectrum
-         min_height = 600
-         min_width = 5
+         min_height = 300
+         min_width = 1
          rel_height = 0.5 
-         prominence = 300
+         prominence = 50
          peaks, properties = find_peaks(data, height=min_height, width=min_width, rel_height=rel_height, prominence=prominence)
          peakmeans = binCenters[peaks]
          #set the initial gaussain fit range for the peaks
@@ -99,7 +107,7 @@ for channel in range(7):
 #                 subax.plot(peakmeans,[400]*len(peakmeans),"o",color="orange")
                  #plot pulse area histos and fitted guassians
                  if p[1]>5:
-                     lab2 = lab2+" sigma/mean=%.2f"%(p[2]/p[1])
+                     lab2 = lab2+" mean=%.2f\nsigma/mean=%.2f"%(p[1],p[2]/p[1])
                  subax.plot(x,gauss(x, *p), label=lab2)
              except:
                  print("can't perform final fit to peak #%d on channel %d"%(i,channel))
@@ -140,7 +148,7 @@ for channel in range(7):
              linfitax.set_xlabel("peak index ",fontsize=fontsize)
              linfitax.set_ylabel("pulse area (mV*ns)",fontsize=fontsize)
          #         pl.plot(peakindex,popt[0]*peakindex+popt[1],"b",label="%d*x+%d"%(popt[0],popt[1]))
-             linfitax.plot(peakindex,popt[0]*peakindex+popt[1],"b",label="sphe size = %.1f$\pm$%.1f mV*ns\n chi^2/ndf=%.4f"%(popt[0],np.sqrt(np.diag(pcov))[0],chi2))
+             linfitax.plot(peakindex,popt[0]*peakindex+popt[1],"b",label="sphe size = %.1f$\pm$%.1f mV*ns\n chi^2/ndf=%.4f\ngain=%d"%(popt[0],np.sqrt(np.diag(pcov))[0],chi2,popt[0]*pow(10,-3)*pow(10,-9)/(1.602*pow(10,-19)*50)))
              linfitax.errorbar(peakindex,peaklist,yerr=peakerrlist,fmt='o',color="b")
              linfitax.set_xticks(peakindex)
              linfitax.legend(loc="lower right")
