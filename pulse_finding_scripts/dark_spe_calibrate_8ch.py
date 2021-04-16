@@ -252,7 +252,8 @@ for j in range(n_block):
                 for pulse in range(len(start_times)):
                     if start_times[pulse]!=0:
                         pl.axvspan(start_times[pulse] * tscale, end_times[pulse] * tscale, alpha=0.25, color='green',label="Pulse area = {:0.3f} mV*ns".format(p_area[k,i,pulse]*tscale*1000))
-                        pl.axvspan(baselines_start[pulse]*tscale, baselines_end[pulse]*tscale, alpha=0.25, color='purple',label="baseline")
+                        if not LED:
+                            pl.axvspan(baselines_start[pulse]*tscale, baselines_end[pulse]*tscale, alpha=0.25, color='purple',label="baseline")
                         print ("area:",p_area[k,i,pulse]*tscale,"start:",start_times[pulse]*tscale,"end:",end_times[pulse]*tscale)
                 if SPEMode and noisewin: # plot the area for calculating noise area
                     pl.axvspan(base_win*tscale, 2*base_win*tscale, alpha=0.25, color='orange',label="noise window")
