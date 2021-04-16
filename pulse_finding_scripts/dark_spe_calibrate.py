@@ -198,7 +198,7 @@ for j in range(n_block):
 
             # Preliminary baseline should already be done
             else:
-                start_times, end_times, peaks, baselines, data_conv = pfSPE.findDarkSPEs(v_bls_matrix_all_ch[k, i-j*block_size, :])
+                start_times, end_times, peaks, baselines, data_conv, baselines_start, baselines_end = pfSPE.findDarkSPEs(v_bls_matrix_all_ch[k, i-j*block_size, :])
 
             # Calculate RQ's from pulse finder
             base_win = int(0.2/tscale) # 0.2 us
@@ -252,12 +252,12 @@ for j in range(n_block):
                 for pulse in range(len(start_times)):
                     if start_times[pulse]!=0:
                         pl.axvspan(start_times[pulse] * tscale, end_times[pulse] * tscale, alpha=0.25, color='green',label="Pulse area = {:0.3f} mV*us".format(p_area[k,i,pulse]*tscale))
-                        print ("area:",p_area[12,i,pulse]*tscale,"start:",start_times[pulse],"end:",end_times[pulse])
-                #pl.axvspan((start_times)*tscale, (end_times)*tscale, alpha=0.25, color='green')
-                #pl.text(end_times*tscale, p_max_height[12,i,0]*1.1,"Pulse area = {:0.3f} mV*us".format(p_area[12,i,0]*tscale) )
+                        print ("area:",p_area[k,i,pulse]*tscale,"start:",start_times[pulse],"end:",end_times[pulse])
+                        if not LED:
+                            pl.axvspan(baselines_start[pulse]*tscale, baselines_end[pulse]*tscale, alpha=0.25, color='purple',label="baseline")
                 if SPEMode and noisewin: # plot the area for calculating noise area
                     pl.axvspan(base_win*tscale, 2*base_win*tscale, alpha=0.25, color='orange')
-                pl.hlines(0.06,0,4,color='orange',label='Height treshhold = 0.1')
+                pl.hlines(0.1,0,4,color='orange',label='Height treshhold = 0.1')
                 pl.hlines(0,0,4,color="black")
 
 #                pl.ylim([-0.5,1])
