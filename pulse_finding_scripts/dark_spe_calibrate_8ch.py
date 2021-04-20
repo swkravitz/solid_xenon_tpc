@@ -21,8 +21,8 @@ except:
 data_dir = "/Users/qingxia/Documents/Physics/LZ/SiPM/dark_count_all_ch_calibration_%s/"%temp
 #data_dir = "C:/Users/ryanm/Documents/Research/Data/sipm_test_210319/cold_dark_b10v_noise/"
 
-SPEMode = True
-LED = False # LED mode, expects signal at ~2us
+SPEMode = False
+LED = True # LED mode, expects signal at ~2us
 plotyn = True # Waveform plotting
 saveplot = True # Save RQ plots
 
@@ -377,7 +377,7 @@ for p in range(n_sipms):
 
 # Save RQ's
 #rq = open(data_dir + "randomDC_spe_rq_t-%sC.npz"%temp,'wb')
-rq = open(data_dir + "randomDC_spe_rq_t-%sC.npz"%temp,'wb')
+rq = open(data_dir + "spe_rq_t-%sC.npz"%temp,'wb')
 np.savez(rq, **list_rq)
 rq.close()
 
