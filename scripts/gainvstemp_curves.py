@@ -3,13 +3,18 @@ import matplotlib.pyplot as pl
 from scipy.optimize import curve_fit
 from scipy.signal import find_peaks
 
-templist = np.array([117.6,110.0,103.1,97.3,90.2])
+#templist = np.array([117.6,110.0,103.1,97.3,90.2])
 #templist = np.array([117.6,110.0,103.1])
+templist = np.array([100.6])
+
 tscale = (8.0/4096.0)*1000 #ns
 
-data_dir = "/Volumes/Samsung USB/crystalize/dark_count_all_channel_Cu_rod_%s/"
+#data_dir = "/Volumes/Samsung USB/crystalize/dark_count_all_channel_Cu_rod_%s/"
+data_dir = "/Users/qingxia/Documents/Physics/LZ/SiPM/dark_count_all_ch_calibration_%s/"
 filebase = "spe_rq_"
 fontsize = 14
+impedance = 50 #input impedance
+gainconv = pow(10,-3)*pow(10,-9)/(1.602*pow(10,-19)*impedance)
 pl.rc('xtick',labelsize=fontsize)
 pl.rc('ytick',labelsize=fontsize)
 def gauss(x,A,mu,sig):
@@ -18,30 +23,40 @@ def linearfit(x,a,b):
      return a*x+b
 fig = pl.figure()
 ax = fig.gca()
-#for channel in range(7):
-for channel in [7]:
+for channel in range(8):
+#for channel in [7]:
     gainlist = []
     gainerrlist = []
     plottemplist = []
     for temp in templist:
+         if channel==0:
+             outfile = open("SiPMgain_-%sC.txt"%str(temp),"w")
+             outfile.write("Channel;Gain;GainError\n")
+         else:
+             outfile = open("SiPMgain_-%sC.txt"%str(temp),"a")
          peaklist = []
          peakerrlist = []
-         if channel==7 and temp!=117.6:
+         if channel==7 and temp ==100.6:
              rq = np.load(data_dir%str(temp)+"randomDC_"+filebase+"t-%sC.npz"%str(temp))
+             area = rq["p_area_%d"%channel]*tscale 
+             noisearea = rq["p_noisearea_%d"%channel]*tscale
+             area = np.concatenate([area,noisearea[0:5000]])
          else:
              rq = np.load(data_dir%str(temp)+filebase+"t-%sC.npz"%str(temp))
-         area = rq["p_area_%d"%channel]*tscale 
+             area = rq["p_area_%d"%channel]*tscale 
          area = area[area!=0]
-         nbins = 180
+#         nbins = 180
+         nbins = 100
          uplim = 130
          lowlim = -20
          [data,bins] = np.histogram(area, bins=nbins, range=(lowlim,uplim))
          binCenters = np.array([0.5 * (bins[j] + bins[j+1]) for j in range(len(bins)-1)])
+
          #find prominent peaks in the dark count spectrum
-         min_height = 600
-         min_width = 5
+         min_height = 300
+         min_width = 1
          rel_height = 0.5 
-         prominence = 300
+         prominence = 50
          peaks, properties = find_peaks(data, height=min_height, width=min_width, rel_height=rel_height, prominence=prominence)
          peakmeans = binCenters[peaks]
          #set the initial gaussain fit range for the peaks
@@ -50,7 +65,7 @@ for channel in [7]:
          subax.hist(area,nbins,range=(lowlim,uplim))
          for i in range(len(peakmeans)):
              lab=""
-             lab2=""
+             lab2 = "final fit"
              try:
                  if len(peakmeans)==1:
                      print ("only one peak found on channel %d, T=-%sC"%(channel,str(temp)))
@@ -60,7 +75,6 @@ for channel in [7]:
                      if i==0:
                          fmin = peakmeans[i]-(peakmeans[i+1]-peakmeans[i])/2.
                          lab = "initial fit"
-                         lab2 = "final fit"
                      else:
                          fmin = (peakmeans[i]+peakmeans[i-1])/2.
                      if i==len(peakmeans)-1:
@@ -72,7 +86,7 @@ for channel in [7]:
                  gpts = np.logical_and(fmin<binCenters, fmax>binCenters)
                  x = binCenters[gpts]
                  y = data[gpts]
-                 [p0,p0cov] = curve_fit(gauss, xdata=x, ydata=y, p0=[150,peakmeans[i],10])
+                 [p0,p0cov] = curve_fit(gauss, xdata=x, ydata=y, p0=[150,peakmeans[i],10],bounds=([0,-100,0],[100000,200,50]))
                  subax.plot(x,gauss(x, *p0), color='orange',label=lab)
              except:
                  print("can't perform intial fit to peak #%d on channel %d"%(i,channel))
@@ -93,13 +107,15 @@ for channel in [7]:
 #             xplot = binCenters[gptsplot]
              y = data[gpts]
              try:
-                 [p,pcov] = curve_fit(gauss, xdata=x, ydata=y, p0=p0)
+                 [p,pcov] = curve_fit(gauss, xdata=x, ydata=y, p0=p0,bounds=([0,-100,0],[100000,200,50]))
                  perr = np.sqrt(np.diag(pcov))
                  peaklist.append(p[1])
                  peakerrlist.append(perr[1])
 #                 subax.plot(peakmeans,[400]*len(peakmeans),"o",color="orange")
                  #plot pulse area histos and fitted guassians
-                 subax.plot(x,gauss(x, *p), color='red', label=lab2)
+                 if p[1]>5:
+                     lab2 = lab2+" mean=%.2f\nsigma/mean=%.2f"%(p[1],p[2]/p[1])
+                 subax.plot(x,gauss(x, *p), label=lab2)
              except:
                  print("can't perform final fit to peak #%d on channel %d"%(i,channel))
                  errfig = pl.figure()
@@ -139,7 +155,7 @@ for channel in [7]:
              linfitax.set_xlabel("peak index ",fontsize=fontsize)
              linfitax.set_ylabel("pulse area (mV*ns)",fontsize=fontsize)
          #         pl.plot(peakindex,popt[0]*peakindex+popt[1],"b",label="%d*x+%d"%(popt[0],popt[1]))
-             linfitax.plot(peakindex,popt[0]*peakindex+popt[1],"b",label="sphe size = %.1f$\pm$%.1f mV*ns\n chi^2/ndf=%.4f"%(popt[0],np.sqrt(np.diag(pcov))[0],chi2))
+             linfitax.plot(peakindex,popt[0]*peakindex+popt[1],"b",label="sphe size = %.1f$\pm$%.1f mV*ns\n chi^2/ndf=%.4f\ngain=%d"%(popt[0],np.sqrt(np.diag(pcov))[0],chi2,popt[0]*gainconv))
              linfitax.errorbar(peakindex,peaklist,yerr=peakerrlist,fmt='o',color="b")
              linfitax.set_xticks(peakindex)
              linfitax.legend(loc="lower right")
@@ -151,11 +167,11 @@ for channel in [7]:
              plottemplist.append(temp)
              gainlist.append(popt[0])
              gainerrlist.append(np.sqrt(np.diag(pcov))[0])
+             outfile.write("%d  %f  %f\n"%(channel,gainlist[-1]*gainconv,gainerrlist[-1]*gainconv))
     #plot gain curve for the given channel
     if len(gainlist)>1:
         gainlist = np.array(gainlist)
         plottemplist = np.array(plottemplist)
-        gainconv = pow(10,-3)*pow(10,-9)/(1.602*pow(10,-19)*50)
         gainlist = gainlist*gainconv
         ax.errorbar((plottemplist)*(-1),gainlist,yerr=gainerrlist,fmt='o-',label="channel %d"%channel)
 ax.set_xlabel("Temperature ($^\circ$C)",fontsize=fontsize)
