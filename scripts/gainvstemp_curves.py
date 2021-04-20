@@ -30,10 +30,10 @@ for channel in range(8):
     plottemplist = []
     for temp in templist:
          if channel==0:
-             outfile = open("SiPMgain_-%sC.txt"%str(temp),"w")
-             outfile.write("Channel;Gain;GainError\n")
+             outfile = open(data_dir%str(temp)+"SiPMgain_-%sC.txt"%str(temp),"w")
+             outfile.write("Channel;sphe size (mV*ns);sphe size error;Gain;GainError\n")
          else:
-             outfile = open("SiPMgain_-%sC.txt"%str(temp),"a")
+             outfile = open(data_dir%str(temp)+"SiPMgain_-%sC.txt"%str(temp),"a")
          peaklist = []
          peakerrlist = []
          if channel==7 and temp ==100.6:
@@ -167,7 +167,7 @@ for channel in range(8):
              plottemplist.append(temp)
              gainlist.append(popt[0])
              gainerrlist.append(np.sqrt(np.diag(pcov))[0])
-             outfile.write("%d  %f  %f\n"%(channel,gainlist[-1]*gainconv,gainerrlist[-1]*gainconv))
+             outfile.write("%d  %f  %f  %f  %f\n"%(channel,gainlist[-1],gainerrlist[-1],gainlist[-1]*gainconv,gainerrlist[-1]*gainconv))
     #plot gain curve for the given channel
     if len(gainlist)>1:
         gainlist = np.array(gainlist)
