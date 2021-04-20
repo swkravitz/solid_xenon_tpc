@@ -13,6 +13,8 @@ tscale = (8.0/4096.0)*1000 #ns
 data_dir = "/Users/qingxia/Documents/Physics/LZ/SiPM/dark_count_all_ch_calibration_%s/"
 filebase = "spe_rq_"
 fontsize = 14
+impedance = 50 #input impedance
+gainconv = pow(10,-3)*pow(10,-9)/(1.602*pow(10,-19)*impedance)
 pl.rc('xtick',labelsize=fontsize)
 pl.rc('ytick',labelsize=fontsize)
 def gauss(x,A,mu,sig):
@@ -27,6 +29,11 @@ for channel in range(8):
     gainerrlist = []
     plottemplist = []
     for temp in templist:
+         if channel==0:
+             outfile = open("SiPMgain_-%sC.txt"%str(temp),"w")
+             outfile.write("Channel;Gain;GainError\n")
+         else:
+             outfile = open("SiPMgain_-%sC.txt"%str(temp),"a")
          peaklist = []
          peakerrlist = []
          if channel==7 and temp ==100.6:
@@ -148,7 +155,7 @@ for channel in range(8):
              linfitax.set_xlabel("peak index ",fontsize=fontsize)
              linfitax.set_ylabel("pulse area (mV*ns)",fontsize=fontsize)
          #         pl.plot(peakindex,popt[0]*peakindex+popt[1],"b",label="%d*x+%d"%(popt[0],popt[1]))
-             linfitax.plot(peakindex,popt[0]*peakindex+popt[1],"b",label="sphe size = %.1f$\pm$%.1f mV*ns\n chi^2/ndf=%.4f\ngain=%d"%(popt[0],np.sqrt(np.diag(pcov))[0],chi2,popt[0]*pow(10,-3)*pow(10,-9)/(1.602*pow(10,-19)*50)))
+             linfitax.plot(peakindex,popt[0]*peakindex+popt[1],"b",label="sphe size = %.1f$\pm$%.1f mV*ns\n chi^2/ndf=%.4f\ngain=%d"%(popt[0],np.sqrt(np.diag(pcov))[0],chi2,popt[0]*gainconv))
              linfitax.errorbar(peakindex,peaklist,yerr=peakerrlist,fmt='o',color="b")
              linfitax.set_xticks(peakindex)
              linfitax.legend(loc="lower right")
@@ -160,11 +167,11 @@ for channel in range(8):
              plottemplist.append(temp)
              gainlist.append(popt[0])
              gainerrlist.append(np.sqrt(np.diag(pcov))[0])
+             outfile.write("%d  %f  %f\n"%(channel,gainlist[-1]*gainconv,gainerrlist[-1]*gainconv))
     #plot gain curve for the given channel
     if len(gainlist)>1:
         gainlist = np.array(gainlist)
         plottemplist = np.array(plottemplist)
-        gainconv = pow(10,-3)*pow(10,-9)/(1.602*pow(10,-19)*50)
         gainlist = gainlist*gainconv
         ax.errorbar((plottemplist)*(-1),gainlist,yerr=gainerrlist,fmt='o-',label="channel %d"%channel)
 ax.set_xlabel("Temperature ($^\circ$C)",fontsize=fontsize)
