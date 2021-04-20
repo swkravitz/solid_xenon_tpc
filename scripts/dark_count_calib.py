@@ -39,8 +39,8 @@ mpl.rcParams['legend.fontsize']='small'
 mpl.rcParams['figure.autolayout']=True
 mpl.rcParams['figure.figsize']=[16.0,12.0]
 
-data_dir = "/home/xaber/caen/wavedump-3.8.2/data/040721/dark_count_all_channel_Cu_rod_110.0/"
-channel_name = "0"
+data_dir = "/home/xaber/caen/wavedump-3.8.2/data/041921/dark_count_all_channel_Cu_rod_104.5/"
+channel_name = "7"
 channel_0=np.fromfile(data_dir+"wave"+channel_name+".dat", dtype="int16")
 
 #channel_0=np.fromfile("../../072320/chB_darkcount_calib_50V_-6.1mV/wave0.dat", dtype="int16")
@@ -153,11 +153,11 @@ for i in range(0, int(v_matrix.shape[0])):
     s2_window = t_before+t_after
     s2_max_ind = np.argmax(sum_data)
     s2_max = sum_data[s2_max_ind]
-    #s2_start = s2_max_ind-t_before
-    #s2_end = s2_max_ind+t_after
-    #if s2_start<0 or s2_end>wsize: continue
-    s2_start = np.maximum(0, s2_max_ind-t_before)
-    s2_end = np.minimum(wsize, s2_max_ind+t_after)
+    s2_start = s2_max_ind-t_before
+    s2_end = s2_max_ind+t_after
+    if s2_start<0 or s2_end>wsize: continue
+    #s2_start = np.maximum(0, s2_max_ind-t_before)
+    #s2_end = np.minimum(wsize, s2_max_ind+t_after)
     baseline_start = np.maximum(0, s2_start-t_baseline)
     baseline_correct = np.mean(sum_data[baseline_start:s2_start])
     s2_area = np.sum(sum_data[s2_start:s2_end]-baseline_correct)
@@ -170,7 +170,7 @@ for i in range(0, int(v_matrix.shape[0])):
     #s2_area=s2_max
 	
     ratio=-1
-
+    s2_area = s2_area*tscale*1000 #change unit to mV*ns
     s2_area_array[i]=s2_area
     s2_width_array[i]=s2_width
     s2_height_array[i]=s2_height
@@ -180,11 +180,12 @@ for i in range(0, int(v_matrix.shape[0])):
     s2_found_array[i]=s2_found
     ratio_array[i]=ratio	 
 		
+    
     # once per event
     #if s1_max_ind>-1 and not s1_height_range>s1_range_thresh:
     #if 1.5<t_drift:
     #if 1.08<t_drift<1.12:
-    if s2_found and not inn=='q':
+    if s2_found and not inn=='q' and False:
     #if s1_found and s2_found:
         #print(ratio)
         fig=pl.figure(1,figsize=(20, 10))
@@ -193,10 +194,14 @@ for i in range(0, int(v_matrix.shape[0])):
         
         ax=pl.subplot2grid((1,1),(0,0),colspan=2)
         pl.plot(t_matrix[i,:],sum_data-baseline_correct,'blue')
+        
+        #calculate noise rms
+        pl.hist(sum_data[:100]-baseline_correct)
+        
         pl.grid(b=True,which='major',color='lightgray',linestyle='--',lw=1)
         #pl.xlim([1.5, 2.5])
-        pl.xlim([0, 4])
-        pl.ylim([-10, 20])
+        pl.xlim([0, 2])
+        pl.ylim([-1, 2])
         pl.xlabel('Time (us)')
         pl.ylabel('Millivolts')
         pl.title("Sum,"+ str(i))
@@ -207,7 +212,7 @@ for i in range(0, int(v_matrix.shape[0])):
         if s2_found:
             #ax.axvspan(s2_start_pos*tscale, s2_end_pos*tscale, alpha=0.5, color='blue')
             ax.axvspan(s2_max_ind*tscale, (s2_max_ind+s2_window)*tscale, alpha=0.3, color='green')
-            ax.text((s2_max_ind+s2_window)*tscale, 0.9 * ax.get_ylim()[1], '{:.1f} mv*samples'.format(s2_area),
+            ax.text((s2_max_ind+s2_window)*tscale, 0.9 * ax.get_ylim()[1], '{:.1f} mv*ns'.format(s2_area),
                     fontsize=24)
         if s1_found:
             ax.axvspan(s1_start_pos*tscale, s1_end_pos*tscale, alpha=0.5, color='green')
@@ -226,6 +231,11 @@ print("S2 width mean: ", np.mean(s2_width_array[s2_found_array]))
 print("S2 height mean: ", np.mean(s2_height_array[s2_found_array]))
 
 
+font = {'size'   : 35}
+
+mpl.rc('font', **font)
+
+fit_or_not = False
 
 #pl.figure()
 #pl.xlim([0,3])
@@ -234,27 +244,38 @@ print("S2 height mean: ", np.mean(s2_height_array[s2_found_array]))
 #pl.show()
 def gaussian(x, mean, std,a):
     return a*np.exp(-((x-mean)/std)**2)
-bins = np.linspace(-20, 100, 150)
-s2_start = 8
-s2_end = 18
+bins = np.linspace(-20, 120, 120)
+s2_start = 30
+s2_end = 50
 s2_start_bin = np.digitize(s2_start, bins)
 s2_end_bin = np.digitize(s2_end, bins)
 pl.figure()
 h,b,_=pl.hist(s2_area_array[s2_found_array],bins=bins)
 bin_centers = b[:-1] + np.diff(b)/2
-popt, _ = curve_fit(gaussian,bin_centers[s2_start_bin:s2_end_bin],h[s2_start_bin:s2_end_bin], p0=[270,80,450])
-#print("bin_centers:", bin_centers)
-#print("h:", h)
-print("popt:",popt)
-pl.plot(bin_centers, gaussian(bin_centers, *popt), label ='fit')
+
+if fit_or_not: 
+    popt, _ = curve_fit(gaussian,bin_centers[s2_start_bin:s2_end_bin],h[s2_start_bin:s2_end_bin], p0=[40,3,1000])
+
+    s2_start = int(popt[0]-popt[1])
+    s2_end = int(popt[0]+popt[1])
+    s2_start_bin = np.digitize(s2_start, bins)
+    s2_end_bin = np.digitize(s2_end, bins)
+    popt, _ = curve_fit(gaussian,bin_centers[s2_start_bin:s2_end_bin],h[s2_start_bin:s2_end_bin], p0=[popt[0],popt[1],popt[2]])
+
+    pl.text(0.65,0.95,'mean: {0:g}'.format(popt[0]),transform=pl.gca().transAxes)
+    pl.text(0.65,0.88,'std: {0:g}'.format(popt[1]),transform=pl.gca().transAxes)
+    #print("bin_centers:", bin_centers)
+    #print("h:", h)
+    print("popt:",popt)
+
+    pl.plot(bin_centers, gaussian(bin_centers, *popt), label ='fit')
 
 pl.grid(b=True,which='major',color='lightgray',linestyle='--')
 #pl.yscale("log")
 #pl.axvline(x=popt[0],ls='--',color='r')
-pl.text(0.3,0.8,'Gaussian Mean: {0:g}'.format(popt[0]),transform=pl.gca().transAxes)
-#pl.text(0.3,0.7,'std: {0:g}'.format(popt[1]),transform=pl.gca().transAxes)
+
 #pl.text(0.3,0.6,'Amplitude: {0:g}'.format(popt[2]),transform=pl.gca().transAxes)
-pl.xlabel("Pulse Area")
+pl.xlabel("Pulse Area (mV*ns)")
 
 
 #pl.figure()

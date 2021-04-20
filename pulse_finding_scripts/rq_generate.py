@@ -10,7 +10,7 @@ import PulseQuantities as pq
 import PulseClassification as pc
 
 #data_dir = "G:/.shortcut-targets-by-id/11qeqHWCbcKfFYFQgvytKem8rulQCTpj8/crystalize/data/data-202103/031121/Po_2.8g_3.0c_0.78bar_circ_30min_1312/"
-data_dir = "/home/xaber/caen/wavedump-3.8.2/data/033021/Co_ICV_bot_Po_2.8g_3.0c_0.72bar_circ_5min_1200/"
+data_dir = "/home/xaber/caen/wavedump-3.8.2/data/041921/Po_2.8g_3.0c_0.72bar_circ_20min_0928/"
 
 # set plotting style
 mpl.rcParams['font.size']=10
@@ -265,7 +265,7 @@ for j in range(n_block):
             center_bot_y[i,pp] = (p_area_ch[i,pp,4]+p_area_ch[i,pp,5]-p_area_ch[i,pp,6]-p_area_ch[i,pp,7])/p_area_bottom[i,pp]
             
         # Pulse classifier, work in progress
-        p_class[i,:] = pc.ClassifyPulses(p_tba[i, :], (p_afs_50[i, :]-p_afs_2l[i, :])*tscale, n_pulses[i])
+        p_class[i,:] = pc.ClassifyPulses(p_tba[i, :], (p_afs_50[i, :]-p_afs_2l[i, :])*tscale, n_pulses[i], p_area[i,:])
 
         # Event level analysis. Look at events with both S1 and S2.
         index_s1 = (p_class[i,:] == 1) + (p_class[i,:] == 2) # S1's
@@ -310,8 +310,8 @@ for j in range(n_block):
         
         # Condition to skip the individual plotting, hand scan condition
         #plotyn = drift_Time[i]<2 and drift_Time[i]>0 and np.any((p_tba[i,:]>-0.75)*(p_tba[i,:]<-0.25)*(p_area[i,:]<3000)*(p_area[i,:]>1400))#np.any((p_tba[i,:]>-0.91)*(p_tba[i,:]<-0.82)*(p_area[i,:]<2800)*(p_area[i,:]>1000))# True#np.any(p_class[i,:]==4)#False#np.any(p_area[i,:]>1000) and 
-        #plotyn = drift_Time[i]>0 and sum_s1_area[i]>10**3.1 and sum_s1_area[i]<10**3.5 and sum_s2_area[i]<10**5.1 and sum_s2_area[i]>10**4.6
-        plotyn = False#np.any((p_tba[i,:]>-0.75)*(p_tba[i,:]<-0.25)*(p_area[i,:]<3000)*(p_area[i,:]>1000))
+        plotyn = drift_Time[i]>2.5 and (center_bot_y[i,0]**2+center_bot_x[i,0]**2) <0.1
+        #plotyn = False#np.any((p_tba[i,:]>-0.75)*(p_tba[i,:]<-0.25)*(p_area[i,:]<3000)*(p_area[i,:]>1000))
         #plotyn = np.any((np.log10(p_area[i,:])>3.2)*(np.log10(p_area[i,:])<3.4) )#False#np.any((p_tba[i,:]>-0.75)*(p_tba[i,:]<-0.25)*(p_area[i,:]<3000)*(p_area[i,:]>1000))
         # Pulse area condition
         areaRange = np.sum((p_area[i,:] < 50)*(p_area[i,:] > 5))
