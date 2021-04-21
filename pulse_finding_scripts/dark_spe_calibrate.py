@@ -16,9 +16,10 @@ try:
 except:
     print ("usage: python dark_spe_calibrate.py [bias voltage]")
     exit(0)
-data_dir = "/Volumes/Samsung USB/cold_dark_b%dv/"%bias
+#data_dir = "/Volumes/Samsung USB/cold_dark_b%dv/"%bias
 #data_dir = "/Volumes/Samsung USB/cold_led4.04_b%dv/"%bias
-#data_dir = "/Users/qingxia/Documents/Physics/LZ/SiPM/"
+data_dir = "/Users/qingxia/Documents/Physics/LZ/SiPM/210420/darkcount_LN_b%d_v2/"%bias
+#data_dir = "/Users/qingxia/Documents/Physics/LZ/SiPM/210420/darkcount_LN_b%d/"%bias
 #data_dir = "C:/Users/ryanm/Documents/Research/Data/sipm_test_210319/cold_dark_b10v_noise/"
 
 SPEMode = True
@@ -59,7 +60,7 @@ n_sipms = 16
 t_start = time.time()
 
 block_size = 5000
-n_block = 28
+n_block = 10
 max_evts = n_block*block_size#5000  # 25000 # -1 means read in all entries; 25000 is roughly the max allowed in memory on the DAQ computer
 max_pts = -1  # do not change
 if max_evts > 0:
@@ -77,7 +78,7 @@ p_sarea = np.zeros((n_sipms, max_evts, max_pulses))
 p_area = np.zeros((n_sipms, max_evts, max_pulses))
 p_max_height = np.zeros((n_sipms, max_evts, max_pulses))
 p_width = np.zeros((n_sipms, max_evts, max_pulses))
-p_noisearea = []
+p_noisearea = [[]]*n_sipms
 
 n_pulses = np.zeros((n_sipms, max_evts), dtype=np.int)
 
@@ -233,21 +234,22 @@ for j in range(n_block):
             if SPEMode:
                 noisewin = len(start_times)==0
                 if  noisewin:
-                    p_noisearea.append(pq.GetPulseArea(base_win,2*base_win,v_bls_matrix_all_ch[k, i-j*block_size, :] - baselines[0]))
+                    p_noisearea[k].append(pq.GetPulseArea(5*base_win,6*base_win,v_bls_matrix_all_ch[k, i-j*block_size, :] - baselines[0]))
             # Plotter
             areacut = p_area[k,i,0]*tscale>0.
             #areacut = (p_start[12,i,0] < 0.5/tscale)*p_area[12,i,0] > 0
 
             # horizontal lines: @ zero, baseline, height
             
-            if not inn == 'q' and plotyn and len(start_times)>1 and areacut:
+            if not inn == 'q' and plotyn and (k not in [0,1,8,9,10,11]) and k==3:
                 # Plot something
                 fig = pl.figure(1,figsize=(10, 7))
                 pl.grid(b=True,which='major',color='lightgray',linestyle='--')
-                pl.plot(t_matrix[j,:], v_bls_matrix_all_ch[k,i-j*block_size,:], color='blue')
                 if LED:
+                    pl.plot(t_matrix[j,:], v_bls_matrix_all_ch[k,i-j*block_size,:], color='blue')
                     pl.plot(t_matrix[j,left_bound:right_bound], data_conv, color='red')
                 else:
+                    pl.plot(t_matrix[j,:], v_bls_matrix_all_ch[k,i-j*block_size,:]-baselines[0], color='blue')
                     pl.plot(t_matrix[j,:], data_conv, color='red')
                 for pulse in range(len(start_times)):
                     if start_times[pulse]!=0:
@@ -256,7 +258,7 @@ for j in range(n_block):
                         if not LED:
                             pl.axvspan(baselines_start[pulse]*tscale, baselines_end[pulse]*tscale, alpha=0.25, color='purple',label="baseline")
                 if SPEMode and noisewin: # plot the area for calculating noise area
-                    pl.axvspan(base_win*tscale, 2*base_win*tscale, alpha=0.25, color='orange')
+                    pl.axvspan(5*base_win*tscale, 6*base_win*tscale, alpha=0.25, color='orange',label="noisearea=%.3f mV*us"%(p_noisearea[k][-1]*tscale))
                 pl.hlines(0.1,0,4,color='orange',label='Height treshhold = 0.1')
                 pl.hlines(0,0,4,color="black")
 
@@ -272,7 +274,7 @@ for j in range(n_block):
 #                pl.show(block=0)
                 inn = input("Press enter to continue, q to stop plotting, evt # to skip to # (forward only)")
                 pl.close()
-#                fig.clf()
+#                fig.clf()sareacut
 
 
             
@@ -349,8 +351,8 @@ def SPE_Start_Hist(data,sipm_n):
 
 list_rq = {}
 
-#for p in range(n_sipms):
-for p in range(12,13):
+for p in range(n_sipms):
+#for p in range(12,13):
 
     # Cuts for RQ's
     cutSarea = (p_sarea[p,:,:]*tscale > -0.05)*(p_sarea[p,:,:]*tscale < 0.05)
@@ -374,7 +376,7 @@ for p in range(12,13):
     list_rq['p_max_height_'+str(p)] = cleanHeight
     list_rq['p_start_'+str(p)] = cleanStart
     if SPEMode:
-        list_rq['p_noisearea_'+str(p)] = np.array(p_noisearea)
+        list_rq['p_noisearea_'+str(p)] = np.array(p_noisearea[p])
 
 # Save RQ's
 rq = open(data_dir + "spe_rq_b%dV.npz"%bias,'wb')

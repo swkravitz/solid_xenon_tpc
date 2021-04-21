@@ -17,8 +17,8 @@ except:
     print ("usage: python dark_spe_calibrate.py [temperature]")
     exit(0)
 #data_dir = "/Volumes/Samsung USB/cold_dark_b%dv/"%bias
-#data_dir = "/Volumes/Samsung USB/crystalize/dark_count_all_channel_Cu_rod_%s/"%temp
-data_dir = "/Users/qingxia/Documents/Physics/LZ/SiPM/dark_count_all_ch_calibration_%s/"%temp
+data_dir = "/Volumes/Samsung USB/crystalize/dark_count_all_channel_Cu_rod_%s/"%temp
+#data_dir = "/Users/qingxia/Documents/Physics/LZ/SiPM/dark_count_all_ch_calibration_%s/"%temp
 #data_dir = "C:/Users/ryanm/Documents/Research/Data/sipm_test_210319/cold_dark_b10v_noise/"
 
 SPEMode = False
@@ -77,7 +77,7 @@ p_sarea = np.zeros((n_sipms, max_evts, max_pulses))
 p_area = np.zeros((n_sipms, max_evts, max_pulses))
 p_max_height = np.zeros((n_sipms, max_evts, max_pulses))
 p_width = np.zeros((n_sipms, max_evts, max_pulses))
-p_noisearea = []
+p_noisearea = [[]]*n_sipms
 
 n_pulses = np.zeros((n_sipms, max_evts), dtype=np.int)
 
@@ -232,7 +232,7 @@ for j in range(n_block):
             if SPEMode:
                 noisewin = len(start_times)==0
                 if  noisewin:
-                    p_noisearea.append(pq.GetPulseArea(base_win,2*base_win,v_bls_matrix_all_ch[k, i-j*block_size, :] - baselines[0]))
+                    p_noisearea[k].append(pq.GetPulseArea(base_win,2*base_win,v_bls_matrix_all_ch[k, i-j*block_size, :] - baselines[0]))
             # Plotter
 #            areacut = p_area[k,i,0] > 0
             areacut = np.logical_and(p_area[k,i,0]*tscale*1000>40,p_area[k,i,0]*tscale*1000<200)
@@ -373,7 +373,7 @@ for p in range(n_sipms):
     list_rq['p_max_height_'+str(p)] = cleanHeight
     list_rq['p_start_'+str(p)] = cleanStart
     if SPEMode:
-        list_rq['p_noisearea_'+str(p)] = np.array(p_noisearea)
+        list_rq['p_noisearea_'+str(p)] = np.array(p_noisearea[p])
 
 # Save RQ's
 #rq = open(data_dir + "randomDC_spe_rq_t-%sC.npz"%temp,'wb')
