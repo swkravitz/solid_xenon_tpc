@@ -9,7 +9,7 @@ def GetPulseArea( p_start, p_end, waveforms_bls ):
     area = -999.
     
     try:
-        area = sum( waveforms_bls[p_start:p_end] )
+        area = np.sum( waveforms_bls[p_start:p_end] )
     except ValueError:
         area = -999.
     
@@ -20,7 +20,7 @@ def GetPulseAreaChannel(p_start, p_end, waveform_bls):
     area = []
     n_sipms = np.shape(waveform_bls)[0]-1
     for i in range(n_sipms):
-        area.append(sum(waveform_bls[i, p_start:p_end] ) )
+        area.append(np.sum(waveform_bls[i, p_start:p_end] ) )
     while len(area) < n_sipms:
         area.append(0)
 
@@ -187,35 +187,17 @@ def GetHeightFractionSamples( p_start, p_end, waveforms_bls ):
         hfs_10r = int(-99999) # looking from right
         hfs_50r = int(-99999) # looking from right
         return hfs_10l, hfs_50l, hfs_10r, hfs_50r
-    #print("from the left...")
-    #move through pulse sample-by-sample from left
-    rolling_height = 0.
-    height_fraction = 0.
-    for i in range(int(p_start),int(p_end)): #gives [p_start,p_end)
-        
-        rolling_height = waveforms_bls[i]
-        height_fraction = rolling_height/p_max_height
-        #print("i=",i,"height =",rolling_height,"height fraction = ",height_fraction)
-        if (height_fraction >= 0.10) and (i < hfs_10l):
-            hfs_10l = int(i)
-        if (height_fraction >= 0.50) and (i < hfs_50l):
-            hfs_50l = int(i)
-            break
-    
-    #print("from the right...")
-    #move through pulse sample-by-sample from right
-    rolling_height = 0.
-    height_fraction = 0.
-    for i in range(int(p_end-1),int(p_start-1),-1): #gives [p_end-1,p_start-1) and so includes p_start
-        
-        rolling_height = waveforms_bls[i]
-        height_fraction = rolling_height/p_max_height
-        #print("i=",i,"height =",rolling_height,"height fraction = ",height_fraction)
-        if (height_fraction >= 0.10) and (i > hfs_10r):
-            hfs_10r = int(i)
-        if (height_fraction >= 0.50) and (i > hfs_50r):
-            hfs_50r = int(i)
-            break
+
+    # only consider the part of the waveform in this pulse, start of pulse is sample 0
+    height_fractions = waveforms_bls[int(p_start):int(p_end)]/p_max_height
+    # get first and last index where height is greater than x% of max
+    hfs_10 = np.argwhere(height_fractions >= 0.10)
+    hfs_10l = hfs_10[0]
+    hfs_10r = hfs_10[-1]
+
+    hfs_50 = np.argwhere(height_fractions >= 0.50)
+    hfs_50l = hfs_50[0]
+    hfs_50r = hfs_50[-1]
     
     return hfs_10l, hfs_50l, hfs_10r, hfs_50r
 
@@ -283,3 +265,30 @@ def GetTailArea( p_start, p_end, waveforms_bls ):
         area35 = -999.
     
     return area10, area15, area20, area25, area30, area35
+
+# return list of more precise baselines per channel, estimated separately for each pulse
+# pulse_baselines[i_pulse][j_channel]
+# waveform_bls is the full list of waveforms per channel for a single event
+def GetBaselines(p_starts, p_ends, waveform_bls):
+
+    baseline_window = 1000 # take mean over this many samples
+    rms_max_scale = 5 # do not trust baseline estimate from windows w/ RMS this much larger than from start of event
+    baselines = [ np.mean( ch_j[0:baseline_window] ) for ch_j in waveform_bls ]
+    baseline_sum_rms = np.std( waveform_bls[-1][0:baseline_window] )
+
+    pulse_baselines = [baselines]
+
+    for ii in range(1,len(p_starts)):
+        if (p_starts[ii]-p_ends[ii-1]) < baseline_window:
+            pulse_baselines.append(baselines)
+            continue
+        else:
+            baseline_data = [ch_j[(p_starts[ii]-baseline_window):p_starts[ii]] for ch_j in waveform_bls]
+            this_baseline_rms = np.std( baseline_data[-1] )
+            if this_baseline_rms > rms_max_scale*baseline_sum_rms: # just use previous baseline if RMS is bad
+                pulse_baselines.append(baselines)
+                continue
+            baselines = [np.mean( ch_j ) for ch_j in baseline_data]
+            pulse_baselines.append(baselines)
+
+    return pulse_baselines

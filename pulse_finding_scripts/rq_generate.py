@@ -10,7 +10,8 @@ import PulseQuantities as pq
 import PulseClassification as pc
 
 #data_dir = "G:/.shortcut-targets-by-id/11qeqHWCbcKfFYFQgvytKem8rulQCTpj8/crystalize/data/data-202103/031121/Po_2.8g_3.0c_0.78bar_circ_30min_1312/"
-data_dir = "/home/xaber/caen/wavedump-3.8.2/data/041921/Po_2.8g_3.0c_0.72bar_circ_20min_0928/"
+#data_dir = "/home/xaber/caen/wavedump-3.8.2/data/041921/Po_2.8g_3.0c_0.72bar_circ_20min_0928/"
+data_dir = "G:/My Drive/crystalize/data/data-202104/041421/Po_2.8g_3.0c_1.1bar_circ_60min_1747/"
 
 # set plotting style
 mpl.rcParams['font.size']=10
@@ -239,22 +240,35 @@ for j in range(n_block):
         #        p_end_ch[i,k,j] = end_times_ch[k]
             
 
+        # More precisely estimate baselines immediately before each pulse
+        baselines_precise = pq.GetBaselines(p_start[i,:n_pulses[i]], p_end[i,:n_pulses[i]], v_bls_matrix_all_ch[:,i-j*block_size,:])
+
         # Calculate interesting quantities, only for pulses that were found
         for pp in range(n_pulses[i]):
+            # subtract out more precise estimate of baseline for better RQ estimates
+            baselines_pulse = baselines_precise[pp] # array of baselines per channel, for this pulse
+            v_pulse_bls = np.array([ch_j - baseline_j for (ch_j, baseline_j) in zip(v_bls_matrix_all_ch[:,i-j*block_size,:], baselines_pulse)])
+
+            # Version w/o pulse-level baseline subtraction
+            #v_pulse_bls = v_bls_matrix_all_ch[:,i-j*block_size,:]
+
+            # copied from above, for reference
+            #sum_data = v_matrix_all_ch[-1][i, :] - sum_baseline
+            #ch_data = [ch_j[i, :] - baseline_j for (ch_j, baseline_j) in zip(v_matrix_all_ch, baselines)]
 
             # Area, max & min heights, width, pulse mean & rms
-            p_area[i,pp] = pq.GetPulseArea(p_start[i,pp], p_end[i,pp], v_bls_matrix_all_ch[-1,i-j*block_size,:] )
-            p_max_height[i,pp] = pq.GetPulseMaxHeight(p_start[i,pp], p_end[i,pp], v_bls_matrix_all_ch[-1,i-j*block_size,:] )
-            p_min_height[i,pp] = pq.GetPulseMinHeight(p_start[i,pp], p_end[i,pp], v_bls_matrix_all_ch[-1,i-j*block_size,:] )
+            p_area[i,pp] = pq.GetPulseArea(p_start[i,pp], p_end[i,pp], v_pulse_bls[-1] )
+            p_max_height[i,pp] = pq.GetPulseMaxHeight(p_start[i,pp], p_end[i,pp], v_pulse_bls[-1] )
+            p_min_height[i,pp] = pq.GetPulseMinHeight(p_start[i,pp], p_end[i,pp], v_pulse_bls[-1] )
             p_width[i,pp] = p_end[i,pp] - p_start[i,pp]
             #(p_mean_time[i,pp], p_rms_time[i,pp]) = pq.GetPulseMeanAndRMS(p_start[i,pp], p_end[i,pp], v_bls_matrix_all_ch[-1,i,:])
 
             # Area and height fractions      
-            (p_afs_2l[i,pp], p_afs_1[i,pp], p_afs_25[i,pp], p_afs_50[i,pp], p_afs_75[i,pp], p_afs_99[i,pp]) = pq.GetAreaFraction(p_start[i,pp], p_end[i,pp], v_bls_matrix_all_ch[-1,i-j*block_size,:] )
-            (p_hfs_10l[i,pp], p_hfs_50l[i,pp], p_hfs_10r[i,pp], p_hfs_50r[i,pp]) = pq.GetHeightFractionSamples(p_start[i,pp], p_end[i,pp], v_bls_matrix_all_ch[-1,i-j*block_size,:] )
+            (p_afs_2l[i,pp], p_afs_1[i,pp], p_afs_25[i,pp], p_afs_50[i,pp], p_afs_75[i,pp], p_afs_99[i,pp]) = pq.GetAreaFraction(p_start[i,pp], p_end[i,pp], v_pulse_bls[-1] )
+            (p_hfs_10l[i,pp], p_hfs_50l[i,pp], p_hfs_10r[i,pp], p_hfs_50r[i,pp]) = pq.GetHeightFractionSamples(p_start[i,pp], p_end[i,pp], v_pulse_bls[-1] )
         
             # Areas for individual channels and top bottom
-            p_area_ch[i,pp,:] = pq.GetPulseAreaChannel(p_start[i,pp], p_end[i,pp], v_bls_matrix_all_ch[:,i-j*block_size,:] )
+            p_area_ch[i,pp,:] = pq.GetPulseAreaChannel(p_start[i,pp], p_end[i,pp], v_pulse_bls )
             p_area_ch_frac[i,pp,:] = p_area_ch[i,pp,:]/p_area[i,pp]
             p_area_top[i,pp] = sum(p_area_ch[i,pp,top_channels])
             p_area_bottom[i,pp] = sum(p_area_ch[i,pp,bottom_channels])
@@ -274,9 +288,9 @@ for j in range(n_block):
         n_s2[i] = np.sum(index_s2)
         
         if n_s1[i] > 0:
-            sum_s1_area[i] = sum(p_area[i, index_s1])
+            sum_s1_area[i] = np.sum(p_area[i, index_s1])
         if n_s2[i] > 0:
-            sum_s2_area[i] = sum(p_area[i, index_s2])
+            sum_s2_area[i] = np.sum(p_area[i, index_s2])
         if n_s1[i] == 1:
             if n_s2[i] == 1:
                 drift_Time[i] = tscale*(p_start[i, np.argmax(index_s2)] - p_start[i, np.argmax(index_s1)])
@@ -310,8 +324,8 @@ for j in range(n_block):
         
         # Condition to skip the individual plotting, hand scan condition
         #plotyn = drift_Time[i]<2 and drift_Time[i]>0 and np.any((p_tba[i,:]>-0.75)*(p_tba[i,:]<-0.25)*(p_area[i,:]<3000)*(p_area[i,:]>1400))#np.any((p_tba[i,:]>-0.91)*(p_tba[i,:]<-0.82)*(p_area[i,:]<2800)*(p_area[i,:]>1000))# True#np.any(p_class[i,:]==4)#False#np.any(p_area[i,:]>1000) and 
-        plotyn = drift_Time[i]>2.5 and (center_bot_y[i,0]**2+center_bot_x[i,0]**2) <0.1
-        #plotyn = False#np.any((p_tba[i,:]>-0.75)*(p_tba[i,:]<-0.25)*(p_area[i,:]<3000)*(p_area[i,:]>1000))
+        #plotyn = drift_Time[i]>2.5 and (center_bot_y[i,0]**2+center_bot_x[i,0]**2) <0.1
+        plotyn = False#np.any((p_tba[i,:]>-0.75)*(p_tba[i,:]<-0.25)*(p_area[i,:]<3000)*(p_area[i,:]>1000))
         #plotyn = np.any((np.log10(p_area[i,:])>3.2)*(np.log10(p_area[i,:])<3.4) )#False#np.any((p_tba[i,:]>-0.75)*(p_tba[i,:]<-0.25)*(p_area[i,:]<3000)*(p_area[i,:]>1000))
         # Pulse area condition
         areaRange = np.sum((p_area[i,:] < 50)*(p_area[i,:] > 5))
