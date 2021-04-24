@@ -8,9 +8,11 @@ import PulseQuantities as pq
 import PulseClassification as pc
 
 #data_dir = "D:/.shortcut-targets-by-id/11qeqHWCbcKfFYFQgvytKem8rulQCTpj8/crystalize/data/data-202102/022421/Po_6.8g_7.0c_3mV_1.75bar_circ_20min/"
-data_dir = "/home/xaber/caen/wavedump-3.8.2/data/032321/Po_4.8g_7.0c_1.2bar_circ_20min_1212/"
+#data_dir = "/home/xaber/caen/wavedump-3.8.2/data/032321/Po_4.8g_7.0c_1.2bar_circ_20min_1212/"
 #data_dir = "G:/My Drive/crystalize/data/data-202103/032221/Co_ICVbot_Po_2.8g_3.00c_1.1bar_circ_5min_1720/"
-
+with open("path.txt", 'r') as path:
+    data_dir = path.read()
+   
 # set plotting style
 mpl.rcParams['font.size']=10
 mpl.rcParams['legend.fontsize']='small'
@@ -242,7 +244,7 @@ basicScatter(cleanTBA, cleanRiseTime, s=1.2, c=pulse_class_colors[cleanPulseClas
 basicScatter(cleanArea, cleanRiseTime, s=1.2, c=pulse_class_colors[cleanPulseClass], logx=True, logy=True, xlim=[5,10**6], ylim=[.01,4], xlabel="Pulse area (phd)", ylabel="Rise time, 50-2 (us)", legHand=pc_legend_handles, name="RiseTime_vs_PulseArea_"+pulse_cut_name, save=save_pulse_plots)
 #xlim=[0.7*min(p_area.flatten()), 1.5*max(p_area.flatten())]
 
-basicScatter(cleanTBA, cleanArea, s=1.2, c=pulse_class_colors[cleanPulseClass], xlim=[-1.01,1.01], ylim=[0, 6000], xlabel="TBA", ylabel="Pulse area (phd)", legHand=pc_legend_handles, name="PulseArea_vs_TBA_"+pulse_cut_name, save=save_pulse_plots)
+basicScatter(cleanTBA, cleanArea, s=1.2, c=pulse_class_colors[cleanPulseClass], xlim=[-1.01,1.01], ylim=[0, 30000], xlabel="TBA", ylabel="Pulse area (phd)", legHand=pc_legend_handles, name="PulseArea_vs_TBA_"+pulse_cut_name, save=save_pulse_plots)
 
 # Channel fractional area for all pulses
 pl.figure()

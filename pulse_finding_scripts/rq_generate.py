@@ -11,7 +11,9 @@ import PulseClassification as pc
 
 #data_dir = "G:/.shortcut-targets-by-id/11qeqHWCbcKfFYFQgvytKem8rulQCTpj8/crystalize/data/data-202103/031121/Po_2.8g_3.0c_0.78bar_circ_30min_1312/"
 #data_dir = "/home/xaber/caen/wavedump-3.8.2/data/041921/Po_2.8g_3.0c_0.72bar_circ_20min_0928/"
-data_dir = "G:/My Drive/crystalize/data/data-202104/041421/Po_2.8g_3.0c_1.1bar_circ_60min_1747/"
+#data_dir = "G:/My Drive/crystalize/data/data-202104/041421/Po_2.8g_3.0c_1.1bar_circ_60min_1747/"
+with open("path.txt", 'r') as path:
+    data_dir = path.read()
 
 # set plotting style
 mpl.rcParams['font.size']=10
@@ -40,15 +42,23 @@ top_channels=np.array(range(n_top),int)
 bottom_channels=np.array(range(n_top,2*n_top),int)
 
 # sphe sizes in mV*sample
-chA_spe_size = 29.02
-chB_spe_size = 30.61
-chC_spe_size = 28.87
-chD_spe_size = 28.86*1.25 # scale factor (0.7-1.4) empirical as of Dec 9, 2020
-chE_spe_size = 30.4
-chF_spe_size = 30.44
-chG_spe_size = 30.84
-chH_spe_size = 30.3*1.8 # scale factor (1.6-2.2) empirical as of Dec 9, 2020
+ns_to_sample = 1024./2000. #convert spe size unit from mV*ns to mV*sample
+spe = {}
+with open(data_dir+"spe.txt", 'r') as file:
+    for line in file:
+        (key, val) = line.split()
+        spe[key] = float(val)*ns_to_sample
+
+chA_spe_size = spe["ch0"]#29.02
+chB_spe_size = spe["ch1"]#30.61
+chC_spe_size = spe["ch2"]#28.87
+chD_spe_size = spe["ch3"]#28.86*1.25 # scale factor (0.7-1.4) empirical as of Dec 9, 2020
+chE_spe_size = spe["ch4"]#30.4
+chF_spe_size = spe["ch5"]#30.44
+chG_spe_size = spe["ch6"]#30.84
+chH_spe_size = spe["ch7"]#30.3*1.8 # scale factor (1.6-2.2) empirical as of Dec 9, 2020
 spe_sizes = [chA_spe_size, chB_spe_size, chC_spe_size, chD_spe_size, chE_spe_size, chF_spe_size, chG_spe_size, chH_spe_size]
+
 # ==================================================================
 
 #load in raw data
