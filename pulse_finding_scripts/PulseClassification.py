@@ -7,7 +7,7 @@ def ClassifyPulses(tba, t_rise, n_pulses, p_area):
     # May want everything below rise time of 0.2 to be S1-like, can subdivide S1 -> gas vs liquid?
     # Tricky bc discrimination space for gas-like pulses looks pretty different when voltages are on vs off
     # Clearly want to keep green as normal S1, always below ~0.125
-    max_t_rise = (1.5/100/np.log10(2))*(p_area**(np.log10(2)/2.5))
+    max_t_rise = (1.5/100/np.log10(2))*(np.sign(p_area)*(np.absolute(p_area)**(np.log10(2)/2.5)))
     case1 = (tba < 0)*(t_rise < max_t_rise) # normal S1s
     case2 = (tba >= 0)*(t_rise < max_t_rise) # top-focused S1s; e.g. in gas or LXe above top array
     case3 = (tba > -0.25)*(t_rise >= max_t_rise) # normal-ish S2s
