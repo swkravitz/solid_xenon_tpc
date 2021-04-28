@@ -97,9 +97,9 @@ def findPulses(waveform_bls, max_pulses, SPEMode=False):
     # pulse finder parameters for tuning
     else:
         pulse_window = int(12.0 / tscale) # was 7 us; any reason this can't just always go to next pulse or end of wfm?
-        conv_width = 100 #int(0.3 / tscale) # in samples
+        conv_width = 50 #int(0.3 / tscale) # in samples
         min_height = 0.10 # phd/sample
-        min_dist = int(0.5 / tscale) # in samples
+        min_dist = int(0.3 / tscale) # in samples
         bounds_conv_width = 5 # in samples
         pulse_start_frac = 0.01  # pulse starts at this fraction of peak height above baseline
         pulse_end_frac = 0.01  # pulse starts at this fraction of peak height above baseline
@@ -116,24 +116,26 @@ def findPulses(waveform_bls, max_pulses, SPEMode=False):
 
     # only keep the largest max_pulses peaks
     peak_height_order = np.argsort(peak_conv_heights)
-    lg_peaks = np.sort(peak_height_order[:max_pulses])
+    #peak_height_order = np.argsort(properties['prominences'])
+    lg_peaks = np.sort(peak_height_order[-max_pulses:])
     # peak_ind_cut = [ii for ii in range(len(peaks)) if not ii in lg_peaks]
     peaks, peak_conv_heights, properties = cull_peaks(peaks, peak_conv_heights, properties, lg_peaks)
 
     # Mark peaks that should be removed (merged w/ previous ones):
     # If a peak has small prominence relative to previous peak height w/in some window, remove it
     # Aimed at removing S2 falling tails
-    merge_frac = 0.05  # Initial testing suggests this is about right "by eye" (0.07 is too high, 0.02 is too low)
+    merge_frac = 0.6  # Initial testing suggests this is about right "by eye" (0.07 is too high, 0.02 is too low)
     time_diffs = (peaks[1:] - peaks[:-1])
-    small_peak = properties['prominences'][1:] < peak_conv_heights[:-1] * merge_frac
+    small_peak = properties['prominences'][1:] < peak_conv_heights[1:] * merge_frac
     prev_peak_near = time_diffs < int(pulse_window / 2)  # was [:-1]...
     peak_ind_cut = np.where(small_peak * prev_peak_near)[0] + 1  # add 1 since we're always looking back one pulse
 
     # Remove peaks that were marked to be cut
     if len(peak_ind_cut) > 0 and True:
-        # print("remove peaks: ", peak_ind_cut)
-        # print("Prominences: ", properties["prominences"])
-        # print("prominence ratios: ", properties['prominences'][1:][peak_ind_cut-1]/(peak_conv_heights[:-1][peak_ind_cut-1]))
+        #print("remove peaks: ", peak_ind_cut)
+        #print("Prominences: ", properties["prominences"])
+        #print("prominence ratios: ", properties['prominences'][1:][peak_ind_cut-1]/(peak_conv_heights[:-1][peak_ind_cut-1]))
+        #print("time of the peak:", peaks[peak_ind_cut]*tscale)
         peak_ind_keep = [ii for ii in range(len(peaks)) if not ii in peak_ind_cut]
         peaks, peak_conv_heights, properties = cull_peaks(peaks, peak_conv_heights, properties, peak_ind_keep)
 
