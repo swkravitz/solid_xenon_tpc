@@ -169,7 +169,6 @@ for j in range(n_block):
     # create a time axis in units of µs:
     x = np.arange(0, wsize, 1)
     t = tscale*x
-    t_matrix = np.repeat(t[np.newaxis,:], V.size/wsize, 0)
 
     # Note: if max_evts != -1, we won't load in all events in the dataset
     n_events = int(v_matrix_all_ch[0].shape[0])
@@ -374,7 +373,7 @@ for j in range(n_block):
                         ax.axvspan(start_times[pulse] * tscale, end_times[pulse] * tscale, alpha=0.25,
                                    color=pulse_class_colors[p_class[i, pulse]])
                 
-                pl.plot(t_matrix[i,:],v_bls_matrix_all_ch[i_chan,i-j*block_size,:],color=ch_colors[i_chan],label=ch_labels[i_chan])
+                pl.plot(t,v_bls_matrix_all_ch[i_chan,i-j*block_size,:],color=ch_colors[i_chan],label=ch_labels[i_chan])
                 #pl.plot( x, v_bls_matrix_all_ch[i_chan,i,:],color=ch_colors[i_chan],label=ch_labels[i_chan] )
                 pl.xlim([trigger_time_us-8,trigger_time_us+8])
                 #pl.xlim([wsize/2-4000,wsize/2+4000])
@@ -385,7 +384,7 @@ for j in range(n_block):
                 pl.legend()
             
             ax = pl.subplot2grid((2,2),(1,0),colspan=2)
-            #pl.plot(t_matrix[i,:],v_bls_matrix_all_ch[-1,i,:],'blue')
+            #pl.plot(t,v_bls_matrix_all_ch[-1,i,:],'blue')
             pl.plot( x*tscale, v_bls_matrix_all_ch[-1,i-j*block_size,:],'blue' )
             #pl.xlim([0,wsize])
             pl.xlim([0,event_window])

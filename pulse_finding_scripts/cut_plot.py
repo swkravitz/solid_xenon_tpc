@@ -47,17 +47,6 @@ n_top = int((n_channels-1)/2)
 top_channels=np.array(range(n_top),int)
 bottom_channels=np.array(range(n_top,2*n_top),int)
 
-# sphe sizes in mV*sample
-chA_spe_size = 29.02
-chB_spe_size = 30.61
-chC_spe_size = 28.87
-chD_spe_size = 28.86*1.25 # scale factor (0.7-1.4) empirical as of Dec 9, 2020
-chE_spe_size = 30.4
-chF_spe_size = 30.44
-chG_spe_size = 30.84
-chH_spe_size = 30.3*1.8 # scale factor (1.6-2.2) empirical as of Dec 9, 2020
-spe_sizes = [chA_spe_size, chB_spe_size, chC_spe_size, chD_spe_size, chE_spe_size, chF_spe_size, chG_spe_size, chH_spe_size]
-
 #read RQ
 listrq = np.load(data_dir+'rq.npz')
 
@@ -100,6 +89,7 @@ cut_dict['PulseClass0'] = p_class == 0
 cut_dict['S1'] = (p_class == 1) + (p_class == 2)
 cut_dict['S2'] = (p_class == 3) + (p_class == 4)
 cut_dict['Co_peak'] = (p_area>30)*(p_area<60)
+cut_dict['PoS1'] = cut_dict['S1']*(p_tba<-0.0)*(p_tba>-0.7)*(p_area>4000)*(p_area<20000)
 SS_cut = drift_Time > 0
 
 # Pick which cut from cut_dict to apply here and whether to save plots
@@ -107,6 +97,7 @@ save_pulse_plots=True # One entry per pulse
 save_S1S2_plots=True # One entry per S1 (S2) pulse
 save_event_plots=True # One entry per event
 save_2S2_plots=True # One entry per event w/ 2 S2s
+save_PoS1_plots=False # One entry per event w/ 1 Po S1, specific to studies of S2 multiplicity
 pulse_cut_name = 'ValidPulse'#'Co_peak'
 pulse_cut = cut_dict[pulse_cut_name]
 print("number of pulses found passing cut "+pulse_cut_name+" = {0:d} ({1:g}% of pulses found)".format(np.sum(pulse_cut),np.sum(pulse_cut)*100./np.sum(n_pulses)))
@@ -164,6 +155,7 @@ event_cut_dict["MS"] = (n_s1 == 1)*(n_s2 > 1)*s1_before_s2
 event_cut_dict["Po"] = (drift_Time>4)*np.any((p_tba<-0.0)*(p_tba>-0.7)*(p_area>1000)*(p_area<4000), axis=1)#np.any((p_tba<-0.85)*(p_tba>-0.91)*(p_area>1500)*(p_area<2700), axis=1) # true if any pulse in event matches these criteria
 event_cut_dict["lg_S1"] = (drift_Time>0)*np.any((p_area>1000.)*cut_dict["S1"], axis=1) # true if any S1 has area>1000
 event_cut_dict["2S2"] = (n_s2 == 2)
+event_cut_dict["PoS1"] = (np.sum(cut_dict['PoS1'], axis=1)==1)#*(n_s2>0)
 
 event_cut_name = "Po"#"Po"#"lg_S1"
 event_cut = event_cut_dict[event_cut_name] 
@@ -380,3 +372,33 @@ pl.figure()
 pl.hist(dt_2s2,bins=50)
 pl.xlabel('Time between S2s (us)')
 if save_2S2_plots: pl.savefig(data_dir+"2S2_time_diff.png")
+
+# Events w/ 1 up-going Po-like S1
+if save_PoS1_plots:
+    n_lg_s2 = np.sum((p_area>100.)*cut_dict['S2'], axis=1)
+    event_cut_dict['PoS1lgS2'] = event_cut_dict['PoS1']*n_lg_s2>0
+    n_lg_s2_PoS1 = n_lg_s2[event_cut_dict['PoS1lgS2']]
+
+    s1_bool_PoS1 = cut_dict['PoS1'][event_cut_dict['PoS1lgS2']] # get boolean array of Po S1 pulses, w/in events w/ one Po S1
+    s1_ind_array = np.array(np.where(s1_bool_PoS1)) # convert to an array of indices
+    s1_ind = tuple(s1_ind_array)
+    s1_TBA_PoS1 = p_tba[event_cut_dict['PoS1lgS2']][s1_ind]
+
+    pl.figure()
+    pl.scatter(s1_TBA_PoS1, n_lg_s2_PoS1)
+    pl.xlabel('S1 TBA')
+    pl.ylabel('n_S2')
+    TBA_bins=np.linspace(-0.8,0,20)
+    TBA_ind=np.digitize(s1_TBA_PoS1, bins=TBA_bins)
+    ns2_means=np.zeros(np.shape(TBA_bins))
+    ns2_std_err=np.ones(np.shape(TBA_bins))*0#10000
+    for i_bin in range(len(TBA_bins)):
+        found_i_bin = np.where(TBA_ind==i_bin)
+        ns2_i_bin = n_lg_s2_PoS1[found_i_bin]
+        if len(ns2_i_bin) < 1: continue
+        ns2_means[i_bin]=np.mean(ns2_i_bin) # Median instead of mean, better at ignoring outliers
+        ns2_std_err[i_bin]=np.std(ns2_i_bin)/np.sqrt(len(ns2_i_bin))
+    pl.errorbar(TBA_bins, ns2_means, yerr=ns2_std_err, linewidth=3, elinewidth=3, capsize=5, capthick=4, color='red')
+    pl.ylim(bottom=0)
+
+    pl.savefig(data_dir+"PoS1lgS2_nS2_vs_S1_TBA.png")
