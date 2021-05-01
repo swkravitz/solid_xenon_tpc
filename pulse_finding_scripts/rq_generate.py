@@ -142,6 +142,8 @@ big_weird_areas = np.zeros(max_evts)
 
 n_golden = 0
 
+inn="" # used to control hand scan
+
 for j in range(n_block):
     ch_data = []
     for ch_ind in range(n_sipms):
@@ -205,7 +207,7 @@ for j in range(n_block):
 #check mark
     
 
-    inn=""
+    
 
     print("Running pulse finder on {:d} events...".format(n_events))
 
@@ -348,7 +350,7 @@ for j in range(n_block):
         # Both S1 and S2 condition
         s1s2 = (n_s1[i] == 1)*(n_s2[i] == 1)
 
-        if inn == 'stop': sys.exit()
+        if inn == 's': sys.exit()
         
         if not inn == 'q' and plot_event_ind == i and plotyn:
 
@@ -406,8 +408,8 @@ for j in range(n_block):
             # Debugging of pulse finder
             debug_pf = True
             if debug_pf and n_pulses[i]>0:
-                pl.plot(t_matrix[i, :], data_conv, 'red')
-                pl.plot(t_matrix[i, :], np.tile(0., np.size(data_conv)), 'gray')
+                pl.plot(t_matrix[i-j*block_size, :], data_conv, 'red')
+                pl.plot(t_matrix[i-j*block_size, :], np.tile(0., np.size(data_conv)), 'gray')
                 pl.vlines(x=peaks*tscale, ymin=data_conv[peaks] - properties["prominences"],
                            ymax=data_conv[peaks], color="C1")
                 pl.hlines(y=properties["width_heights"], xmin=properties["left_ips"]*tscale,
