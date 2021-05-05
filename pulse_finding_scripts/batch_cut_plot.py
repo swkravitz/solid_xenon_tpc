@@ -10,9 +10,9 @@ import PulseClassification as pc
 from glob import glob
 
 #process all data sets but the calibration data under this main folder
-list_dir = glob("G:/.shortcut-targets-by-id/11qeqHWCbcKfFYFQgvytKem8rulQCTpj8/crystalize/data/data-202104/042821/*/")
+list_dir = glob("/home/xaber/caen/wavedump-3.8.2/data/20210503/*/")
 for dir in list_dir:
-    if "dark" in dir: list_dir.remove(dir)
+    if ("spe" in dir) or ("dark" in dir): list_dir.remove(dir)
 
 for data_dir in list_dir:
     print("Now start to process:"+data_dir)
