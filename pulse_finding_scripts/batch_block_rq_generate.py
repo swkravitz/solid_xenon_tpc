@@ -13,7 +13,8 @@ from glob import glob
 list_dir = glob("/home/xaber/caen/wavedump-3.8.2/data/20210503/*/")
 for dir in list_dir:
     if ("spe" in dir) or ("dark" in dir): list_dir.remove(dir)
-print('Data to process:', list_dir)
+print('Data to process:', '\n'.join(list_dir))
+
 for data_dir in list_dir:
     print("Now start to process:"+data_dir)
     # set plotting style
