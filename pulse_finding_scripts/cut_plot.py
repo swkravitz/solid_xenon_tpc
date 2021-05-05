@@ -30,7 +30,7 @@ for class_ind in range(len(pulse_class_labels)):
 # ==================================================================
 # define DAQ and other parameters
 #wsize = 12500             # size of event window in samples. 1 sample = 2 ns.
-event_window = 25.  # in us
+event_window = 50.  # in us
 wsize = int(500 * event_window)  # samples per waveform # 12500 for 25 us
 vscale = (2000.0/16384.0) # = 0.122 mV/ADCC, vertical scale
 tscale = (8.0/4096.0)     # = 0.002 µs/sample, time scale
@@ -157,7 +157,7 @@ event_cut_dict["lg_S1"] = (drift_Time>0)*np.any((p_area>1000.)*cut_dict["S1"], a
 event_cut_dict["2S2"] = (n_s2 == 2)
 event_cut_dict["PoS1"] = (np.sum(cut_dict['PoS1'], axis=1)==1)#*(n_s2>0)
 
-event_cut_name = "Po"#"Po"#"lg_S1"
+event_cut_name = "SS"#"Po"#"lg_S1"
 event_cut = event_cut_dict[event_cut_name] 
 cleanSumS1 = sum_s1_area[event_cut]
 cleanSumS2 = sum_s2_area[event_cut]

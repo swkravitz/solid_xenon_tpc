@@ -24,7 +24,7 @@ mpl.rcParams['figure.figsize']=[8.0,6.0]
 # ==================================================================
 # define DAQ and other parameters
 #wsize = 12500             # size of event window in samples. 1 sample = 2 ns.
-event_window = 25.  # in us
+event_window = 50.  # in us
 wsize = int(500 * event_window)  # samples per waveform # 12500 for 25 us
 vscale = (2000.0/16384.0) # = 0.122 mV/ADCC, vertical scale
 tscale = (8.0/4096.0)     # = 0.002 µs/sample, time scale
@@ -141,6 +141,7 @@ small_weird_areas = np.zeros(max_evts)
 big_weird_areas = np.zeros(max_evts)
 
 n_golden = 0
+inn=""
 
 inn="" # used to control hand scan
 
@@ -205,9 +206,12 @@ for j in range(n_block):
 
     
 #check mark
+<<<<<<< HEAD
+=======
     
 
     
+>>>>>>> 390f4ce0e0e5f06e95b62b9e57e7443b7569cc7b
 
     print("Running pulse finder on {:d} events...".format(n_events))
 
@@ -336,7 +340,7 @@ for j in range(n_block):
         # Condition to skip the individual plotting, hand scan condition
         #plotyn = drift_Time[i]<2 and drift_Time[i]>0 and np.any((p_tba[i,:]>-0.75)*(p_tba[i,:]<-0.25)*(p_area[i,:]<3000)*(p_area[i,:]>1400))#np.any((p_tba[i,:]>-0.91)*(p_tba[i,:]<-0.82)*(p_area[i,:]<2800)*(p_area[i,:]>1000))# True#np.any(p_class[i,:]==4)#False#np.any(p_area[i,:]>1000) and 
         #plotyn = drift_Time[i]>2.5 and (center_bot_y[i,0]**2+center_bot_x[i,0]**2) <0.1
-        plotyn = True#np.any((p_tba[i,:]>-0.75)*(p_tba[i,:]<-0.25)*(p_area[i,:]<3000)*(p_area[i,:]>1000))
+        plotyn = True #np.any((p_class[i,:] == 3) + (p_class[i,:] == 4))#np.any((p_tba[i,:]>-0.75)*(p_tba[i,:]<-0.25)*(p_area[i,:]<3000)*(p_area[i,:]>1000))
         #plotyn = np.any((np.log10(p_area[i,:])>3.2)*(np.log10(p_area[i,:])<3.4) )#False#np.any((p_tba[i,:]>-0.75)*(p_tba[i,:]<-0.25)*(p_area[i,:]<3000)*(p_area[i,:]>1000))
         # Pulse area condition
         areaRange = np.sum((p_area[i,:] < 50)*(p_area[i,:] > 5))
@@ -414,6 +418,8 @@ for j in range(n_block):
                            ymax=data_conv[peaks], color="C1")
                 pl.hlines(y=properties["width_heights"], xmin=properties["left_ips"]*tscale,
                            xmax=properties["right_ips"]*tscale, color="C1")
+                #print("pulse heights: ", data_conv[peaks] )
+                #print("prominences:", properties["prominences"])
 
             pl.draw()
             pl.show(block=0)
