@@ -1,4 +1,3 @@
-
 import numpy as np
 import matplotlib.pyplot as pl
 import matplotlib as mpl
@@ -10,8 +9,11 @@ import PulseQuantities as pq
 import PulseClassification as pc
 from glob import glob
 
-list_dir = glob("G:/.shortcut-targets-by-id/11qeqHWCbcKfFYFQgvytKem8rulQCTpj8/crystalize/data/data-202102/022321/*/")
-
+#process all data sets but the calibration data under this main folder
+list_dir = glob("G:/.shortcut-targets-by-id/11qeqHWCbcKfFYFQgvytKem8rulQCTpj8/crystalize/data/data-202104/20210428/*/")
+for dir in list_dir:
+    if "dark" in dir: list_dir.remove(dir)
+print('Data to process:', list_dir)
 for data_dir in list_dir:
     print("Now start to process:"+data_dir)
     # set plotting style
@@ -41,23 +43,31 @@ for data_dir in list_dir:
     bottom_channels=np.array(range(n_top,2*n_top),int)
 
     # sphe sizes in mV*sample
-    chA_spe_size = 29.02
-    chB_spe_size = 30.61
-    chC_spe_size = 28.87
-    chD_spe_size = 28.86*1.25 # scale factor (0.7-1.4) empirical as of Dec 9, 2020
-    chE_spe_size = 30.4
-    chF_spe_size = 30.44
-    chG_spe_size = 30.84
-    chH_spe_size = 30.3*1.8 # scale factor (1.6-2.2) empirical as of Dec 9, 2020
+    ns_to_sample = 1024./2000. #convert spe size unit from mV*ns to mV*sample
+    spe = {}
+    with open(data_dir+"spe.txt", 'r') as file:
+        for line in file:
+            (key, val) = line.split()
+            spe[key] = float(val)*ns_to_sample
+
+    chA_spe_size = spe["ch0"]#29.02
+    chB_spe_size = spe["ch1"]#30.61
+    chC_spe_size = spe["ch2"]#28.87
+    chD_spe_size = spe["ch3"]#28.86*1.25 # scale factor (0.7-1.4) empirical as of Dec 9, 2020
+    chE_spe_size = spe["ch4"]#30.4
+    chF_spe_size = spe["ch5"]#30.44
+    chG_spe_size = spe["ch6"]#30.84
+    chH_spe_size = spe["ch7"]#30.3*1.8 # scale factor (1.6-2.2) empirical as of Dec 9, 2020
     spe_sizes = [chA_spe_size, chB_spe_size, chC_spe_size, chD_spe_size, chE_spe_size, chF_spe_size, chG_spe_size, chH_spe_size]
+
     # ==================================================================
 
     #load in raw data
 
     t_start = time.time()
 
-    block_size = 2000
-    n_block = 10
+    block_size = 3000
+    n_block = 100
     max_evts = n_block*block_size#5000  # 25000 # -1 means read in all entries; 25000 is roughly the max allowed in memory on the DAQ computer
     max_pts = -1  # do not change
     if max_evts > 0:
@@ -72,16 +82,16 @@ for data_dir in list_dir:
     # Pulse class (S1, S2, other)
     # max number of pulses per event
     max_pulses = 4
-    p_start = np.zeros(( max_evts, max_pulses), dtype=np.int)
-    p_end   = np.zeros(( max_evts, max_pulses), dtype=np.int)
-    p_found = np.zeros(( max_evts, max_pulses), dtype=np.int)
-    
+    p_start = np.zeros(( max_evts, max_pulses), dtype=int)
+    p_end   = np.zeros(( max_evts, max_pulses), dtype=int)
+    p_found = np.zeros(( max_evts, max_pulses), dtype=int)
+
     #center of mass
     center_top_x = np.zeros(( max_evts, max_pulses))
     center_top_y = np.zeros(( max_evts, max_pulses))
     center_bot_x = np.zeros(( max_evts, max_pulses))
     center_bot_y = np.zeros(( max_evts, max_pulses))
-    
+
     p_area = np.zeros(( max_evts, max_pulses))
     p_max_height = np.zeros(( max_evts, max_pulses))
     p_min_height = np.zeros(( max_evts, max_pulses))
@@ -104,8 +114,8 @@ for data_dir in list_dir:
     p_rms_time = np.zeros((max_evts, max_pulses) )
 
     # Channel level (per event, per pulse, per channel)
-    p_start_ch = np.zeros((max_evts, max_pulses, n_channels-1), dtype=np.int)
-    p_end_ch = np.zeros((max_evts, max_pulses, n_channels-1), dtype=np.int )
+    p_start_ch = np.zeros((max_evts, max_pulses, n_channels-1), dtype=int)
+    p_end_ch = np.zeros((max_evts, max_pulses, n_channels-1), dtype=int )
     p_area_ch = np.zeros((max_evts, max_pulses, n_channels-1) )
     p_area_ch_frac = np.zeros((max_evts, max_pulses, n_channels-1) )
 
@@ -113,17 +123,18 @@ for data_dir in list_dir:
     p_area_bottom = np.zeros((max_evts, max_pulses))
     p_tba = np.zeros((max_evts, max_pulses))
 
-    p_class = np.zeros((max_evts, max_pulses), dtype=np.int)
+    p_class = np.zeros((max_evts, max_pulses), dtype=int)
 
     # Event-level variables
-    n_pulses = np.zeros(max_evts, dtype=np.int)
+    n_pulses = np.zeros(max_evts, dtype=int)
 
-    n_s1 = np.zeros(max_evts, dtype=np.int)
-    n_s2 = np.zeros(max_evts, dtype=np.int)
+    n_s1 = np.zeros(max_evts, dtype=int)
+    n_s2 = np.zeros(max_evts, dtype=int)
     sum_s1_area = np.zeros(max_evts)
     sum_s2_area = np.zeros(max_evts)
     drift_Time = np.zeros(max_evts)
-    s1_before_s2 = np.zeros(max_evts)
+    drift_Time_AS = np.zeros(max_evts) # for multi-scatter drift time, defined by the first S2. 
+    s1_before_s2 = np.zeros(max_evts, dtype=bool)
 
     # Temporary, for testing low area, multiple-S1 events
     dt = np.zeros(max_evts)
@@ -131,6 +142,7 @@ for data_dir in list_dir:
     big_weird_areas = np.zeros(max_evts)
 
     n_golden = 0
+    inn=""
 
     for j in range(n_block):
         ch_data = []
@@ -155,15 +167,14 @@ for data_dir in list_dir:
             if ch_ind==0: v_sum = np.copy(V)
             else: v_sum += V
         v_matrix_all_ch.append(v_sum)
-
-
+        
         # create a time axis in units of µs:
         x = np.arange(0, wsize, 1)
         t = tscale*x
         t_matrix = np.repeat(t[np.newaxis,:], V.size/wsize, 0)
-
         # Note: if max_evts != -1, we won't load in all events in the dataset
         n_events = int(v_matrix_all_ch[0].shape[0])
+        if n_events == 0: break
             
         # perform baseline subtraction:
         # for now, using first 2 µs of event
@@ -194,9 +205,6 @@ for data_dir in list_dir:
 
         
     #check mark
-        
-
-        inn=""
 
         print("Running pulse finder on {:d} events...".format(n_events))
 
@@ -240,22 +248,35 @@ for data_dir in list_dir:
             #        p_end_ch[i,k,j] = end_times_ch[k]
                 
 
+            # More precisely estimate baselines immediately before each pulse
+            baselines_precise = pq.GetBaselines(p_start[i,:n_pulses[i]], p_end[i,:n_pulses[i]], v_bls_matrix_all_ch[:,i-j*block_size,:])
+
             # Calculate interesting quantities, only for pulses that were found
             for pp in range(n_pulses[i]):
+                # subtract out more precise estimate of baseline for better RQ estimates
+                baselines_pulse = baselines_precise[pp] # array of baselines per channel, for this pulse
+                v_pulse_bls = np.array([ch_j - baseline_j for (ch_j, baseline_j) in zip(v_bls_matrix_all_ch[:,i-j*block_size,:], baselines_pulse)])
+
+                # Version w/o pulse-level baseline subtraction
+                #v_pulse_bls = v_bls_matrix_all_ch[:,i-j*block_size,:]
+
+                # copied from above, for reference
+                #sum_data = v_matrix_all_ch[-1][i, :] - sum_baseline
+                #ch_data = [ch_j[i, :] - baseline_j for (ch_j, baseline_j) in zip(v_matrix_all_ch, baselines)]
 
                 # Area, max & min heights, width, pulse mean & rms
-                p_area[i,pp] = pq.GetPulseArea(p_start[i,pp], p_end[i,pp], v_bls_matrix_all_ch[-1,i-j*block_size,:] )
-                p_max_height[i,pp] = pq.GetPulseMaxHeight(p_start[i,pp], p_end[i,pp], v_bls_matrix_all_ch[-1,i-j*block_size,:] )
-                p_min_height[i,pp] = pq.GetPulseMinHeight(p_start[i,pp], p_end[i,pp], v_bls_matrix_all_ch[-1,i-j*block_size,:] )
+                p_area[i,pp] = pq.GetPulseArea(p_start[i,pp], p_end[i,pp], v_pulse_bls[-1] )
+                p_max_height[i,pp] = pq.GetPulseMaxHeight(p_start[i,pp], p_end[i,pp], v_pulse_bls[-1] )
+                p_min_height[i,pp] = pq.GetPulseMinHeight(p_start[i,pp], p_end[i,pp], v_pulse_bls[-1] )
                 p_width[i,pp] = p_end[i,pp] - p_start[i,pp]
                 #(p_mean_time[i,pp], p_rms_time[i,pp]) = pq.GetPulseMeanAndRMS(p_start[i,pp], p_end[i,pp], v_bls_matrix_all_ch[-1,i,:])
 
                 # Area and height fractions      
-                (p_afs_2l[i,pp], p_afs_1[i,pp], p_afs_25[i,pp], p_afs_50[i,pp], p_afs_75[i,pp], p_afs_99[i,pp]) = pq.GetAreaFraction(p_start[i,pp], p_end[i,pp], v_bls_matrix_all_ch[-1,i-j*block_size,:] )
-                (p_hfs_10l[i,pp], p_hfs_50l[i,pp], p_hfs_10r[i,pp], p_hfs_50r[i,pp]) = pq.GetHeightFractionSamples(p_start[i,pp], p_end[i,pp], v_bls_matrix_all_ch[-1,i-j*block_size,:] )
+                (p_afs_2l[i,pp], p_afs_1[i,pp], p_afs_25[i,pp], p_afs_50[i,pp], p_afs_75[i,pp], p_afs_99[i,pp]) = pq.GetAreaFraction(p_start[i,pp], p_end[i,pp], v_pulse_bls[-1] )
+                (p_hfs_10l[i,pp], p_hfs_50l[i,pp], p_hfs_10r[i,pp], p_hfs_50r[i,pp]) = pq.GetHeightFractionSamples(p_start[i,pp], p_end[i,pp], v_pulse_bls[-1] )
             
                 # Areas for individual channels and top bottom
-                p_area_ch[i,pp,:] = pq.GetPulseAreaChannel(p_start[i,pp], p_end[i,pp], v_bls_matrix_all_ch[:,i-j*block_size,:] )
+                p_area_ch[i,pp,:] = pq.GetPulseAreaChannel(p_start[i,pp], p_end[i,pp], v_pulse_bls )
                 p_area_ch_frac[i,pp,:] = p_area_ch[i,pp,:]/p_area[i,pp]
                 p_area_top[i,pp] = sum(p_area_ch[i,pp,top_channels])
                 p_area_bottom[i,pp] = sum(p_area_ch[i,pp,bottom_channels])
@@ -266,7 +287,7 @@ for data_dir in list_dir:
                 center_bot_y[i,pp] = (p_area_ch[i,pp,4]+p_area_ch[i,pp,5]-p_area_ch[i,pp,6]-p_area_ch[i,pp,7])/p_area_bottom[i,pp]
                 
             # Pulse classifier, work in progress
-            p_class[i,:] = pc.ClassifyPulses(p_tba[i, :], (p_afs_50[i, :]-p_afs_2l[i, :])*tscale, n_pulses[i])
+            p_class[i,:] = pc.ClassifyPulses(p_tba[i, :], (p_afs_50[i, :]-p_afs_2l[i, :])*tscale, n_pulses[i], p_area[i,:])
 
             # Event level analysis. Look at events with both S1 and S2.
             index_s1 = (p_class[i,:] == 1) + (p_class[i,:] == 2) # S1's
@@ -275,14 +296,16 @@ for data_dir in list_dir:
             n_s2[i] = np.sum(index_s2)
             
             if n_s1[i] > 0:
-                sum_s1_area[i] = sum(p_area[i, index_s1])
+                sum_s1_area[i] = np.sum(p_area[i, index_s1])
             if n_s2[i] > 0:
-                sum_s2_area[i] = sum(p_area[i, index_s2])
+                sum_s2_area[i] = np.sum(p_area[i, index_s2])
             if n_s1[i] == 1:
                 if n_s2[i] == 1:
                     drift_Time[i] = tscale*(p_start[i, np.argmax(index_s2)] - p_start[i, np.argmax(index_s1)])
+                    drift_Time_AS[i] = tscale*(p_start[i, np.argmax(index_s2)] - p_start[i, np.argmax(index_s1)])
                 if n_s2[i] > 1:
                     s1_before_s2[i] = np.argmax(index_s1) < np.argmax(index_s2) 
+                    drift_Time_AS[i] = tscale*(p_start[i, np.argmax(index_s2)] - p_start[i, np.argmax(index_s1)]) #For multi-scatter events. 
             
             if drift_Time[i]>0:
                 n_golden += 1
@@ -309,8 +332,9 @@ for data_dir in list_dir:
             
             # Condition to skip the individual plotting, hand scan condition
             #plotyn = drift_Time[i]<2 and drift_Time[i]>0 and np.any((p_tba[i,:]>-0.75)*(p_tba[i,:]<-0.25)*(p_area[i,:]<3000)*(p_area[i,:]>1400))#np.any((p_tba[i,:]>-0.91)*(p_tba[i,:]<-0.82)*(p_area[i,:]<2800)*(p_area[i,:]>1000))# True#np.any(p_class[i,:]==4)#False#np.any(p_area[i,:]>1000) and 
-            #plotyn = drift_Time[i]>0 and sum_s1_area[i]>10**3.1 and sum_s1_area[i]<10**3.5 and sum_s2_area[i]<10**5.1 and sum_s2_area[i]>10**4.6
-            plotyn = False
+            #plotyn = drift_Time[i]>2.5 and (center_bot_y[i,0]**2+center_bot_x[i,0]**2) <0.1
+            plotyn = False #np.any((p_class[i,:] == 3) + (p_class[i,:] == 4))#np.any((p_tba[i,:]>-0.75)*(p_tba[i,:]<-0.25)*(p_area[i,:]<3000)*(p_area[i,:]>1000))
+            #plotyn = np.any((np.log10(p_area[i,:])>3.2)*(np.log10(p_area[i,:])<3.4) )#False#np.any((p_tba[i,:]>-0.75)*(p_tba[i,:]<-0.25)*(p_area[i,:]<3000)*(p_area[i,:]>1000))
             # Pulse area condition
             areaRange = np.sum((p_area[i,:] < 50)*(p_area[i,:] > 5))
             if areaRange > 0:
@@ -323,7 +347,7 @@ for data_dir in list_dir:
             # Both S1 and S2 condition
             s1s2 = (n_s1[i] == 1)*(n_s2[i] == 1)
 
-            if inn == 'stop': sys.exit()
+            if inn == 's': sys.exit()
             
             if not inn == 'q' and plot_event_ind == i and plotyn:
 
@@ -348,7 +372,7 @@ for data_dir in list_dir:
                             ax.axvspan(start_times[pulse] * tscale, end_times[pulse] * tscale, alpha=0.25,
                                        color=pulse_class_colors[p_class[i, pulse]])
                     
-                    pl.plot(t_matrix[i,:],v_bls_matrix_all_ch[i_chan,i-j*block_size,:],color=ch_colors[i_chan],label=ch_labels[i_chan])
+                    pl.plot(t,v_bls_matrix_all_ch[i_chan,i-j*block_size,:],color=ch_colors[i_chan],label=ch_labels[i_chan])
                     #pl.plot( x, v_bls_matrix_all_ch[i_chan,i,:],color=ch_colors[i_chan],label=ch_labels[i_chan] )
                     pl.xlim([trigger_time_us-8,trigger_time_us+8])
                     #pl.xlim([wsize/2-4000,wsize/2+4000])
@@ -359,7 +383,7 @@ for data_dir in list_dir:
                     pl.legend()
                 
                 ax = pl.subplot2grid((2,2),(1,0),colspan=2)
-                #pl.plot(t_matrix[i,:],v_bls_matrix_all_ch[-1,i,:],'blue')
+                #pl.plot(t,v_bls_matrix_all_ch[-1,i,:],'blue')
                 pl.plot( x*tscale, v_bls_matrix_all_ch[-1,i-j*block_size,:],'blue' )
                 #pl.xlim([0,wsize])
                 pl.xlim([0,event_window])
@@ -381,12 +405,14 @@ for data_dir in list_dir:
                 # Debugging of pulse finder
                 debug_pf = True
                 if debug_pf and n_pulses[i]>0:
-                    pl.plot(t_matrix[i, :], data_conv, 'red')
-                    pl.plot(t_matrix[i, :], np.tile(0., np.size(data_conv)), 'gray')
+                    pl.plot(t_matrix[i-j*block_size, :], data_conv, 'red')
+                    pl.plot(t_matrix[i-j*block_size, :], np.tile(0., np.size(data_conv)), 'gray')
                     pl.vlines(x=peaks*tscale, ymin=data_conv[peaks] - properties["prominences"],
                                ymax=data_conv[peaks], color="C1")
                     pl.hlines(y=properties["width_heights"], xmin=properties["left_ips"]*tscale,
                                xmax=properties["right_ips"]*tscale, color="C1")
+                    #print("pulse heights: ", data_conv[peaks] )
+                    #print("prominences:", properties["prominences"])
 
                 pl.draw()
                 pl.show(block=0)
@@ -395,6 +421,45 @@ for data_dir in list_dir:
                 
         # end of pulse finding and plotting event loop
 
+    n_events = i
+    print("total number of events processed:", n_events)
+
+    #create a dictionary with all RQs
+    list_rq = {}
+    list_rq['center_top_x'] = center_top_x
+    list_rq['center_top_y'] = center_top_y
+    list_rq['center_bot_x'] = center_bot_x
+    list_rq['center_bot_y'] = center_bot_y
+    list_rq['n_s1'] = n_s1
+    list_rq['n_s2'] = n_s2
+    list_rq['s1_before_s2'] = s1_before_s2
+    list_rq['n_pulses'] = n_pulses
+    list_rq['n_events'] = n_events
+    list_rq['p_area'] = p_area
+    list_rq['p_class'] = p_class
+    list_rq['drift_Time'] = drift_Time
+    list_rq['drift_Time_AS'] = drift_Time_AS
+    list_rq['p_max_height'] = p_max_height
+    list_rq['p_min_height'] = p_min_height
+    list_rq['p_width'] = p_width
+    list_rq['p_afs_2l'] = p_afs_2l
+    list_rq['p_afs_50'] = p_afs_50
+    list_rq['p_area_ch'] = p_area_ch
+    list_rq['p_area_ch_frac'] = p_area_ch_frac
+    list_rq['p_area_top'] = p_area_top
+    list_rq['p_area_bottom'] = p_area_bottom
+    list_rq['p_tba'] = p_tba
+    list_rq['p_start'] = p_start
+    list_rq['p_end'] = p_end
+    list_rq['sum_s1_area'] = sum_s1_area
+    list_rq['sum_s2_area'] = sum_s2_area
+    #list_rq[''] =    #add more rq
+
+    #remove zeros in the end of each RQ array. 
+    for rq in list_rq.keys():
+        if rq != 'n_events':
+            list_rq[rq] = list_rq[rq][:n_events]
+
     rq = open(data_dir + "rq.npz",'wb')
-    np.savez(rq, center_top_x=center_top_x, center_top_y=center_top_y, center_bot_x=center_bot_x, center_bot_y=center_bot_y, n_s1=n_s1, n_s2= n_s2, s1_before_s2=s1_before_s2, n_pulses=n_pulses, n_events = n_events, p_area = p_area, p_class=p_class, drift_Time=drift_Time, p_max_height=p_max_height, p_min_height=p_min_height, p_width=p_width, p_afs_2l=p_afs_2l, p_afs_50=p_afs_50, p_area_ch=p_area_ch, p_area_ch_frac=p_area_ch_frac, p_area_top=p_area_top, p_area_bottom=p_area_bottom, p_tba=p_tba, sum_s1_area=sum_s1_area, sum_s2_area=sum_s2_area   )
+    np.savez(rq, **list_rq)
     rq.close()
