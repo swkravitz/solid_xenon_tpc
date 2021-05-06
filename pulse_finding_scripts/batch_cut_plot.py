@@ -406,4 +406,4 @@ for data_dir in list_dir:
         pl.errorbar(TBA_bins, ns2_means, yerr=ns2_std_err, linewidth=3, elinewidth=3, capsize=5, capthick=4, color='red')
         pl.ylim(bottom=0)
 
-    pl.savefig(data_dir+"PoS1lgS2_nS2_vs_S1_TBA.png")
+    	pl.savefig(data_dir+"PoS1lgS2_nS2_vs_S1_TBA.png")
