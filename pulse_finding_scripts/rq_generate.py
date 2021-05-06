@@ -24,7 +24,7 @@ mpl.rcParams['figure.figsize']=[8.0,6.0]
 # ==================================================================
 # define DAQ and other parameters
 #wsize = 12500             # size of event window in samples. 1 sample = 2 ns.
-event_window = 50.  # in us
+event_window = 25.  # in us
 wsize = int(500 * event_window)  # samples per waveform # 12500 for 25 us
 vscale = (2000.0/16384.0) # = 0.122 mV/ADCC, vertical scale
 tscale = (8.0/4096.0)     # = 0.002 µs/sample, time scale
