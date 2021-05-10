@@ -29,6 +29,8 @@ wsize = int(500 * event_window)  # samples per waveform # 12500 for 25 us
 vscale = (2000.0/16384.0) # = 0.122 mV/ADCC, vertical scale
 tscale = (8.0/4096.0)     # = 0.002 µs/sample, time scale
 
+save_avg_wfm = False # get the average waveform passing some cut and save to file
+
 post_trigger = 0.5 # Was 0.2 for data before 11/22/19
 trigger_time_us = event_window*(1-post_trigger)
 trigger_time = int(trigger_time_us/tscale)
@@ -135,6 +137,9 @@ drift_Time = np.zeros(max_evts)
 drift_Time_AS = np.zeros(max_evts) # for multi-scatter drift time, defined by the first S2. 
 s1_before_s2 = np.zeros(max_evts, dtype=bool)
 
+n_wfms_summed = 0
+avg_wfm = np.zeros(wsize)
+
 # Temporary, for testing low area, multiple-S1 events
 dt = np.zeros(max_evts)
 small_weird_areas = np.zeros(max_evts)
@@ -206,12 +211,6 @@ for j in range(n_block):
 
     
 #check mark
-<<<<<<< HEAD
-=======
-    
-
-    
->>>>>>> 390f4ce0e0e5f06e95b62b9e57e7443b7569cc7b
 
     print("Running pulse finder on {:d} events...".format(n_events))
 
@@ -240,8 +239,6 @@ for j in range(n_block):
                 continue
             p_start[i,m] = start_times[m]
             p_end[i,m] = end_times[m]
-
-
 
         # Individual channel pulse locations, in case you want this info
         # Can't just ":" the the first index in data, findPulses doesn't like it, so have to loop 
@@ -350,6 +347,12 @@ for j in range(n_block):
             small_weird_areas[i] = min(weird_areas)
             big_weird_areas[i] = max(weird_areas)
 
+        # Condition to include a wfm in the average
+        add_wfm = np.any((p_area[i,:]>5000)*(p_tba[i,:]<-0.75))*(n_s1[i]==1)*(n_s2[i]==0)
+        if add_wfm and save_avg_wfm:
+            plotyn = add_wfm # in avg wfm mode, plot the events which will go into the average
+            avg_wfm += v_bls_matrix_all_ch[-1,i-j*block_size,:]
+            n_wfms_summed += 1
 
         # Both S1 and S2 condition
         s1s2 = (n_s1[i] == 1)*(n_s2[i] == 1)
@@ -427,6 +430,11 @@ for j in range(n_block):
             fig.clf()
             
     # end of pulse finding and plotting event loop
+
+if save_avg_wfm:
+    avg_wfm /= n_wfms_summed
+    np.savetxt(data_dir+'average_waveform.txt',avg_wfm)
+    print("Average waveform saved")
 
 n_events = i
 print("total number of events processed:", n_events)

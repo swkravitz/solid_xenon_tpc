@@ -35,7 +35,7 @@ def pulse_bounds_area(data, t_min, window, start_frac, end_frac):
 
     return (start_pos, end_pos)
 
-def pulse_bounds(data, t_min, window, start_frac, end_frac):
+def pulse_bounds(data, t_min, window, start_frac, end_frac, near_peak=True):
     # Assumes data is already baseline-subtracted
     chA_spe_size = 29.02 # TODO: decide where these params come from; separate stored file?
     start_pos = -1
@@ -44,32 +44,37 @@ def pulse_bounds(data, t_min, window, start_frac, end_frac):
     max_search = np.minimum(len(data) - 1, t_min + window)
     peak_val = np.max(data[min_search:max_search])
     peak_pos=np.argmax(data[min_search:max_search])+min_search
-    # TODO: instead of a for loop, compare full array against max(...), take first, last values from np.where (add min_search!)
+
     start_thresh = max(peak_val * start_frac, 2.0 / chA_spe_size)
-    below_start_thresh = data[min_search:peak_pos] <= start_thresh
-    # find last instance before peak below threshold
-    if np.any(below_start_thresh):
-        start_pos = np.where(below_start_thresh)[0][-1] + min_search
-    else:
-        start_pos = min_search # if no points are below threshold, use window start
-
-    # for i_start in range(min_search, max_search):
-    #     if data[i_start] > max(peak_val * start_frac, 8.0 / chA_spe_size):
-    #         start_pos = i_start
-    #         break
-
     end_thresh = max(peak_val * end_frac, 2.0 / chA_spe_size)
-    below_end_thresh = data[peak_pos:max_search] <= end_thresh
-    # find first instance after peak below threshold
-    if np.any(below_end_thresh):
-        end_pos = np.where(below_end_thresh)[0][0] + peak_pos
-    else:
-        end_pos = max_search # if no points are below threshold, use window end
+    if near_peak: # use last (first) instances below threshold for start (end) times
+        below_start_thresh = data[min_search:peak_pos] <= start_thresh
+        # find last instance before peak below threshold
+        if np.any(below_start_thresh):
+            start_pos = np.where(below_start_thresh)[0][-1] + min_search
+        else:
+            start_pos = min_search # if no points are below threshold, use window start
 
-    # for i_start in range(max_search, min_search, -1):
-    #     if data[i_start] > max(peak_val * end_frac, 8.0 / chA_spe_size):
-    #         end_pos = i_start
-    #         break
+        below_end_thresh = data[peak_pos:max_search] <= end_thresh
+        # find first instance after peak below threshold
+        if np.any(below_end_thresh):
+            end_pos = np.where(below_end_thresh)[0][0] + peak_pos
+        else:
+            end_pos = max_search # if no points are below threshold, use window end
+    else:
+        above_start_thresh = data[min_search:peak_pos] > start_thresh
+        # find first instance before peak above threshold
+        if np.any(above_start_thresh):
+            start_pos = np.where(above_start_thresh)[0][0] + min_search
+        else:
+            start_pos = min_search  # if no points are below threshold, use window start
+
+        above_end_thresh = data[peak_pos:max_search] > end_thresh
+        # find last instance after peak above threshold
+        if np.any(above_end_thresh):
+            end_pos = np.where(above_end_thresh)[0][-1] + peak_pos
+        else:
+            end_pos = max_search  # if no points are below threshold, use window end
 
     return (start_pos, end_pos)
 
@@ -128,7 +133,9 @@ def findPulses(waveform_bls, max_pulses, SPEMode=False):
     time_diffs = (peaks[1:] - peaks[:-1])
     small_peak = properties['prominences'][1:] < peak_conv_heights[:-1] * merge_frac
     prev_peak_near = time_diffs < int(pulse_window / 2)  # was [:-1]...
-    peak_ind_cut = np.where(small_peak * prev_peak_near)[0] + 1  # add 1 since we're always looking back one pulse
+    # don't cull peak if it's got a clear drop to near baseline before it (shouldn't merge w/ previous peak)
+    no_valley = np.array([np.min(data_conv[peaks[ii]:peaks[ii+1]])>0.2 for ii in range(len(peaks)-1)])
+    peak_ind_cut = np.where(small_peak * prev_peak_near * no_valley)[0] + 1  # add 1 since we're always looking back one pulse
 
     # Remove peaks that were marked to be cut
     if len(peak_ind_cut) > 0 and True:
