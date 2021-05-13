@@ -11,11 +11,12 @@ import PulseClassification as pc
 
 import PulseFinderSPE_crystalize as pfSPE
 
-data_dir = "G:/.shortcut-targets-by-id/11qeqHWCbcKfFYFQgvytKem8rulQCTpj8/crystalize/data/data-202105/20210510/20210510_1717_spe_calibration_50.0V/"
+data_dir = "/home/xaber/caen/wavedump-3.8.2/data/20210512/20210512_1745_spe_calibration_match/"
 
+chs = [5, 7] # Sipm channels needed to be processed
 SPEMode = True
 LED = False # LED mode, expects signal at ~2us
-plotyn = True # Waveform plotting
+plotyn = False # Waveform plotting
 saveplot = True # Save RQ plots
 
 # set plotting style
@@ -42,7 +43,7 @@ else:
     right_bound = wsize
 
 block_size = 5000
-n_block = 17
+n_block = 40
 max_evts = n_block*block_size#5000  # 25000 # -1 means read in all entries; 25000 is roughly the max allowed in memory on the DAQ computer
 max_pts = -1  # do not change
 max_pulses = 6
@@ -50,7 +51,7 @@ if max_evts > 0:
     max_pts = wsize * max_evts
 load_dtype = "int16"
 
-chs = [0, 1, 3, 4, 5, 7]
+
 n_sipms = 1
 list_rq = {}
 
@@ -92,12 +93,13 @@ for ch_index in chs:
     # Loop over blocks
     for j in range(n_block):
         ch_data = []
-        for ch_ind in working_ch:
-            try:
-                ch_data.append(np.fromfile(data_dir + "wave"+str(ch_ind)+".dat", dtype=load_dtype, offset = block_size*wsize*j, count=wsize*block_size))
-            except:
-                print ("no data from ch%d"%ch_ind)
-                ch_data.append(np.zeros(10000000))
+        
+        try:
+            ch_data.append(np.fromfile(data_dir + "wave"+str(ch_index)+".dat", dtype=load_dtype, offset = block_size*wsize*j, count=wsize*block_size))
+        except:
+            print(data_dir + "wave"+str(ch_index)+".dat")
+            print ("no data from ch%d"%ch_index)
+            ch_data.append(np.zeros(10000000))
 
         t_end_load = time.time()
         print("Time to load files: ", t_end_load-t_start)
@@ -109,11 +111,11 @@ for ch_index in chs:
 
         # matrix of all channels including the sum waveform
         v_matrix_all_ch = []
-        for ch_ind in working_ch:
-            V = vscale * ch_data[0].astype(array_dtype)
-            V = V[:int(len(V) / wsize) * wsize]
-            V = V.reshape(int(V.size / wsize), wsize) # reshape to make each channel's matrix of events
-            v_matrix_all_ch.append(V)
+    
+        V = vscale * ch_data[0].astype(array_dtype)
+        V = V[:int(len(V) / wsize) * wsize]
+        V = V.reshape(int(V.size / wsize), wsize) # reshape to make each channel's matrix of events
+        v_matrix_all_ch.append(V)
     #        if ch_ind==0: v_sum = np.copy(V)
      #       else: v_sum += V
       #  v_matrix_all_ch.append(v_sum)
@@ -177,7 +179,7 @@ for ch_index in chs:
 
         # Loop over events
         for i in range(j*block_size, j*block_size+n_events):
-            if i%500==0: print("Event #",i)
+            if i%1000==0: print("Event #",i)
             
             # Loop over channels, slowest part of the code
             # Have to do a loop, pulse finder does not like v_bls_matrix_all_ch[:,i,:] 
@@ -578,6 +580,7 @@ ax.set_ylabel("SiPM Gain",fontsize=fontsize)
 ax.legend(loc="upper right",prop={"size":10})
 ax.set_title("Gain vs. Temperature",fontsize=fontsize)
 pl.tight_layout()
+pl.clf()
 #fig.savefig("/Volumes/Samsung USB/crystalize/gainvstemp.png")
 #fig.show()
 #input("press Enter to quit")
