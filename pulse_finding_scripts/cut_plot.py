@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as pl
 import matplotlib as mpl
+from matplotlib.patches import Circle, PathPatch, Rectangle
 import time
 
 
@@ -33,12 +34,29 @@ def basicHist(data, bins=100, save=False, name="", mean=False, show=False, hRang
     return
 
 # For creating basic scatter plots
-def basicScatter(xdata, ydata, s=[], c=[], save=False, name="", mean=False, show=False, xlim=[], ylim=[], xlabel="", ylabel="", logx=False, logy=False, area_max_plot=-99999999,legHand=[],data_dir=None):
+def basicScatter(xdata, ydata, s=[], c=[], save=False, name="", mean=False, show=False, xlim=[], ylim=[], xlabel="", ylabel="", logx=False, logy=False, area_max_plot=-99999999,legHand=[],data_dir=None,showsipms=False):
     pl.figure()
+    if showsipms:
+        w = 0.6 # Photosensitive area in cm
+        d_x = 1.23 # cm
+        d_y = 1.14 # cm
+        r = 1.5 # cm, active TPC radius
+        c1 = pl.Circle((0., 0.), r, fill=False, facecolor='grey', edgecolor='grey',alpha=1)
+        r1 = pl.Rectangle((d_x/2.-w/2., d_y/2.-w/2.), w, w, fill=False, facecolor='grey', edgecolor='grey',alpha=1)
+        r2 = pl.Rectangle((d_x/2.-w/2., -d_y/2.-w/2.), w, w, fill=False, facecolor='grey', edgecolor='grey',alpha=1)
+        r3 = pl.Rectangle((-d_x/2.-w/2., -d_y/2.-w/2.), w, w, fill=False, facecolor='grey', edgecolor='grey',alpha=1)
+        r4 = pl.Rectangle((-d_x/2.-w/2., d_y/2.-w/2.), w, w, fill=False, facecolor='grey', edgecolor='grey',alpha=1)
+        pl.gca().add_patch(c1)
+        pl.gca().add_patch(r1)
+        pl.gca().add_patch(r2)
+        pl.gca().add_patch(r3)
+        pl.gca().add_patch(r4)
+        pl.axis('square')
     pl.scatter(xdata, ydata, s=s, c=c)
 
     pl.xlabel(xlabel)
     pl.ylabel(ylabel)
+    
     if mean and area_max_plot<np.mean(xdata): pl.axvline(x=np.mean(xdata), ls='--', color='r')
     if len(xlim) > 1: pl.xlim(xlim[0],xlim[1])
     if len(ylim) > 1: pl.ylim(ylim[0],ylim[1])
@@ -75,7 +93,7 @@ def make_plots(data_dir):
     n_channels = n_sipms+1 # includes sum
     d_between_SiPM_center_x = 1.23 # cm
     d_between_SiPM_center_y = 1.14 # cm
-
+    
     # define top, bottom channels
     n_top = int((n_channels-1)/2)
     top_channels=np.array(range(n_top),int)
@@ -242,8 +260,8 @@ def make_plots(data_dir):
     basicScatter(cleanTBA, cleanArea, s=1.2, c=pulse_class_colors[cleanPulseClass], xlim=[-1.01,1.01], ylim=[0, 30000], xlabel="TBA", ylabel="Pulse area (phd)", legHand=pc_legend_handles, name="PulseArea_vs_TBA_"+pulse_cut_name, save=save_pulse_plots, data_dir=data_dir)
     basicScatter(cleanTBA, cleanArea, s=1.2, c=pulse_class_colors[cleanPulseClass], xlim=[-1.01,1.01], ylim=[0, 1000], xlabel="TBA", ylabel="Pulse area (phd)", legHand=pc_legend_handles, name="PulseArea_small_vs_TBA_"+pulse_cut_name, save=save_pulse_plots, data_dir=data_dir)
 
-    basicScatter(cleanCenterBottomX, cleanCenterBottomY, s=1.2, c=pulse_class_colors[cleanPulseClass], xlim=[-0.7, 0.7], ylim=[-0.7, 0.7], xlabel="x (cm)", ylabel="y (cm)", legHand=pc_legend_handles, name="BottomCentroid_"+pulse_cut_name, save=save_pulse_plots, data_dir=data_dir)
-    basicScatter(cleanCenterTopX, cleanCenterTopY, s=1.2, c=pulse_class_colors[cleanPulseClass], xlim=[-0.7, 0.7], ylim=[-0.7, 0.7], xlabel="x (cm)", ylabel="y (cm)", legHand=pc_legend_handles, name="TopCentroid_" + pulse_cut_name, save=save_pulse_plots, data_dir=data_dir)
+    basicScatter(cleanCenterBottomX, cleanCenterBottomY, s=1.2, c=pulse_class_colors[cleanPulseClass], xlim=[-1.5, 1.5], ylim=[-1.5, 1.5], xlabel="x (cm)", ylabel="y (cm)", legHand=pc_legend_handles, name="BottomCentroid_"+pulse_cut_name, save=save_pulse_plots, data_dir=data_dir, showsipms=True)
+    basicScatter(cleanCenterTopX, cleanCenterTopY, s=1.2, c=pulse_class_colors[cleanPulseClass], xlim=[-1.5, 1.5], ylim=[-1.5, 1.5], xlabel="x (cm)", ylabel="y (cm)", legHand=pc_legend_handles, name="TopCentroid_" + pulse_cut_name, save=save_pulse_plots, data_dir=data_dir, showsipms=True)
 
     # Channel fractional area for all pulses
     pl.figure()
