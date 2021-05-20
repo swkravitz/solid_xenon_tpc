@@ -408,6 +408,8 @@ def make_rq(data_dir):
                     ax.axvspan(start_times[pulse] * tscale, end_times[pulse] * tscale, alpha=0.25, color=pulse_class_colors[p_class[i, pulse]])
                     ax.text((end_times[pulse]) * tscale, 0.9 * ax.get_ylim()[1], '{:.1f} phd'.format(p_area[i, pulse]),
                             fontsize=9, color=pulse_class_colors[p_class[i, pulse]])
+                    ax.text((end_times[pulse]) * tscale, 0.8 * ax.get_ylim()[1], 'TBA={:.1f}'.format(p_tba[i, pulse]),
+                        fontsize=9, color=pulse_class_colors[p_class[i, pulse]])
                 
                 #ax.axhline( 0.276, 0, wsize, linestyle='--', lw=1, color='orange')
 

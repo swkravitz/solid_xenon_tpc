@@ -16,7 +16,7 @@ def basicHist(data, bins=100, save=False, name="", mean=False, show=False, hRang
     if len(hRange) > 1:
         cut = (data>hRange[0])*(data<hRange[1])
         data = data[cut]
-        pl.hist(data, bins, range=(hRange[0],hRange[1]) )
+        pl.hist(data, bins, range=(hRange[0],hRange[1]), histtype='step' )
     else: pl.hist(data, bins)
 
     pl.xlabel(xlabel)
@@ -73,6 +73,8 @@ def make_plots(data_dir):
 
     n_sipms = 8
     n_channels = n_sipms+1 # includes sum
+    d_between_SiPM_center_x = 1.23 # cm
+    d_between_SiPM_center_y = 1.14 # cm
 
     # define top, bottom channels
     n_top = int((n_channels-1)/2)
@@ -105,6 +107,14 @@ def make_plots(data_dir):
     p_end = listrq['p_end']
     sum_s1_area = listrq['sum_s1_area']
     sum_s2_area = listrq['sum_s2_area']
+    center_top_x = listrq['center_top_x']
+    center_top_y = listrq['center_top_y']
+    center_bot_x = listrq['center_bot_x']
+    center_bot_y = listrq['center_bot_y']
+    center_bot_x_d = center_bot_x * d_between_SiPM_center_x/2
+    center_bot_y_d = center_bot_y * d_between_SiPM_center_y/2
+    center_top_x_d = center_top_x * d_between_SiPM_center_x/2
+    center_top_y_d = center_top_y * d_between_SiPM_center_y/2
 
     listrq.close()
     #end of RQ read
@@ -121,7 +131,10 @@ def make_plots(data_dir):
     cut_dict['S1'] = (p_class == 1) + (p_class == 2)
     cut_dict['S2'] = (p_class == 3) + (p_class == 4)
     cut_dict['Co_peak'] = (p_area>30)*(p_area<60)
-    cut_dict['PoS1'] = cut_dict['S1']*(p_tba<-0.0)*(p_tba>-0.7)*(p_area>4000)*(p_area<20000)
+    cut_dict['SmallS1'] = cut_dict['S1']*(p_area<500)
+    cut_dict['LargeS1'] = cut_dict['S1']*(p_area>500)
+    cut_dict['TopCo'] = cut_dict['S1']*(p_tba>0.0)*(p_area>200)
+    cut_dict['PoS1'] = cut_dict['S1']*(p_tba<-0.0)*(p_tba>-1)*(p_area>5000)*(p_area<30000)
     SS_cut = drift_Time > 0
 
     # Pick which cut from cut_dict to apply here and whether to save plots
@@ -152,6 +165,10 @@ def make_plots(data_dir):
     cleanAreaBottom = p_area_bottom[pulse_cut].flatten()
     cleanTBA = p_tba[pulse_cut].flatten()
     # Note: TBA can be <-1 or >+1 if one of top or bottom areas is <0 (can still be a valid pulse since total area >0)
+    cleanCenterBottomX = center_bot_x_d[pulse_cut]
+    cleanCenterBottomY = center_bot_y_d[pulse_cut]
+    cleanCenterTopX = center_top_x_d[pulse_cut]
+    cleanCenterTopY = center_top_y_d[pulse_cut]
 
     s1_cut = pulse_cut*cut_dict['S1']
     cleanS1Area = p_area[s1_cut].flatten()
@@ -223,12 +240,16 @@ def make_plots(data_dir):
     #xlim=[0.7*min(p_area.flatten()), 1.5*max(p_area.flatten())]
 
     basicScatter(cleanTBA, cleanArea, s=1.2, c=pulse_class_colors[cleanPulseClass], xlim=[-1.01,1.01], ylim=[0, 30000], xlabel="TBA", ylabel="Pulse area (phd)", legHand=pc_legend_handles, name="PulseArea_vs_TBA_"+pulse_cut_name, save=save_pulse_plots, data_dir=data_dir)
+    basicScatter(cleanTBA, cleanArea, s=1.2, c=pulse_class_colors[cleanPulseClass], xlim=[-1.01,1.01], ylim=[0, 1000], xlabel="TBA", ylabel="Pulse area (phd)", legHand=pc_legend_handles, name="PulseArea_small_vs_TBA_"+pulse_cut_name, save=save_pulse_plots, data_dir=data_dir)
+
+    basicScatter(cleanCenterBottomX, cleanCenterBottomY, s=1.2, c=pulse_class_colors[cleanPulseClass], xlim=[-0.7, 0.7], ylim=[-0.7, 0.7], xlabel="x (cm)", ylabel="y (cm)", legHand=pc_legend_handles, name="BottomCentroid_"+pulse_cut_name, save=save_pulse_plots, data_dir=data_dir)
+    basicScatter(cleanCenterTopX, cleanCenterTopY, s=1.2, c=pulse_class_colors[cleanPulseClass], xlim=[-0.7, 0.7], ylim=[-0.7, 0.7], xlabel="x (cm)", ylabel="y (cm)", legHand=pc_legend_handles, name="TopCentroid_" + pulse_cut_name, save=save_pulse_plots, data_dir=data_dir)
 
     # Channel fractional area for all pulses
     pl.figure()
     for j in range(0, n_channels-1):
         pl.subplot(4,2,j+1)
-        pl.hist(cleanAreaChFrac[:,j],bins=100,range=(0,1))
+        pl.hist(cleanAreaChFrac[:,j],bins=100,range=(0,1), histtype='step')
         pl.axvline(x=np.mean(cleanAreaChFrac[:,j]), ls='--', color='r')
         #print("ch {0} area frac mean: {1}".format(j,np.mean(cleanAreaChFrac[:,j])))
         #pl.yscale('log')
@@ -240,7 +261,7 @@ def make_plots(data_dir):
     pl.figure()
     for j in range(0, n_channels-1):
         pl.subplot(4,2,j+1)
-        pl.hist(cleanS1AreaChFrac[:,j],bins=100,range=(0,1))
+        pl.hist(cleanS1AreaChFrac[:,j],bins=100,range=(0,1), histtype='step')
         pl.axvline(x=np.mean(cleanS1AreaChFrac[:,j]), ls='--', color='r')
         #print("S1 ch {0} area frac mean: {1}".format(j,np.mean(cleanS1AreaChFrac[:,j])))
         #pl.yscale('log')
@@ -251,7 +272,7 @@ def make_plots(data_dir):
     pl.figure()
     for j in range(0, n_channels-1):
         pl.subplot(4,2,j+1)
-        pl.hist(cleanS2AreaChFrac[:,j],bins=100,range=(0,1))
+        pl.hist(cleanS2AreaChFrac[:,j],bins=100,range=(0,1), histtype='step')
         pl.axvline(x=np.mean(cleanS2AreaChFrac[:,j]), ls='--', color='r')
         #print("S2 ch {0} area frac mean: {1}".format(j,np.mean(cleanS2AreaChFrac[:,j])))
         #pl.yscale('log')
@@ -267,6 +288,7 @@ def make_plots(data_dir):
 
     basicHist(cleanS1Area, bins=125, mean=True, xlabel="S1 area (phd)", name="S1_"+pulse_cut_name, save=save_S1S2_plots, data_dir=data_dir)
     basicHist(cleanS1Area, bins=100, hRange=[0, 200], mean=True, xlabel="S1 area (phd)", name="S1_small_"+pulse_cut_name, save=save_S1S2_plots, data_dir=data_dir)
+    basicHist(cleanS1Area, bins=100, hRange=[0, 1000], mean=True, xlabel="S1 area (phd)", name="S1_med_"+pulse_cut_name, save=save_S1S2_plots, data_dir=data_dir)
     basicHist(cleanS1Area, bins=100, hRange=[0, 30000], mean=True, xlabel="S1 area (phd)", name="S1_lg_"+pulse_cut_name, save=save_S1S2_plots, data_dir=data_dir)
     basicHist(cleanS2Area, bins=500, mean=True, xlabel="S2 area (phd)", name="S2_"+pulse_cut_name, save=save_S1S2_plots, data_dir=data_dir)
     basicHist(cleanS2Area, bins=500, hRange=[0, 1000], mean=True, xlabel="S2 area (phd)", name="S2_small_"+pulse_cut_name, save=save_S1S2_plots, data_dir=data_dir)
@@ -343,12 +365,12 @@ def make_plots(data_dir):
     if save_2S2_plots: pl.savefig(data_dir+"2S2_log10_area2_vs_log10_area1.png")
 
     pl.figure()
-    pl.hist(area_2nd_s2/area_1st_s2,range=(0,4),bins=50)
+    pl.hist(area_2nd_s2/area_1st_s2,range=(0,4),bins=50, histtype='step')
     pl.xlabel('2nd S2 area/1st S2 area')
     if save_2S2_plots: pl.savefig(data_dir+"2S2_area2_over_area1.png")
 
     pl.figure()
-    pl.hist(dt_2s2,bins=50)
+    pl.hist(dt_2s2,bins=50, histtype='step')
     pl.xlabel('Time between S2s (us)')
     if save_2S2_plots: pl.savefig(data_dir+"2S2_time_diff.png")
 
