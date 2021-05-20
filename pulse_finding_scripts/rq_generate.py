@@ -149,6 +149,8 @@ def make_rq(data_dir):
 
     inn="" # used to control hand scan
 
+    empty_evt_ind = np.zeros(max_evts)
+
     for j in range(n_block):
         ch_data = []
         for ch_ind in range(n_sipms):
@@ -224,14 +226,15 @@ def make_rq(data_dir):
             if i%500==0: print("Event #",i)
             
             # Find pulse locations; other quantities for pf tuning/debugging
-            start_times, end_times, peaks, data_conv, properties = pf.findPulses( v_bls_matrix_all_ch[-1,i-j*block_size,:], max_pulses )
+            start_times, end_times, peaks, data_conv, properties = pf.findPulses( v_bls_matrix_all_ch[-1,i-j*block_size,:], max_pulses , SPEMode=False)
 
 
             # Sort pulses by start times, not areas
             startinds = np.argsort(start_times)
             n_pulses[i] = len(start_times)
-            #if (n_pulses[i] < 1):
+            if (n_pulses[i] < 1):
                 #print("No pulses found for event {0}; skipping".format(i))
+                empty_evt_ind[i] = i
                 #continue
             for m in startinds:
                 if m >= max_pulses:
@@ -439,6 +442,11 @@ def make_rq(data_dir):
 
     n_events = i
     print("total number of events processed:", n_events)
+
+    print("empty events: {0}".format(np.sum(empty_evt_ind>0)))
+    # pl.hist(empty_evt_ind[empty_evt_ind>0], bins=1000)
+    # pl.xlabel('Empty event index')
+    # pl.show()
 
     #create a dictionary with all RQs
     list_rq = {}
