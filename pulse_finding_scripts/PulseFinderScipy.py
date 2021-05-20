@@ -35,18 +35,15 @@ def pulse_bounds_area(data, t_min, window, start_frac, end_frac):
 
     return (start_pos, end_pos)
 
-def pulse_bounds(data, t_min, window, start_frac, end_frac, near_peak=True):
+def pulse_bounds(data, t_min, window, start_frac, end_frac, near_peak=True, min_thresh=0.1):
     # Assumes data is already baseline-subtracted
-    chA_spe_size = 29.02 # TODO: decide where these params come from; separate stored file?
-    start_pos = -1
-    end_pos = -1
     min_search = np.maximum(0, t_min)
     max_search = np.minimum(len(data) - 1, t_min + window)
     peak_val = np.max(data[min_search:max_search])
     peak_pos=np.argmax(data[min_search:max_search])+min_search
 
-    start_thresh = max(peak_val * start_frac, 2.0 / chA_spe_size)
-    end_thresh = max(peak_val * end_frac, 2.0 / chA_spe_size)
+    start_thresh = max(peak_val * start_frac, min_thresh)
+    end_thresh = max(peak_val * end_frac, min_thresh)
     if near_peak: # use last (first) instances below threshold for start (end) times
         below_start_thresh = data[min_search:peak_pos] <= start_thresh
         # find last instance before peak below threshold
@@ -93,21 +90,23 @@ def findPulses(waveform_bls, max_pulses, SPEMode=False):
     if SPEMode:
         pulse_window = int(12.0 / tscale) # was 7 us; any reason this can't just always go to next pulse or end of wfm?
         conv_width = 70 #int(0.3 / tscale) # in samples
-        min_height = 0.15 #0.15 # mV
+        min_height = 0.15 # mV
         min_dist = int(0.5 / tscale) # in samples
-        bounds_conv_width = 5 # in samples
+        bounds_conv_width = 10 # in samples
         pulse_start_frac = 0.01  # pulse starts at this fraction of peak height above baseline
-        pulse_end_frac = 0.01  # pulse starts at this fraction of peak height above baseline       
+        pulse_end_frac = 0.01  # pulse starts at this fraction of peak height above baseline
+        bounds_thresh = 0.05 # threshold for beginning, end of pulse; lower means wider pulses. must be less than min_height
 
     # pulse finder parameters for tuning
     else:
         pulse_window = int(12.0 / tscale) # was 7 us; any reason this can't just always go to next pulse or end of wfm?
-        conv_width = 100 #int(0.3 / tscale) # in samples
-        min_height = 0.30 # phd/sample
+        conv_width = 70 #int(0.3 / tscale) # in samples
+        min_height = 0.2 # phd/sample
         min_dist = int(0.3 / tscale) # in samples
-        bounds_conv_width = 5 # in samples
+        bounds_conv_width = 10 # in samples
         pulse_start_frac = 0.01  # pulse starts at this fraction of peak height above baseline
         pulse_end_frac = 0.01  # pulse starts at this fraction of peak height above baseline
+        bounds_thresh = 0.07 # threshold for beginning, end of pulse; lower means wider pulses. must be less than min_height
 
     # Do a moving average (sum) of the waveform
     # Look for local maxima using scipy's find_peaks
@@ -115,7 +114,7 @@ def findPulses(waveform_bls, max_pulses, SPEMode=False):
     t0 = time.time()
     data_conv = wfm_convolve(waveform_bls, conv_width, avg=True)
     peaks, properties = find_peaks(data_conv, distance=min_dist, height=min_height,
-                                   width=int(0.01 / tscale), prominence=0.3)  # could restrict search if desired
+                                   width=int(0.01 / tscale), prominence=min_height)  # could restrict search if desired
     if len(peaks)<1 and not SPEMode: return [],[],[],[],[]
     peak_conv_heights = data_conv[peaks]
 
@@ -182,7 +181,7 @@ def findPulses(waveform_bls, max_pulses, SPEMode=False):
         #start_time, end_time = pulse_bounds_area(waveform_bls, window_starts[peak_ind], window_ends[peak_ind]-window_starts[peak_ind], pulse_start_frac,
         #                                        pulse_end_frac)
         start_time, end_time = pulse_bounds(data_bounds_conv, window_starts[peak_ind], window_ends[peak_ind]-window_starts[peak_ind], pulse_start_frac,
-                                                pulse_end_frac)
+                                                pulse_end_frac, min_thresh=bounds_thresh)
         pulse_start_times.append(start_time)
         pulse_end_times.append(end_time)
 
