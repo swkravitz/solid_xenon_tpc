@@ -407,7 +407,9 @@ def make_plots(data_dir):
 # This is what actually gets run when calling cut_plot.py as a script
 def main():
     with open("path.txt", 'r') as path:
-        data_dir = path.read()
+        #data_dir = path.read()
+        data_dir = path.readline().strip() #only read first line of path.txt
+        print('\nOpening RQ file in {:s} ...\n'.format(data_dir))
 
     make_plots(data_dir)
 

@@ -1,1 +1,5 @@
-G:/.shortcut-targets-by-id/11qeqHWCbcKfFYFQgvytKem8rulQCTpj8/crystalize/data/data-202104/041421/Po_2.8g_3.0c_1.1bar_circ_60min_1747/
+/Volumes/GoogleDrive/.shortcut-targets-by-id/11qeqHWCbcKfFYFQgvytKem8rulQCTpj8/crystalize/data/data-202104/041921/Co_ICVtop_Po_0g_0c_0.72bar_circ_5min_1530/
+
+/Volumes/GoogleDrive/.shortcut-targets-by-id/11qeqHWCbcKfFYFQgvytKem8rulQCTpj8/crystalize/data/data-202104/20210430/20210430_1646_Co_ICVtop_Po_0g_0c_3mv_circ_4min/
+/Volumes/GoogleDrive/.shortcut-targets-by-id/11qeqHWCbcKfFYFQgvytKem8rulQCTpj8/crystalize/data/data-202105/20210503/20210503_1450_Co_ICVtop_Po_0g_0c_0.74bar_3mv_circ_4min/
+/Volumes/GoogleDrive/.shortcut-targets-by-id/11qeqHWCbcKfFYFQgvytKem8rulQCTpj8/crystalize/data/data-202104/20210428/20210428_1257_Co_ICVtop_Po_0g_0c_3mv_circ_4min/
