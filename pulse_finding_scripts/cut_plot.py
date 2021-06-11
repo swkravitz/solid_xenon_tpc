@@ -3,6 +3,7 @@ import matplotlib.pyplot as pl
 import matplotlib as mpl
 from matplotlib.patches import Circle, PathPatch, Rectangle
 import time
+import matplotlib.colors as mcolors
 
 
 # Turns data into (x,y) points of histogram to plot
@@ -231,6 +232,7 @@ def make_plots(data_dir):
     cleanSumS2 = sum_s2_area[event_cut]
     # For events passing event_cut, get area-weighted avg of TBA for S1s only
     cleanAvgS1TBA = np.sum(p_area[event_cut]*p_tba[event_cut]*s1_cut[event_cut],axis=1)/np.sum(p_area[event_cut]*s1_cut[event_cut],axis=1)
+    cleanSumS1TBA = p_tba[event_cut_dict['SS'][:,np.newaxis]*cut_dict['S1']]
     cleanDT = drift_Time[event_cut]
     cleanDT_AS = drift_Time_AS[event_cut]
     print("number of events found passing cut "+event_cut_name+" = {0:d} ({1:g}%)".format(np.sum(event_cut),np.sum(event_cut)*100./n_events))
@@ -344,7 +346,7 @@ def make_plots(data_dir):
     pl.xlabel("Drift time (us)")
     pl.ylabel("Sum S2 area")
     # Calculate mean vs drift bin
-    drift_bins=np.linspace(0,13,50)
+    drift_bins=np.linspace(0,8,50)
     drift_ind=np.digitize(cleanDT_AS, bins=drift_bins)
     s2_medians=np.zeros(np.shape(drift_bins))
     s2_std_err=np.ones(np.shape(drift_bins))*0#10000
@@ -357,8 +359,21 @@ def make_plots(data_dir):
     pl.errorbar(drift_bins, s2_medians, yerr=s2_std_err, linewidth=3, elinewidth=3, capsize=5, capthick=4, color='red')
     pl.ylim(bottom=0)
     if save_event_plots: pl.savefig(data_dir+"SumS2_vs_DriftTime_"+event_cut_name +".png")
-
-
+    
+    # S1 area vs drift time w/ TBA as color scale:
+    pl.figure()
+    pl.scatter(cleanDT, cleanSumS1, s=1.5, c=cleanAvgS1TBA, cmap='plasma' )
+    pl.xlabel("Drift Time (us)")
+    pl.ylabel("Sum S1 area (phd)")
+    pl.xlim(0,9)
+    pl.ylim(10,30000)
+    pl.yscale('log')
+    pl.clim(-1,1)
+    cbar=pl.colorbar()
+    cbar.set_label("S1 TBA")
+    if save_event_plots: pl.savefig(data_dir+"SumS1_vs_DriftTime_"+event_cut_name +".png")
+    
+    
     # Just for 2S2 events
     s2_bool_2s2 = cut_dict['S2'][event_cut_dict['2S2']] # get boolean array of S2 pulses, w/in 2s2 events
     s2_ind_array = np.array(np.where(s2_bool_2s2)) # convert to an array of indices
