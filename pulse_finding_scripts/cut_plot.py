@@ -70,6 +70,26 @@ def basicScatter(xdata, ydata, s=[], c=[], save=False, name="", mean=False, show
 
     return
 
+# For creating heatmaps, i.e. 2D histograms (can be weighted if desired)
+def basicHeatmap(xdata, ydata, weights=None, bins=40, save=False, name="", show=False, xlim=[], ylim=[], cmin=1e-12, cmax=None, xlabel="", ylabel="", logx=False, logy=False, legHand=[], data_dir=None):
+    pl.figure()
+    if len(xlim)>1 and len(ylim)>1: hist_range = [xlim, ylim]
+    else: hist_range = None
+    _, _, _, image = pl.hist2d(xdata, ydata, bins=bins, range=hist_range, weights=weights, cmin=cmin, cmax=cmax)
+    pl.colorbar(image)
+
+    pl.xlabel(xlabel)
+    pl.ylabel(ylabel)
+
+    if logx: pl.xscale("log")
+    if logy: pl.yscale("log")
+    if len(legHand) > 0: pl.legend(handles=legHand)
+    if save and data_dir is not None: pl.savefig(str(data_dir)+str(name)+".png")
+    if show: pl.show()
+    pl.close()
+
+    return
+
 def make_plots(data_dir):
     # set plotting style
     mpl.rcParams['font.size']=10
@@ -153,7 +173,13 @@ def make_plots(data_dir):
     cut_dict['SmallS1'] = cut_dict['S1']*(p_area<500)
     cut_dict['LargeS1'] = cut_dict['S1']*(p_area>500)
     cut_dict['TopCo'] = cut_dict['S1']*(p_tba>0.0)*(p_area>200)
-    cut_dict['PoS1'] = cut_dict['S1']*(p_tba<-0.0)*(p_tba>-1)*(p_area>5000)*(p_area<30000)
+    cut_dict['TopS1'] = cut_dict['S1']*(p_tba>0.75)
+    cut_dict['PoS1'] = cut_dict['S1']*(p_tba<-0.75)*(p_tba>-1)*(p_area>5000)*(p_area<30000)
+    cut_dict['PoSmallS1'] = cut_dict['S1']*(p_tba<-0.25)*(p_tba>-1)*(p_area>0)*(p_area<2000)
+    cut_dict['PoMedS1'] = cut_dict['S1']*(p_tba<-0.25)*(p_tba>-1)*(p_area>2000)*(p_area<5000)
+    cut_dict['PoMedLgS1'] = cut_dict['S1']*(p_tba<-0.75)*(p_tba>-1)*(p_area>5000)*(p_area<10000)
+    cut_dict['S1_200-400phd'] = cut_dict['S1']*(p_area>200)*(p_area<400)
+    cut_dict['S1_0-200phd'] = cut_dict['S1']*(p_area>0)*(p_area<200)
     SS_cut = drift_Time > 0
 
     # Pick which cut from cut_dict to apply here and whether to save plots
@@ -263,7 +289,11 @@ def make_plots(data_dir):
     basicScatter(cleanTBA, cleanArea, s=1.2, c=pulse_class_colors[cleanPulseClass], xlim=[-1.01,1.01], ylim=[0, 1000], xlabel="TBA", ylabel="Pulse area (phd)", legHand=pc_legend_handles, name="PulseArea_small_vs_TBA_"+pulse_cut_name, save=save_pulse_plots, data_dir=data_dir)
 
     basicScatter(cleanCenterBottomX, cleanCenterBottomY, s=1.2, c=pulse_class_colors[cleanPulseClass], xlim=[-1.5, 1.5], ylim=[-1.5, 1.5], xlabel="x (cm)", ylabel="y (cm)", legHand=pc_legend_handles, name="BottomCentroid_"+pulse_cut_name, save=save_pulse_plots, data_dir=data_dir, showsipms=True)
+    basicHeatmap(cleanCenterBottomX, cleanCenterBottomY, xlim=[-0.7, 0.7], ylim=[-0.7, 0.7], xlabel="x (cm)",
+             ylabel="y (cm)", name="BottomCentroidMap_" + pulse_cut_name, save=save_pulse_plots, data_dir=data_dir)
     basicScatter(cleanCenterTopX, cleanCenterTopY, s=1.2, c=pulse_class_colors[cleanPulseClass], xlim=[-1.5, 1.5], ylim=[-1.5, 1.5], xlabel="x (cm)", ylabel="y (cm)", legHand=pc_legend_handles, name="TopCentroid_" + pulse_cut_name, save=save_pulse_plots, data_dir=data_dir, showsipms=True)
+    basicHeatmap(cleanCenterTopX, cleanCenterTopY, xlim=[-0.7, 0.7], ylim=[-0.7, 0.7], xlabel="x (cm)", ylabel="y (cm)",
+             name="TopCentroidMap_" + pulse_cut_name, save=save_pulse_plots, data_dir=data_dir)
 
     # Channel fractional area for all pulses
     pl.figure()
